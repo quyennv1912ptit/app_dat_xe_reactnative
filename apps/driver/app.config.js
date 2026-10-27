@@ -10,6 +10,7 @@ module.exports = ({ config }) => {
     '@react-native-firebase/auth',
     '@react-native-google-signin/google-signin',
     'expo-status-bar',
+    '../../packages/config/plugins/with-short-cmake-paths',
     [
       'expo-build-properties',
       {

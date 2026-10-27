@@ -11,3 +11,4 @@ dist/
 *.tsbuildinfo
 .migration-backup/
 .expo-export/
+.native-build/

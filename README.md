@@ -93,6 +93,8 @@ npx expo export --platform android --output-dir ../../.expo-export/customer-andr
 
 Export Android kiểm tra bundling/Hermes, không thay thế build APK hoặc kiểm thử OTP/booking/backend trên thiết bị. Trên môi trường Windows sandbox, Hermes có thể cần chạy ngoài sandbox để ghi bytecode vào thư mục tạm. Sentry SDK hiện có cảnh báo tham chiếu file nội bộ Expo Router khi bundle; Metro dùng fallback và vẫn xuất bundle được.
 
+Nếu đã generate Android trước khi nhận bản sửa lỗi CMake/Mapbox trên Windows, chạy `npx expo prebuild --platform android --no-install` trong thư mục app rồi build lại. Plugin `packages/config/plugins/with-short-cmake-paths.js` đặt `CMAKE_OBJECT_PATH_MAX=240` và đưa staging C++ xuống `.native-build/<app>` để tránh đường dẫn object quá dài. Cấu hình tự áp dụng lại khi prebuild; không cần sửa file Gradle sinh tự động hay đổi thiết lập Windows toàn cục.
+
 ## Git và bản sao dự phòng
 
 Root Git lưu toàn bộ source của hai app; hai Git repository lồng trước đây được chuyển vào `.migration-backup/nested-git/`, giữ lịch sử để phục hồi. Scaffold/file cũ và script di chuyển một lần nằm trong `.migration-backup/`, được ignore. `package-lock.json` là lockfile của project mới; dùng npm từ root.

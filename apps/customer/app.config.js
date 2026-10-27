@@ -11,6 +11,7 @@ module.exports = ({ config }) => {
     '@react-native-google-signin/google-signin',
     '@rnmapbox/maps',
     'expo-status-bar',
+    '../../packages/config/plugins/with-short-cmake-paths',
     [
       'expo-build-properties',
       {
