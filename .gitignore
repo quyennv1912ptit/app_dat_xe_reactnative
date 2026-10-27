@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+.env
+.env.*
+!.env.example
+**/google-services.json
+**/GoogleService-Info.plist
+**/android/
+**/ios/
+*.tsbuildinfo
+.migration-backup/
+.expo-export/

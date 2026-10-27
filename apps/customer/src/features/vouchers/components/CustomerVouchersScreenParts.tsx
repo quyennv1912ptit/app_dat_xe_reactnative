@@ -1,0 +1,13 @@
+import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { StyleSheet } from 'react-native';
+export const money = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)} đ`;
+
+export const date = (value: string) => new Date(value).toLocaleDateString('vi-VN');
+
+export const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.surface },
+  content: { padding: spacing.margin, gap: 12, paddingBottom: 28 }, intro: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  voucher: { flexDirection: 'row', gap: 12, padding: 15, borderRadius: borderRadius.lg, backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: colors.outlineVariant }, voucherIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryFixedTint }, details: { flex: 1, gap: 4 }, code: { ...typography.labelLg, color: colors.primary }, discount: { ...typography.labelMd, color: colors.onSurface }, meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  use: { alignSelf: 'flex-start', paddingVertical: 6 }, useText: { ...typography.labelMd, color: colors.primary },
+  empty: { alignItems: 'center', gap: 8, padding: 24 }, heading: { ...typography.headlineSm, color: colors.onSurface }, error: { ...typography.bodyMd, color: colors.error },
+});

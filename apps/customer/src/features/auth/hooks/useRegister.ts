@@ -1,0 +1,67 @@
+import { AuthApiError,authenticateWithBackend,getAuthFullNameValidationError,getFirebaseUser,registerWithBackend } from '@datxe/shared';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useEffect,useState } from 'react';
+import { getCustomerProfile,updateCustomerProfile } from '../api';
+import { isPastIsoDate } from '../components/RegisterScreenParts';
+export function useRegister() {
+const router = useRouter();
+const [user] = useState(() => getFirebaseUser());
+const { phone: phoneParam } = useLocalSearchParams<{ phone?: string }>();
+const [fullName, setFullName] = useState(user?.displayName ?? '');
+const [email, setEmail] = useState(user?.email ?? '');
+const [dateOfBirth, setDateOfBirth] = useState('');
+const [gender, setGender] = useState('');
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState('');
+useEffect(() => {
+    if (!user) router.replace('/(auth)/login' as never);
+    else if (!user.phoneNumber) router.replace('/(auth)/add-phone-number' as never);
+  }, [router, user]);
+const submit = async () => {
+    const nameError = getAuthFullNameValidationError(fullName);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
+    if (!user?.phoneNumber) {
+      router.replace('/(auth)/add-phone-number' as never);
+      return;
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Email không hợp lệ.');
+      return;
+    }
+    if (dateOfBirth && !isPastIsoDate(dateOfBirth)) {
+      setError('Ngày sinh cần đúng định dạng YYYY-MM-DD và nằm trong quá khứ.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      try {
+        await registerWithBackend('customer', fullName, user ?? undefined);
+      } catch (cause) {
+        if (cause instanceof AuthApiError && cause.code === 'ACCOUNT_ALREADY_EXISTS') {
+          await authenticateWithBackend('customer', user ?? undefined);
+        } else {
+          throw cause;
+        }
+      }
+      const currentProfile = await getCustomerProfile();
+      await updateCustomerProfile({
+        full_name: fullName.trim(),
+        email: email.trim() || user.email || currentProfile.email,
+        date_of_birth: dateOfBirth || currentProfile.date_of_birth,
+        gender: gender || currentProfile.gender,
+        default_payment_method: currentProfile.default_payment_method,
+      });
+      router.replace('/(tabs)/home' as never);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không thể tạo tài khoản. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+return { user, router, phoneParam, fullName, setFullName, email, setEmail, dateOfBirth, setDateOfBirth, gender, setGender, loading, error, setError, submit };
+}

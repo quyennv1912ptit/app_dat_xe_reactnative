@@ -1,0 +1,10 @@
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import * as api from '../api';
+export function useCreateCustomerVehicle() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.createCustomerVehicle>)=>api.createCustomerVehicle(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useDeleteCustomerVehicleImage() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.deleteCustomerVehicleImage>)=>api.deleteCustomerVehicleImage(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useGetCustomerVehicles(...args: Parameters<typeof api.getCustomerVehicles>) { return useQuery({queryKey:['customer','getCustomerVehicles',...args],queryFn:()=>api.getCustomerVehicles(...args)}); }
+export function useUpdateCustomerVehicle() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.updateCustomerVehicle>)=>api.updateCustomerVehicle(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useUploadCustomerVehicleImage() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.uploadCustomerVehicleImage>)=>api.uploadCustomerVehicleImage(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useDeleteCustomerVehicle() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.deleteCustomerVehicle>)=>api.deleteCustomerVehicle(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useConfirmCustomerHandover() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.confirmCustomerHandover>)=>api.confirmCustomerHandover(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useGetCustomerRide(...args: Parameters<typeof api.getCustomerRide>) { return useQuery({queryKey:['customer','getCustomerRide',...args],queryFn:()=>api.getCustomerRide(...args)}); }

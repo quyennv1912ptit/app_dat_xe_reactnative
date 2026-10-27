@@ -1,0 +1,10 @@
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import * as api from '../api';
+export function useGetCustomerProfile(...args: Parameters<typeof api.getCustomerProfile>) { return useQuery({queryKey:['customer','getCustomerProfile',...args],queryFn:()=>api.getCustomerProfile(...args)}); }
+export function useGetCustomerRideCount(...args: Parameters<typeof api.getCustomerRideCount>) { return useQuery({queryKey:['customer','getCustomerRideCount',...args],queryFn:()=>api.getCustomerRideCount(...args)}); }
+export function useGetCustomerVehicles(...args: Parameters<typeof api.getCustomerVehicles>) { return useQuery({queryKey:['customer','getCustomerVehicles',...args],queryFn:()=>api.getCustomerVehicles(...args)}); }
+export function useGetCustomerVouchers(...args: Parameters<typeof api.getCustomerVouchers>) { return useQuery({queryKey:['customer','getCustomerVouchers',...args],queryFn:()=>api.getCustomerVouchers(...args)}); }
+export function useDeleteCustomerAccount() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.deleteCustomerAccount>)=>api.deleteCustomerAccount(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useGetUnreadNotificationCount(...args: Parameters<typeof api.getUnreadNotificationCount>) { return useQuery({queryKey:['customer','getUnreadNotificationCount',...args],queryFn:()=>api.getUnreadNotificationCount(...args)}); }
+export function useUpdateCustomerProfile() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.updateCustomerProfile>)=>api.updateCustomerProfile(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
+export function useUploadCustomerProfileAvatar() { const client=useQueryClient(); return useMutation({mutationFn:(args:Parameters<typeof api.uploadCustomerProfileAvatar>)=>api.uploadCustomerProfileAvatar(...args),onSuccess:()=>client.invalidateQueries({queryKey:['customer']})}); }
