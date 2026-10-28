@@ -34,7 +34,7 @@ Web giữ giới hạn của nguồn: OTP, Google và Facebook yêu cầu app na
 - Sao chép `apps/<app>/.env.example` thành `.env` và điền API URL, OAuth client, Facebook và Mapbox tương ứng. Android emulator dùng `10.0.2.2`; điện thoại thật cần IP LAN/URL truy cập được.
 - Đặt `google-services.json` trong từng app cho Android; iOS cần `GoogleService-Info.plist` tương ứng bundle ID. Các file này và `.env` được ignore ở cả root lẫn app.
 - Cấu hình local hiện có được giữ trong project mới. `EXPO_PUBLIC_*` được đóng gói trong client, không dùng để lưu server secret.
-- `src/config/env.ts` là nơi đọc biến môi trường cho runtime. Production yêu cầu API URL; development có URL mặc định. OAuth/Mapbox chỉ cần cấu hình khi dùng tính năng tương ứng.
+- `src/config/env.ts` là nơi đọc biến môi trường cho runtime. Production yêu cầu API URL; development có URL mặc định. OAuth/Mapbox chỉ cần cấu hình khi dùng tính năng tương ứng. Mapbox dùng `EXPO_PUBLIC_MAPBOX_TOKEN=pk.…` trong `apps/customer/.env`; không dùng secret token `sk.`. Khi thiếu token, Home hiển thị trạng thái bản đồ chưa khả dụng và không khởi tạo Mapbox native. Sau khi đổi env, khởi động lại Metro với `--clear`.
 - Sentry chỉ bật khi có `EXPO_PUBLIC_SENTRY_DSN`. Lỗi route được ghi qua `lib/logger.ts`; chưa cấu hình upload source map hoặc gửi release lên Sentry.
 
 ## Cấu trúc
@@ -93,7 +93,7 @@ npx expo export --platform android --output-dir ../../.expo-export/customer-andr
 # Tương tự trong apps/driver, đổi tên thư mục output.
 ```
 
-Export Android kiểm tra bundling/Hermes, không thay thế build APK hoặc kiểm thử OTP/booking/backend trên thiết bị. Trên môi trường Windows sandbox, Hermes có thể cần chạy ngoài sandbox để ghi bytecode vào thư mục tạm. Sentry SDK hiện có cảnh báo tham chiếu file nội bộ Expo Router khi bundle; Metro dùng fallback và vẫn xuất bundle được.
+Export Android kiểm tra bundling/Hermes, không thay thế build APK hoặc kiểm thử OTP/booking/backend trên thiết bị. Trên môi trường Windows sandbox, Hermes có thể cần chạy ngoài sandbox để ghi bytecode vào thư mục tạm. Metro có lớp tương thích cho tham chiếu router-store cũ của Sentry trên SDK 58; chỉ module nội bộ tùy chọn đã bị gỡ được trả về rỗng, các dependency khác vẫn phân giải bình thường.
 
 Nếu đã generate Android trước khi nhận bản sửa lỗi CMake/Mapbox trên Windows, chạy `npx expo prebuild --platform android --no-install` trong thư mục app rồi build lại. Plugin `packages/config/plugins/with-short-cmake-paths.js` đặt `CMAKE_OBJECT_PATH_MAX=240` và đưa staging C++ xuống `.native-build/<app>` để tránh đường dẫn object quá dài. Cấu hình tự áp dụng lại khi prebuild; không cần sửa file Gradle sinh tự động hay đổi thiết lập Windows toàn cục.
 

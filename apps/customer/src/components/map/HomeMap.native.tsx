@@ -1,4 +1,5 @@
 import { env } from '@/config/env';
+import { initializeMapbox } from '@/lib/initializeMapbox';
 import Mapbox,{ Camera,CircleLayer,MapView,ShapeSource } from '@rnmapbox/maps';
 import { useEffect,useMemo,useState } from 'react';
 import { ActivityIndicator,StyleSheet,Text,View } from 'react-native';
@@ -23,8 +24,7 @@ type MapMarkerFeature = {
 const mapboxToken = env.mapboxToken;
 
 export function HomeMap({ coordinate, drivers }: HomeMapProps) {
-  const [mapReady, setMapReady] = useState(!mapboxToken);
-  const [mapError, setMapError] = useState(false);
+  const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'unavailable'>(mapboxToken ? 'loading' : 'unavailable');
   const shape = useMemo(() => {
     const features: MapMarkerFeature[] = [];
     if (coordinate) {
@@ -51,21 +51,16 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
 
   useEffect(() => {
     let mounted = true;
-    Mapbox.setTelemetryEnabled(false);
-    if (!mapboxToken) {
-      return () => { mounted = false; };
-    }
-
-    void Promise.resolve().then(() => Mapbox.setAccessToken(mapboxToken)).then(
-        () => { if (mounted) setMapReady(true); },
-        () => { if (mounted) { setMapError(true); setMapReady(true); } },
-      );
+    void initializeMapbox(Mapbox, mapboxToken).then(
+      ready => { if (mounted) setMapStatus(ready ? 'ready' : 'unavailable'); },
+      () => { if (mounted) setMapStatus('unavailable'); },
+    );
     return () => { mounted = false; };
   }, []);
 
   const fallbackMessage = !coordinate
     ? 'Cho phép truy cập vị trí để xem bản đồ quanh bạn.'
-    : !mapboxToken || mapError
+    : mapStatus === 'unavailable'
       ? 'Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.'
       : 'Đang tải bản đồ…';
 
@@ -83,13 +78,14 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
       </View>
 
       <View style={styles.mapFrame}>
-        {coordinate && mapboxToken && mapReady && !mapError ? (
+        {coordinate && mapStatus === 'ready' ? (
           <MapView
             style={StyleSheet.absoluteFill}
             styleURL="mapbox://styles/mapbox/streets-v11"
             compassEnabled
             attributionEnabled
             logoEnabled
+            onMapLoadingError={() => setMapStatus('unavailable')}
           >
             <Camera
               centerCoordinate={[coordinate.lng, coordinate.lat]}
@@ -122,7 +118,7 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
           </MapView>
         ) : (
           <View style={styles.mapFallback}>
-            {!mapReady && coordinate && mapboxToken
+            {mapStatus === 'loading' && coordinate
               ? <ActivityIndicator color={colors.primary} />
               : null}
             <Text style={styles.fallbackText}>{fallbackMessage}</Text>

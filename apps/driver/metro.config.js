@@ -1,2 +1,3 @@
 const { getDefaultConfig } = require('expo/metro-config');
-module.exports = getDefaultConfig(__dirname);
+const withSentryRouterCompat = require('../../packages/config/metro-sentry-compat.cjs');
+module.exports = withSentryRouterCompat(getDefaultConfig(__dirname));

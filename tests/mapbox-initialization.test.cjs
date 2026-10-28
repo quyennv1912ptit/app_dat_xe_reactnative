@@ -1,0 +1,40 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const vm = require('node:vm');
+const exportsObject = {};
+const source = fs.readFileSync(path.join(__dirname, '../apps/customer/src/lib/initializeMapbox.ts'), 'utf8');
+vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: exportsObject });
+const { initializeMapbox } = exportsObject;
+
+test('missing, secret and malformed tokens never call the native SDK', async () => {
+  const sdk = { setAccessToken: () => assert.fail('native token setter called'), setTelemetryEnabled: () => assert.fail('native telemetry called') };
+  for (const token of [undefined, '', '  ', 'sk.secret.token', 'pk.', 'placeholder']) {
+    assert.equal(await initializeMapbox(sdk, token), false);
+  }
+});
+
+test('telemetry waits until native access-token assignment has completed', async () => {
+  let releaseToken;
+  const calls = [];
+  const pending = new Promise(resolve => { releaseToken = resolve; });
+  const initializing = initializeMapbox({
+    setAccessToken: token => { calls.push(['token', token]); return pending; },
+    setTelemetryEnabled: value => calls.push(['telemetry', value]),
+  }, '  pk.test.signature  ');
+  assert.deepEqual(calls, [['token', 'pk.test.signature']]);
+  releaseToken();
+  assert.equal(await initializing, true);
+  assert.deepEqual(calls, [['token', 'pk.test.signature'], ['telemetry', false]]);
+});
+
+test('failed native token assignment never creates the telemetry MapView', async () => {
+  let telemetryCalled = false;
+  await assert.rejects(initializeMapbox({
+    setAccessToken: async () => { throw new Error('native token assignment failed'); },
+    setTelemetryEnabled: () => { telemetryCalled = true; },
+  }, 'pk.test.signature'), /native token assignment failed/);
+  assert.equal(telemetryCalled, false);
+});
