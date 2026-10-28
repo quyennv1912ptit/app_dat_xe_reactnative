@@ -3,7 +3,7 @@ import { AuthApiError,getFirebaseUser } from '../firebase/authService';
 import type { Role } from '../types';
 type Envelope<T> = { success: boolean; data?: T | null; error?: { code?: string; message?: string } };
 type RetryConfig = InternalAxiosRequestConfig & { refreshed?: boolean };
-export type RequestOptions = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; allowNull?: boolean; headers?: Record<string,string> };
+export type RequestOptions = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; allowNull?: boolean; headers?: Record<string,string>; signal?: AbortSignal };
 export function createApiClient(baseURL: string, role: Role, onUnauthorized: () => void = () => {}) {
   const client = axios.create({ baseURL, timeout: 20000 });
   client.interceptors.request.use(async config => {
@@ -28,12 +28,13 @@ export function createApiClient(baseURL: string, role: Role, onUnauthorized: () 
   });
   return async function request<T>(url: string, options: RequestOptions = {}): Promise<T | null> {
     try {
-      const response = await client.request<Envelope<T>>({ url, method: options.method ?? 'GET', data: options.body, headers: options.headers });
+      const response = await client.request<Envelope<T>>({ url, method: options.method ?? 'GET', data: options.body, headers: options.headers, signal: options.signal });
       const envelope = response.data;
       if (!envelope || !envelope.success) throw new AuthApiError(envelope?.error?.message ?? 'Máy chủ trả về dữ liệu không hợp lệ.', envelope?.error?.code ?? 'INVALID_SERVER_RESPONSE');
       if (envelope.data == null && !options.allowNull) throw new AuthApiError('Máy chủ chưa trả về dữ liệu.', 'INVALID_SERVER_RESPONSE');
       return envelope.data ?? null;
     } catch (error) {
+      if (axios.isCancel(error)) throw error;
       if (error instanceof AuthApiError) throw error;
       if (axios.isAxiosError<Envelope<T>>(error)) throw new AuthApiError(error.response?.data?.error?.message ?? (error.response ? 'Không thể thực hiện yêu cầu.' : 'Không kết nối được máy chủ.'), error.response?.data?.error?.code ?? (error.response ? 'HTTP_' + error.response.status : 'NETWORK_ERROR'));
       throw error;

@@ -1,6 +1,28 @@
 import { request } from '@/lib/api';
 import { customerApi } from '@/lib/customerApi';
 import type { CreateCustomerRideRequest,CreateCustomerRideResponse,NearbyDriverMarker,RideCoordinates,RideEstimate,RideEstimateRequest } from '@datxe/shared';
+import { parsePlaces } from './bookingUtils';
+import type { BookingPlace } from './types';
+
+export async function searchBookingPlaces(text: string, proximity?: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace[]> {
+  const query = new URLSearchParams({ address: text.trim() });
+  if (proximity) { query.set('proximityLat', String(proximity.lat)); query.set('proximityLng', String(proximity.lng)); }
+  const result = await request<string | null>(`/location/geocode?${query.toString()}`, { allowNull: true, signal });
+  return result ? parsePlaces(result) : [];
+}
+
+export async function reverseBookingPlace(point: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace> {
+  const places = await searchBookingPlaces(`${point.lng},${point.lat}`, undefined, signal);
+  if (!places.length) throw new Error('Chưa tìm được địa chỉ tại vị trí này. Hãy di chuyển ghim tới đường gần đó.');
+  // Preserve the exact pin, not the geocoder's snapped feature center.
+  return { ...places[0], id: `pin:${point.lng},${point.lat}`, coordinate: point };
+}
+
+export async function getBookingRoute(pickup: RideCoordinates, dropoff: RideCoordinates, signal?: AbortSignal): Promise<RideCoordinates[]> {
+  const query = new URLSearchParams({ origin: `${pickup.lng},${pickup.lat}`, destination: `${dropoff.lng},${dropoff.lat}` });
+  const result = await request<{ coordinates: RideCoordinates[] }>(`/location/directions?${query.toString()}`, { signal });
+  return result?.coordinates ?? [];
+}
 export async function createCustomerRide(
   input: CreateCustomerRideRequest,
   idempotencyKey: string,

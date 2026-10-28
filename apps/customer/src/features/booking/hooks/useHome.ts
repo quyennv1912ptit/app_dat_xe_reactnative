@@ -80,9 +80,10 @@ const openBooking = (destination?: string) => {
       router.push({ pathname: '/ride/tracking', params: { rideId: String(activeRide.id) } });
       return;
     }
-    router.push(destination
-      ? { pathname: '/ride/route-selection', params: { destination } }
-      : '/ride/route-selection');
+    router.push({ pathname: '/ride/route-selection', params: {
+      ...(destination ? { destination } : {}),
+      ...(currentCoordinates && !locationLoading ? { pickupLat: String(currentCoordinates.lat), pickupLng: String(currentCoordinates.lng), pickupAddress: currentLocation } : {}),
+    } });
   };
 return { router, profile, activeRide, recentDestinations, unreadCount, loading, loadError, currentHour, currentLocation, currentCoordinates, nearbyDrivers, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking };
 }

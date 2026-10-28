@@ -64,7 +64,15 @@ Trong mỗi feature: `api.ts` gọi HTTP, `hooks/` xử lý dữ liệu/state, `
 
 Customer dùng Query cho account, chuyến đang hoạt động, tìm tài xế, ước tính giá, lịch sử phân trang, thông báo, phương tiện, voucher, biên bản và tracking. Chat giữ thuật toán gộp tin theo ID của nguồn, Query quản lý lịch poll để tránh thay đổi giao thức phân trang. State nhập liệu/quyền vị trí nằm trong hook; Zustand giữ user và chuyến đang theo dõi trong bộ nhớ. Đăng xuất xóa cache và store.
 
-Customer chuyển nhóm `(main)` thành `(tabs)` cho Home/History/Notifications/Profile. Các màn hình chuyến nằm ở `ride/route-selection`, `ride/confirm`, `ride/find-driver`, `ride/tracking`, `ride/completed`, `ride/[id]`. Các lệnh điều hướng nội bộ đã được cập nhật. URL cũ của customer không được giữ làm alias.
+Customer chuyển nhóm `(main)` thành `(tabs)` cho Home/History/Notifications/Profile. Luồng đặt chuyến: `ride/route-selection` khởi tạo bản nháp → `ride/pickup` → `ride/destination` → `ride/vehicle` → `ride/confirm` → `ride/find-driver`. `ride/map-picker` chọn ghim cho điểm đón/đến; từ xác nhận có thể quay lại sửa từng mục. Các màn hình theo dõi/hoàn tất nằm ở `ride/tracking`, `ride/completed`, `ride/[id]`.
+
+### Đặt chuyến customer
+
+- Tìm địa điểm sau khi nhập ít nhất 2 ký tự, debounce 350ms và hủy request cũ. Geocoding/reverse geocoding và đường đi đều qua backend `/location/*`; thứ tự tọa độ gửi Mapbox là `lng,lat`. Có GPS, địa chỉ gần đây và chọn ghim trên bản đồ.
+- Zustand giữ bản nháp; React Query quản lý phương tiện, chuyến đang hoạt động, báo giá và ưu đãi. Bản đồ native/web tách riêng; web cần `mapbox-gl`, cả hai dùng `EXPO_PUBLIC_MAPBOX_TOKEN=pk...`.
+- Xác nhận hiển thị các thành phần giá backend, giá tối thiểu, giảm giá và tổng thanh toán. Chọn ưu đãi qua modal và xác thực bằng báo giá backend trước khi áp dụng. Có modal giờ hẹn, ghi chú và thanh toán tiền mặt.
+- Trước khi tạo chuyến, kiểm tra lại chuyến đang chạy và báo giá. Giá thay đổi yêu cầu xác nhận lại; retry cùng nội dung dùng lại idempotency key. Không cho đặt khi thiếu địa chỉ/xe/giá hoặc còn chuyến chưa hoàn tất.
+- Backend riêng tại `D:\datxebackend` có migration `V11__seed_active_vehicle_pricing.sql` (V3 đã tồn tại): CAR mở đầu 20.000đ, 10.000đ/km, tối thiểu 30.000đ; MOTORCYCLE mở đầu 10.000đ, 5.000đ/km, tối thiểu 15.000đ. `INSERT ... WHERE NOT EXISTS` theo loại xe và `active = true` giữ nguyên bảng giá active hiện có. Không có mức giá dự phòng trong app/service; lỗi `PRICING_RULE_NOT_FOUND` hiển thị thông báo thân thiện và cho thử lại/chọn xe khác.
 
 ## Phần được giữ nguyên từ nguồn
 

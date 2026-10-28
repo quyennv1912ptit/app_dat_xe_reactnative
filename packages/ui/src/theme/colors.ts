@@ -3,6 +3,8 @@
  * rem → px (1rem = 16px)
  */
 
+import { Platform } from 'react-native';
+
 export const colors = {
   tertiaryFixed: '#ffddb8',
   inverseOnSurface: '#eff1f3',
@@ -104,7 +106,7 @@ export const colors = {
 } as const;
 
 export const fontFamily = {
-  inter: 'Inter',
+  inter: Platform.OS === 'web' ? 'Inter, Arial, sans-serif' : 'Inter',
 } as const;
 
 export const fontSize = {

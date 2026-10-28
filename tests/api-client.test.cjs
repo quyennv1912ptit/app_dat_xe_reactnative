@@ -62,3 +62,10 @@ test('missing user never sends a request',async()=>{
   let sent=false;const {request}=setup(async()=>{sent=true;},null);
   await assert.rejects(request('/customer/profile'),error=>error.code==='NO_AUTH_USER');assert.equal(sent,false);
 });
+
+test('cancelled place searches preserve Axios cancellation for React Query',async()=>{
+  const controller=new AbortController();controller.abort();
+  let sent=false;const {request}=setup(async()=>{sent=true;});
+  await assert.rejects(request('/location/geocode?address=test',{signal:controller.signal}),axios.isCancel);
+  assert.equal(sent,false);
+});
