@@ -13,7 +13,7 @@ export default function VehicleSelectionScreen() {
   return <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
     <ScreenHeader title="Chọn phương tiện" onBack={() => h.router.back()} />
     <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-      <View style={{ height: 190, overflow: 'hidden' }}><BookingMap key={`${h.draft.pickup?.id}-${h.draft.dropoff?.id}`} center={h.draft.pickup?.coordinate ?? DEFAULT_MAP_CENTER} pickup={h.draft.pickup} dropoff={h.draft.dropoff} route={h.route} interactive={false} /></View>
+      <View style={{ height: 190, overflow: 'hidden' }}><BookingMap key={`${h.draft.pickup?.id}-${h.draft.dropoff?.id}`} center={h.draft.pickup?.coordinate ?? DEFAULT_MAP_CENTER} pickup={h.draft.pickup} dropoff={h.draft.dropoff} interactive={false} /></View>
       <View style={s.page}>
         <Text style={s.label}>BƯỚC 3/4 · PHƯƠNG TIỆN CỦA BẠN</Text>
         <RouteSummary pickup={h.draft.pickup} dropoff={h.draft.dropoff} onPickup={() => h.router.push('/ride/pickup')} onDropoff={() => h.router.push('/ride/destination')} />

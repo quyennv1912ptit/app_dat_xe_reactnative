@@ -43,6 +43,7 @@ export type RideStatusResponse = {
 };
 
 export type CustomerRideDetail = {
+  route?: SavedRideRoute | null;
   id: number;
   customerId: number;
   driverId: number | null;
@@ -116,8 +117,10 @@ export type CustomerRideSummary = {
 };
 
 export type RideCoordinates = { lat: number; lng: number };
+export type SavedRideRoute = { id: string; polyline: string; polylinePrecision: number; coordinates: RideCoordinates[]; distanceMeters: number; durationSeconds: number; provider: string; vehicleType: 'CAR' | 'MOTORCYCLE'; limitation?: string | null; expiresAt?: string | null };
 export type NearbyDriverMarker = { location: RideCoordinates };
 export type RideEstimateRequest = {
+  routeQuoteId?: string | null;
   vehicleId: number;
   pickupAddress: string;
   pickupLat: number;
@@ -129,6 +132,7 @@ export type RideEstimateRequest = {
   voucher_code?: string | null;
 };
 export type RideEstimate = {
+  route?: SavedRideRoute | null;
   pricingRuleId: number;
   distanceKm: number;
   estimatedDurationMinutes: number;

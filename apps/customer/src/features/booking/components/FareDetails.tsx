@@ -8,6 +8,7 @@ export function FareDetails({ estimate, loading, error, retry }: { estimate?: Ri
   const adjustment = estimate ? minimumFareAdjustment(estimate) : 0;
   return <View style={s.card}><Text style={s.section}>Chi tiết giá</Text>{loading ? <View style={s.row}><ActivityIndicator color={colors.primary} /><Text style={s.muted}>Đang cập nhật giá chuyến…</Text></View> : null}{error ? <View style={s.errorBox}><Text accessibilityRole="alert" style={s.error}>{error}</Text><Pressable onPress={retry}><Text style={s.link}>Thử lấy giá lại</Text></Pressable></View> : null}{estimate && !error ? <>
     <Text style={s.muted}>{estimate.distanceKm.toFixed(1)} km · Khoảng {estimate.estimatedDurationMinutes} phút</Text>
+    {estimate.route?.limitation ? <Text style={s.muted}>{estimate.route.limitation}</Text> : null}
     <PriceRow label="Giá mở đầu" value={money(estimate.baseFare)} /><PriceRow label="Cước quãng đường" value={money(estimate.distanceFare)} />
     {estimate.waitingFare > 0 ? <PriceRow label="Phí chờ" value={money(estimate.waitingFare)} /> : null}
     {estimate.nightSurcharge > 0 ? <PriceRow label="Phụ phí ban đêm" value={money(estimate.nightSurcharge)} /> : null}

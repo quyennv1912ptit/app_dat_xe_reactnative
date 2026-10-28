@@ -7,7 +7,6 @@ import { Alert } from 'react-native';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
 import { estimateRequest } from '../bookingUtils';
 import { useBookingDraft } from '../store';
-import { useRoutePreview } from './useRoutePreview';
 
 function friendlyPriceError(error: unknown): string {
   if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return 'Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.';
@@ -30,7 +29,6 @@ export function useBookingConfirmation() {
   const active = useQuery({ queryKey: ['customer', 'getActiveCustomerRide'], queryFn: getActiveCustomerRide, staleTime: 0 });
   useRefreshOnFocus(active.refetch);
   const vehicle = vehicles.data?.find(item => item.id === draft.vehicleId);
-  const route = useRoutePreview(draft.pickup, draft.dropoff);
   let requestError = '';
   let input: ReturnType<typeof estimateRequest> | null = null;
   try { input = estimateRequest(draft.pickup, draft.dropoff, draft.vehicleId, scheduledAt, draft.voucherCode); }
@@ -46,7 +44,7 @@ export function useBookingConfirmation() {
     setApplyingCode(code); setVoucherError('');
     try {
       const nextInput = { ...input, voucher_code: code || null };
-      await client.fetchQuery({ queryKey: keyFor(nextInput), queryFn: () => getRideEstimate(nextInput), staleTime: 0 });
+      await client.fetchQuery({ queryKey: keyFor(nextInput), queryFn: () => getRideEstimate({ ...nextInput, routeQuoteId: estimate.data?.route?.id }), staleTime: 0 });
       draft.setVoucher(code); setVoucherVisible(false);
     } catch (cause) { setVoucherError(friendlyPriceError(cause) || 'Ưu đãi chưa thể áp dụng cho chuyến này.'); }
     finally { setApplyingCode(null); }
@@ -57,13 +55,13 @@ export function useBookingConfirmation() {
       if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) throw new Error('Giờ hẹn đã qua. Hãy chọn lại thời gian đón.');
       const currentRide = await getActiveCustomerRide();
       if (currentRide) throw new Error('Bạn đang có chuyến chưa hoàn tất. Hãy theo dõi chuyến hiện tại trước.');
-      const latest = await getRideEstimate(input);
+      const latest = await getRideEstimate({ ...input, routeQuoteId: estimate.data.route?.id });
       client.setQueryData(keyFor(input), latest);
       if (latest.payableFare !== estimate.data.payableFare) {
         Alert.alert('Giá chuyến đã cập nhật', 'Vui lòng kiểm tra tổng thanh toán mới và nhấn đặt chuyến lần nữa.');
         return null;
       }
-      const payload = { ...input, type: scheduledAt ? 'SCHEDULED' as const : 'INSTANT' as const, paymentMethod: 'CASH' as const, note: note.trim() || null };
+      const payload = { ...input, routeQuoteId: latest.route?.id, type: scheduledAt ? 'SCHEDULED' as const : 'INSTANT' as const, paymentMethod: 'CASH' as const, note: note.trim() || null };
       const fingerprint = JSON.stringify(payload);
       if (attempt.current?.fingerprint !== fingerprint) attempt.current = { fingerprint, key: `customer-${Date.now()}-${Math.random().toString(36).slice(2)}` };
       return createCustomerRide(payload, attempt.current.key);
@@ -83,5 +81,5 @@ export function useBookingConfirmation() {
     setSlots(Array.from({ length: 48 }, (_, index) => new Date(first + index * 30 * 60000).toISOString()));
     setScheduleVisible(true);
   };
-  return { router, draft, vehicle, route: route.data, routeLoading: route.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, setScheduledAt, scheduleVisible, setScheduleVisible, slots, openSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
+  return { router, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, setScheduledAt, scheduleVisible, setScheduleVisible, slots, openSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
 }
