@@ -43,6 +43,7 @@ export type RideStatusResponse = {
 };
 
 export type CustomerRideDetail = {
+  pickupNote?: string | null;
   route?: SavedRideRoute | null;
   id: number;
   customerId: number;
@@ -146,11 +147,13 @@ export type RideEstimate = {
   payableFare: number;
 };
 export type CreateCustomerRideRequest = RideEstimateRequest & {
+  pickupNote?: string | null;
   type: 'INSTANT' | 'SCHEDULED';
   paymentMethod: PaymentMethod;
   note?: string | null;
 };
 export type CreateCustomerRideResponse = {
+  route?: SavedRideRoute | null;
   id: number;
   status: RideStatus;
   estimatedFare: number;

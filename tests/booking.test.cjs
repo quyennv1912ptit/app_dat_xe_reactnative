@@ -112,11 +112,13 @@ test('starting a new booking clears old vehicle, destination and voucher selecti
   useBookingDraft.getState().setPlace('dropoff', dropoff);
   useBookingDraft.getState().setVehicle(7);
   useBookingDraft.getState().setVoucher('OLD');
+  useBookingDraft.getState().setPickupNote('Ghi chú cũ');
   useBookingDraft.getState().begin('Sân bay', '', pickup);
   assert.equal(useBookingDraft.getState().pickup, pickup);
   assert.equal(useBookingDraft.getState().dropoff, null);
   assert.equal(useBookingDraft.getState().vehicleId, null);
   assert.equal(useBookingDraft.getState().voucherCode, '');
+  assert.equal(useBookingDraft.getState().pickupNote, '');
   useBookingDraft.getState().clear();
   assert.equal(useBookingDraft.getState().pickup, null);
 });

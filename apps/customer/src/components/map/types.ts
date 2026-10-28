@@ -6,6 +6,8 @@ export type BookingMapProps = {
   driver?: RideCoordinates | null;
   route?: RideCoordinates[];
   interactive?: boolean;
+  editablePin?: boolean;
   onCenterChange?: (point: RideCoordinates) => void;
   onReadyChange?: (ready: boolean) => void;
+  onMovingChange?: (moving: boolean) => void;
 };

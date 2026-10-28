@@ -2,7 +2,7 @@ import { env } from '@/config/env';
 import { createStompClient, locationSignalLost, stompBrokerUrl, validLocationUpdate, type DriverLocationUpdate } from '@datxe/shared';
 import { useEffect, useState } from 'react';
 
-export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh: () => unknown) {
+export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh: () => unknown, driverAssigned: boolean) {
   const [sample, setSample] = useState<DriverLocationUpdate | null>(null);
   const [received, setReceived] = useState<number | null>(null);
   const [started, setStarted] = useState(Date.now);
@@ -25,6 +25,6 @@ export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh:
     socket.connect();
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearTimeout(reset); clearInterval(timer); unsubscribe(); notifications(); connection(); void socket.disconnect(); };
-  }, [rideId, enabled, refresh]);
+  }, [rideId, enabled, refresh, driverAssigned]);
   return { sample, connected, signalLost: enabled && locationSignalLost(received, started, now, env.locationStaleMs) };
 }

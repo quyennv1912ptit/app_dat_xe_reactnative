@@ -176,7 +176,7 @@ return (
         <Button
           icon="bolt"
           iconPosition="leading"
-          label="Mô phỏng cuốc xe mới"
+            label="Xem yêu cầu nhận chuyến"
           onPress={() => router.push('/ride/accept' as never)}
           style={styles.demoRideButton}
           textStyle={styles.demoRideButtonText}

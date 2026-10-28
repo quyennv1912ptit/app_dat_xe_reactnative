@@ -1,50 +1,15 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect,useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DispatchState,INITIAL_COUNTDOWN } from '../components/AcceptScreenParts';
+import { useEffect, useState } from 'react';
+import { acceptDriverOffer, getPendingOffer, rejectDriverOffer } from '../api';
 export function useAccept() {
-const router = useRouter();
-const insets = useSafeAreaInsets();
-const [secondsLeft, setSecondsLeft] = useState(INITIAL_COUNTDOWN);
-const [dispatchState, setDispatchState] = useState<DispatchState>('pending');
-useEffect(() => {
-    if (dispatchState !== 'pending' || secondsLeft === 0) return;
-
-    const timeout = setTimeout(() => {
-      if (secondsLeft === 1) {
-        setSecondsLeft(0);
-        setDispatchState('expired');
-      } else {
-        setSecondsLeft((seconds) => seconds - 1);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeout);
-  }, [dispatchState, secondsLeft]);
-const acceptRide = () => {
-    if (dispatchState !== 'pending' || secondsLeft === 0) return;
-    setDispatchState('accepted');
-    router.replace('/ride/in-progress' as never);
-  };
-const declineRide = () => {
-    if (dispatchState === 'accepted' || dispatchState === 'declined') return;
-    setDispatchState('declined');
-  };
-const acceptLabel =
-    dispatchState === 'accepted'
-      ? 'Đang điều hướng điểm đón...'
-      : dispatchState === 'expired'
-        ? 'Đã hết thời gian'
-        : dispatchState === 'declined'
-          ? 'Cuốc đã đóng'
-          : `NHẬN CUỐC NGAY (${secondsLeft}s)`;
-const statusMessage =
-    dispatchState === 'accepted'
-      ? 'Đã nhận cuốc. Đang chuẩn bị thông tin điểm đón.'
-      : dispatchState === 'declined'
-        ? 'Bạn đã bỏ qua yêu cầu chuyến xe này.'
-        : dispatchState === 'expired'
-          ? 'Yêu cầu chuyến xe đã hết thời gian phản hồi.'
-          : '';
-return { router, insets, secondsLeft, dispatchState, acceptRide, declineRide, acceptLabel, statusMessage };
+  const router = useRouter(); const client = useQueryClient();
+  const query = useQuery({ queryKey: ['driver', 'pendingOffer'], queryFn: getPendingOffer });
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  const offer = query.data;
+  const secondsLeft = offer ? Math.max(0, Math.ceil((offer.expiresAt - now) / 1000)) : 0;
+  const accept = useMutation({ mutationFn: async () => { if (!offer || !secondsLeft) throw new Error('Yêu cầu đã hết hạn.'); return acceptDriverOffer(offer.rideId); }, onSuccess: async () => { await client.invalidateQueries({ queryKey: ['driver'] }); router.replace('/ride/in-progress'); } });
+  const reject = useMutation({ mutationFn: async () => { if (offer) await rejectDriverOffer(offer.rideId); }, onSuccess: async () => { await client.invalidateQueries({ queryKey: ['driver'] }); router.back(); } });
+  return { router, offer, secondsLeft, loading: query.isLoading, error: query.error?.message || accept.error?.message || reject.error?.message, busy: accept.isPending || reject.isPending, accept: () => accept.mutate(), reject: () => reject.mutate(), refresh: query.refetch };
 }

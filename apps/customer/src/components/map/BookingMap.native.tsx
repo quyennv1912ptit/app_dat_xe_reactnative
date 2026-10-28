@@ -1,12 +1,13 @@
 import { env } from '@/config/env';
 import { initializeMapbox } from '@/lib/initializeMapbox';
-import Mapbox, { Camera, CircleLayer, LineLayer, MapView, ShapeSource } from '@rnmapbox/maps';
+import Mapbox, { Camera, CircleLayer, LineLayer, MapView, PointAnnotation, ShapeSource } from '@rnmapbox/maps';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import type { BookingMapProps } from './types';
 import { bookingStyles as s } from './mapStyles';
 
-export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
+export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, editablePin = false, onCenterChange, onReadyChange, onMovingChange }: BookingMapProps) {
+  const [pin, setPin] = useState(center);
   const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const camera = useRef<Camera>(null);
   const readyCallback = useRef(onReadyChange);
@@ -27,10 +28,12 @@ export function BookingMap({ center, pickup, dropoff, driver, route, interactive
   const bounds = points.length >= 2 ? { ne: [Math.max(...points.map(point => point.lng)) + 0.002, Math.max(...points.map(point => point.lat)) + 0.002], sw: [Math.min(...points.map(point => point.lng)) - 0.002, Math.min(...points.map(point => point.lat)) - 0.002], paddingTop: 45, paddingBottom: 45, paddingLeft: 40, paddingRight: 40 } : undefined;
   if (status !== 'ready') return <View style={[s.flex, s.empty, { justifyContent: 'center', backgroundColor: '#E9F0F3' }]}>{status === 'loading' ? <ActivityIndicator /> : null}<Text style={s.muted}>{status === 'loading' ? 'Đang mở bản đồ…' : 'Bản đồ chưa khả dụng. Bạn vẫn có thể tìm và chọn địa chỉ.'}</Text></View>;
   return <MapView style={StyleSheet.absoluteFill} styleURL="mapbox://styles/mapbox/streets-v12" scrollEnabled={interactive} zoomEnabled={interactive} rotateEnabled={false} pitchEnabled={false}
-    onMapIdle={event => { const [lng, lat] = event.properties.center; onCenterChange?.({ lat, lng }); }}
+    onCameraChanged={() => onMovingChange?.(true)}
+    onMapIdle={event => { const [lng, lat] = event.properties.center; if (editablePin) setPin({ lat, lng }); onCenterChange?.({ lat, lng }); onMovingChange?.(false); }}
     onPress={event => { if (interactive && event.geometry.type === 'Point') camera.current?.setCamera({ centerCoordinate: event.geometry.coordinates, animationDuration: 300 }); }}
     onMapLoadingError={() => { setStatus('unavailable'); readyCallback.current?.(false); }}>
     <Camera ref={camera} bounds={bounds} defaultSettings={{ centerCoordinate: [center.lng, center.lat], zoomLevel: 15 }} animationDuration={400} />
+    {editablePin ? <PointAnnotation id="editable-booking-pin" coordinate={[pin.lng, pin.lat]} draggable onDragStart={() => onMovingChange?.(true)} onDragEnd={event => { onMovingChange?.(false); if (event.geometry.type !== 'Point') return; const [lng, lat] = event.geometry.coordinates; setPin({ lat, lng }); onCenterChange?.({ lat, lng }); camera.current?.setCamera({ centerCoordinate: [lng, lat], animationDuration: 250 }); }}><View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#12B76A', borderWidth: 4, borderColor: '#FFFFFF' }} /></PointAnnotation> : null}
     {line.geometry.coordinates.length > 1 ? <ShapeSource id="booking-route" shape={line}><LineLayer id="booking-route-line" style={{ lineColor: '#208AEF', lineWidth: 5, lineCap: 'round', lineJoin: 'round' }} /></ShapeSource> : null}
     <ShapeSource id="booking-points" shape={markers}>
       <CircleLayer id="booking-pickup" filter={['==', ['get', 'kind'], 0]} style={{ circleColor: '#12B76A', circleRadius: 8, circleStrokeWidth: 3, circleStrokeColor: '#FFFFFF' }} />

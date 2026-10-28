@@ -16,6 +16,7 @@ export function useMapPicker() {
   const [center, setCenter] = useState(draft[kind]?.coordinate ?? draft.pickup?.coordinate ?? DEFAULT_MAP_CENTER);
   const [point, setPoint] = useState<RideCoordinates | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapMoving, setMapMoving] = useState(false);
   const pointKey = point ? `${point.lat.toFixed(5)},${point.lng.toFixed(5)}` : '';
   const debouncedKey = useDebouncedValue(pointKey, 450);
   const moving = pointKey !== debouncedKey;
@@ -23,12 +24,12 @@ export function useMapPicker() {
   const device = useDeviceLocation();
   const recenter = async () => { const place = await device.locate(); if (place) setCenter(place.coordinate); };
   const movePin = useCallback((next: RideCoordinates) => setPoint(previous => previous && Math.abs(previous.lat - next.lat) < 0.000005 && Math.abs(previous.lng - next.lng) < 0.000005 ? previous : next), []);
-  const canConfirm = mapReady && !moving && !query.isFetching && Boolean(query.data) && !query.isError;
+  const canConfirm = mapReady && !mapMoving && !device.locating && !moving && !query.isFetching && Boolean(query.data) && !query.isError;
   const confirm = () => {
     if (!canConfirm || !query.data || !point) return;
     draft.setPlace(kind, { ...query.data, coordinate: point });
     if (params.edit === '1') router.dismissTo('/ride/confirm');
     else router.replace(kind === 'pickup' ? '/ride/destination' : '/ride/vehicle');
   };
-  return { router, kind, center, movePin, setMapReady, mapReady, place: moving ? null : query.data, resolving: moving || query.isFetching, error: query.error?.message ?? device.locationError, canConfirm, confirm, recenter, locating: device.locating };
+  return { router, kind, center, movePin, setMapReady, setMapMoving, mapReady, place: moving || mapMoving ? null : query.data, resolving: mapMoving || moving || query.isFetching, error: query.error?.message ?? device.locationError, canConfirm, confirm, recenter, locating: device.locating };
 }

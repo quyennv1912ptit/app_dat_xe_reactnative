@@ -77,9 +77,9 @@ Customer chuyển nhóm `(main)` thành `(tabs)` cho Home/History/Notifications/
 
 ## Phần được giữ nguyên từ nguồn
 
-Nhiều màn hình driver (offers, ride, history, notifications, profile) đang dùng dữ liệu mẫu hoặc state local trong nguồn; migration giữ hành vi đó. Chưa có API driver, feature earnings riêng hoặc luồng thu nhập thật trong nguồn để chuyển.
+Driver nhận/bỏ qua offer, tiến độ chuyến, biên bản bàn giao và GPS đã được nối backend. Các phần history, notifications, profile và earnings còn dữ liệu mẫu/state local từ nguồn cần hoàn thiện riêng.
 
-DTO/`RideStatus`/`Role` dùng lại hợp đồng HTTP có sẵn. Workspace không có backend Kotlin, nên chưa đối chiếu enum Kotlin hoặc tự thêm `PayloadType`/`WsEnvelope`. STOMP factory đã hỗ trợ Firebase token, heartbeat, reconnect và khôi phục subscription; chưa kết nối vào server vì nguồn chưa cung cấp destination/message contract. Tracking tiếp tục poll HTTP; chưa có tọa độ tài xế realtime để viết `useDriverLocation` thật.
+DTO/`RideStatus`/`Role` và hợp đồng map được đối chiếu với backend riêng tại `D:\datxebackend`. STOMP dùng Firebase token, heartbeat, reconnect và khôi phục subscription; đã nối tọa độ tài xế và thông báo chuyến, thay polling ở màn hình customer tracking. Chi tiết migration V12/V13, trường API mới, GPS nền và giới hạn routing xe máy nằm trong [docs/map-upgrade.md](docs/map-upgrade.md).
 
 ## Kiểm tra
 

@@ -1,7 +1,11 @@
 import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSessionStore } from '@/lib/store';
+import { request } from '@/lib/api';
+import { getPendingOffer } from '../api';
 import {
 Alert
 } from 'react-native';
@@ -10,7 +14,27 @@ import { HOME_TABS,HomeTab } from '../components/HomeScreenParts';
 export function useHome() {
 const router = useRouter();
 const insets = useSafeAreaInsets();
-const [isOnline, setIsOnline] = useState(true);
+const user = useSessionStore(state => state.user);
+const client = useQueryClient();
+const isOnline = user?.status === 'ONLINE' || user?.status === 'BUSY';
+const switching = useRef(false);
+const updateAvailability = async (online: boolean, vehicleType?: 'CAR' | 'MOTORCYCLE') => {
+  if (switching.current || !user) return;
+  switching.current = true;
+  try {
+    const result = await request<{status: string}>('/driver/availability', {method:'PUT',body:{online,vehicle_type:vehicleType}});
+    if (result) useSessionStore.getState().setUser({...user,status:result.status});
+    await client.invalidateQueries({queryKey:['driver']});
+  } catch (error) { Alert.alert('Chưa đổi được trạng thái', error instanceof Error ? error.message : 'Vui lòng thử lại.'); }
+  finally { switching.current = false; }
+};
+const setIsOnline = (online: boolean) => {
+  if (!online) { void updateAvailability(false); return; }
+  Alert.alert('Chọn loại xe nhận lái hộ', 'Chỉ nhận loại xe có kỹ năng đã được duyệt.', [{text:'Ô tô',onPress:()=>void updateAvailability(true,'CAR')},{text:'Xe máy',onPress:()=>void updateAvailability(true,'MOTORCYCLE')},{text:'Hủy',style:'cancel'}]);
+};
+const pending = useQuery({queryKey:['driver','pendingOffer'],queryFn:getPendingOffer,enabled:Boolean(user)});
+const lastOffer = useRef<number | null>(null);
+useEffect(()=>{if(pending.data && lastOffer.current!==pending.data.rideId){lastOffer.current=pending.data.rideId;router.push('/ride/accept');}},[pending.data,router]);
 const [autoAccept, setAutoAccept] = useState(true);
 const [heatMapEnabled, setHeatMapEnabled] = useState(true);
 const [isLocating, setIsLocating] = useState(false);

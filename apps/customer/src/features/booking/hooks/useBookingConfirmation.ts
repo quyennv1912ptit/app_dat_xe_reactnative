@@ -54,14 +54,14 @@ export function useBookingConfirmation() {
       if (!ready || !input || !estimate.data) throw new Error('Vui lòng chờ báo giá mới nhất trước khi đặt chuyến.');
       if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) throw new Error('Giờ hẹn đã qua. Hãy chọn lại thời gian đón.');
       const currentRide = await getActiveCustomerRide();
-      if (currentRide) throw new Error('Bạn đang có chuyến chưa hoàn tất. Hãy theo dõi chuyến hiện tại trước.');
+      if (currentRide) { client.setQueryData(['customer', 'getActiveCustomerRide'], currentRide); router.replace({ pathname: '/ride/tracking', params: { rideId: String(currentRide.id) } }); return null; }
       const latest = await getRideEstimate({ ...input, routeQuoteId: estimate.data.route?.id });
       client.setQueryData(keyFor(input), latest);
       if (latest.payableFare !== estimate.data.payableFare) {
         Alert.alert('Giá chuyến đã cập nhật', 'Vui lòng kiểm tra tổng thanh toán mới và nhấn đặt chuyến lần nữa.');
         return null;
       }
-      const payload = { ...input, routeQuoteId: latest.route?.id, type: scheduledAt ? 'SCHEDULED' as const : 'INSTANT' as const, paymentMethod: 'CASH' as const, note: note.trim() || null };
+      const payload = { ...input, routeQuoteId: latest.route?.id, type: scheduledAt ? 'SCHEDULED' as const : 'INSTANT' as const, paymentMethod: 'CASH' as const, note: note.trim() || null, pickupNote: draft.pickupNote.trim() || null };
       const fingerprint = JSON.stringify(payload);
       if (attempt.current?.fingerprint !== fingerprint) attempt.current = { fingerprint, key: `customer-${Date.now()}-${Math.random().toString(36).slice(2)}` };
       return createCustomerRide(payload, attempt.current.key);
@@ -72,7 +72,7 @@ export function useBookingConfirmation() {
       router.replace({ pathname: '/ride/find-driver', params: { rideId: String(ride.id) } });
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
-    onError: error => Alert.alert('Chưa thể đặt chuyến', error.message),
+    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); Alert.alert('Chưa thể đặt chuyến', error.message); },
     onSettled: () => { submitting.current = false; },
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };

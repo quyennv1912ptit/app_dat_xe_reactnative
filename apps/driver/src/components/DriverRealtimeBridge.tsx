@@ -15,6 +15,7 @@ export function DriverRealtimeBridge() {
   const ride = useQuery({ queryKey: ['driver', 'activeRide'], queryFn: () => request<CustomerRideDetail>('/driver/rides/active', { allowNull: true }), enabled: Boolean(user) });
   const rideId = ride.data?.id;
   const userId = user?.id;
+  const online = user?.status === 'ONLINE';
   useEffect(() => { useSessionStore.getState().setActiveRide(ride.data ?? null); }, [ride.data]);
   useEffect(() => {
     if (!user) return;
@@ -24,20 +25,20 @@ export function DriverRealtimeBridge() {
     return () => { unsubscribe(); reconnect(); void driverRealtime.disconnect(); };
   }, [user, client]);
   useEffect(() => {
-    if (!userId || !rideId) { void stopDriverBackgroundLocation().catch(() => {}); return; }
+    if (!userId || (!rideId && !online)) { void stopDriverBackgroundLocation().catch(() => {}); return; }
     let cancelled = false; let watcher: Location.LocationSubscription | undefined;
     void (async () => {
       if (!(await Location.requestForegroundPermissionsAsync()).granted) throw new Error('Cần quyền vị trí để khách theo dõi chuyến.');
       if (cancelled) return;
-      const background = await startDriverBackgroundLocation().catch(() => false);
+      const background = rideId ? await startDriverBackgroundLocation().catch(() => false) : false;
       if (cancelled) { await stopDriverBackgroundLocation(); return; }
       if (!background) {
-        watcher = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: env.locationIntervalMs, distanceInterval: 0 }, publishDriverLocation);
+        watcher = await Location.watchPositionAsync({ accuracy: rideId ? Location.Accuracy.High : Location.Accuracy.Balanced, timeInterval: env.locationIntervalMs, distanceInterval: 0 }, publishDriverLocation);
         if (cancelled) watcher.remove();
-        Alert.alert('Vị trí khi chạy nền chưa bật', 'Khách chỉ nhận vị trí khi app đang mở. Cho phép vị trí nền trong cài đặt để tiếp tục chia sẻ khi mở chỉ đường.');
+        if (rideId) Alert.alert('Vị trí khi chạy nền chưa bật', 'Khách chỉ nhận vị trí khi app đang mở. Cho phép vị trí nền trong cài đặt để tiếp tục chia sẻ khi mở chỉ đường.');
       }
     })().catch(error => { if (!cancelled) Alert.alert('Chưa thể chia sẻ vị trí', error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.'); });
     return () => { cancelled = true; watcher?.remove(); void stopDriverBackgroundLocation().catch(() => {}); };
-  }, [userId, rideId]);
+  }, [userId, rideId, online]);
   return null;
 }

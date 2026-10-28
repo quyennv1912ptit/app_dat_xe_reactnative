@@ -15,7 +15,7 @@ const ride = query.data;
 const error = !rideId ? 'Thiếu mã chuyến.' : query.error?.message ?? '';
 const [cancelling, setCancelling] = useState(false);
 const refresh = query.refetch;
-const live = useLiveDriverLocation(rideId, Boolean(ride && !['COMPLETED', 'CANCELLED', 'NO_DRIVER_FOUND', 'EXPIRED'].includes(ride.status)), refresh);
+const live = useLiveDriverLocation(rideId, Boolean(ride && !['COMPLETED', 'CANCELLED', 'NO_DRIVER_FOUND', 'EXPIRED'].includes(ride.status)), refresh, Boolean(ride?.driverId));
 const vehiclesQuery = useQuery({queryKey:['customer','getCustomerVehicles'],queryFn:getCustomerVehicles,enabled:Boolean(ride?.vehicleId)});
 const vehicle = vehiclesQuery.data?.find(item=>item.id===ride?.vehicleId) ?? null;
 useEffect(() => { if (ride) useSessionStore.getState().setActiveRide(ride); }, [ride]);

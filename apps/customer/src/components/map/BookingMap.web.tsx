@@ -6,14 +6,15 @@ import { Text, View } from 'react-native';
 import type { BookingMapProps } from './types';
 import { bookingStyles as s } from './mapStyles';
 
-export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
+export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, editablePin = false, onCenterChange, onReadyChange, onMovingChange }: BookingMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const driverMarker = useRef<mapboxgl.Marker | null>(null);
-  const callbacks = useRef({ onCenterChange, onReadyChange });
-  const initial = useRef({ center, pickup, dropoff, route, interactive });
+  const editableMarker = useRef<mapboxgl.Marker | null>(null);
+  const callbacks = useRef({ onCenterChange, onReadyChange, onMovingChange });
+  const initial = useRef({ center, pickup, dropoff, route, interactive, editablePin });
   const [failed, setFailed] = useState(!env.mapboxToken);
-  useEffect(() => { callbacks.current = { onCenterChange, onReadyChange }; }, [onCenterChange, onReadyChange]);
+  useEffect(() => { callbacks.current = { onCenterChange, onReadyChange, onMovingChange }; }, [onCenterChange, onReadyChange, onMovingChange]);
   useEffect(() => {
     if (!container.current || !env.mapboxToken) { callbacks.current.onReadyChange?.(false); return; }
     const state = initial.current;
@@ -23,6 +24,12 @@ export function BookingMap({ center, pickup, dropoff, driver, route, interactive
       map.current = instance;
       instance.on('load', () => {
         callbacks.current.onReadyChange?.(true);
+        if (state.editablePin) {
+          const marker = new mapboxgl.Marker({ color: '#12B76A', draggable: true }).setLngLat([state.center.lng, state.center.lat]).addTo(instance);
+          editableMarker.current = marker;
+          marker.on('dragstart', () => callbacks.current.onMovingChange?.(true));
+          marker.on('dragend', () => { const point = marker.getLngLat(); callbacks.current.onCenterChange?.({ lat: point.lat, lng: point.lng }); callbacks.current.onMovingChange?.(false); instance.easeTo({ center: point, duration: 250 }); });
+        }
         for (const [index, place] of [state.pickup, state.dropoff].entries()) if (place) new mapboxgl.Marker({ color: index === 0 ? '#12B76A' : '#F04438' }).setLngLat([place.coordinate.lng, place.coordinate.lat]).addTo(instance);
         if (state.pickup && state.dropoff) instance.fitBounds([[state.pickup.coordinate.lng, state.pickup.coordinate.lat], [state.dropoff.coordinate.lng, state.dropoff.coordinate.lat]], { padding: 45, maxZoom: 16, duration: 0 });
         if ((state.route?.length ?? 0) > 1) {
@@ -31,7 +38,8 @@ export function BookingMap({ center, pickup, dropoff, driver, route, interactive
         }
         const point = instance.getCenter(); callbacks.current.onCenterChange?.({ lat: point.lat, lng: point.lng });
       });
-      instance.on('moveend', () => { const point = instance.getCenter(); callbacks.current.onCenterChange?.({ lat: point.lat, lng: point.lng }); });
+      instance.on('movestart', () => callbacks.current.onMovingChange?.(true));
+      instance.on('moveend', () => { const point = instance.getCenter(); editableMarker.current?.setLngLat(point); callbacks.current.onCenterChange?.({ lat: point.lat, lng: point.lng }); callbacks.current.onMovingChange?.(false); });
       instance.on('click', event => { if (state.interactive) instance.easeTo({ center: event.lngLat, duration: 300 }); });
       instance.on('error', () => { setFailed(true); callbacks.current.onReadyChange?.(false); });
     } catch { Promise.resolve().then(() => { setFailed(true); callbacks.current.onReadyChange?.(false); }); }
