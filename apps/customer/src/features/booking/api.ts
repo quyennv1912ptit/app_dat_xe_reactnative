@@ -1,21 +1,30 @@
 import { request } from '@/lib/api';
 import { customerApi } from '@/lib/customerApi';
 import type { CreateCustomerRideRequest,CreateCustomerRideResponse,NearbyDriverMarker,RideCoordinates,RideEstimate,RideEstimateRequest } from '@datxe/shared';
-import { parsePlaces } from './bookingUtils';
-import type { BookingPlace } from './types';
+import { isCoordinate } from './bookingUtils';
+import type { BookingPlace, PlaceSuggestion, PlaceSearchResult } from './types';
 
-export async function searchBookingPlaces(text: string, proximity?: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace[]> {
-  const query = new URLSearchParams({ address: text.trim() });
+export async function searchBookingPlaces(text: string, proximity?: RideCoordinates, signal?: AbortSignal): Promise<PlaceSearchResult> {
+  const query = new URLSearchParams({ query: text.trim() });
   if (proximity) { query.set('proximityLat', String(proximity.lat)); query.set('proximityLng', String(proximity.lng)); }
-  const result = await request<string | null>(`/location/geocode?${query.toString()}`, { allowNull: true, signal });
-  return result ? parsePlaces(result) : [];
+  return (await request<PlaceSearchResult>(`/location/places/search?${query.toString()}`, { signal }))!;
+}
+
+export async function resolveBookingPlace(suggestion: PlaceSuggestion, signal?: AbortSignal): Promise<BookingPlace> {
+  if (suggestion.coordinate && isCoordinate(suggestion.coordinate)) return { ...suggestion, coordinate: suggestion.coordinate };
+  if (suggestion.provider !== 'goong') throw new Error('Chưa có tọa độ chính xác. Hãy chọn vị trí trên bản đồ.');
+  const query = new URLSearchParams({ id: suggestion.id });
+  const place = (await request<PlaceSuggestion>(`/location/places/detail?${query.toString()}`, { signal }))!;
+  if (!place.coordinate || !isCoordinate(place.coordinate)) throw new Error('Chưa lấy được vị trí của địa chỉ này. Hãy thử lại hoặc chọn ghim trên bản đồ.');
+  // Keep the exact suggestion address the user chose; details supplies verified coordinates.
+  return { ...place, name: suggestion.name, address: suggestion.address, secondaryAddress: suggestion.secondaryAddress ?? place.secondaryAddress, coordinate: place.coordinate };
 }
 
 export async function reverseBookingPlace(point: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace> {
-  const places = await searchBookingPlaces(`${point.lng},${point.lat}`, undefined, signal);
-  if (!places.length) throw new Error('Chưa tìm được địa chỉ tại vị trí này. Hãy di chuyển ghim tới đường gần đó.');
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
+  const place = (await request<BookingPlace>(`/location/places/reverse?${query.toString()}`, { signal }))!;
   // Preserve the exact pin, not the geocoder's snapped feature center.
-  return { ...places[0], id: `pin:${point.lng},${point.lat}`, coordinate: point };
+  return { ...place, id: `pin:${point.lng},${point.lat}`, coordinate: point };
 }
 
 export async function getBookingRoute(pickup: RideCoordinates, dropoff: RideCoordinates, signal?: AbortSignal): Promise<RideCoordinates[]> {
@@ -35,19 +44,8 @@ export async function createCustomerRide(
 }
 
 export async function geocodeCustomerAddress(address: string): Promise<RideCoordinates | null> {
-  const result = await request<string | null>(`/location/geocode?address=${encodeURIComponent(address)}`, {
-    allowNull: true,
-  });
-  if (!result) return null;
-  try {
-    const parsed = JSON.parse(result) as {
-      features?: { geometry?: { coordinates?: number[] } }[];
-    };
-    const [lng, lat] = parsed.features?.[0]?.geometry?.coordinates ?? [];
-    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-  } catch {
-    return null;
-  }
+  const result = await searchBookingPlaces(address);
+  return result.places[0] ? (await resolveBookingPlace(result.places[0])).coordinate : null;
 }
 
 export const getCustomerVouchers = customerApi.getCustomerVouchers;

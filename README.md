@@ -68,7 +68,8 @@ Customer chuyển nhóm `(main)` thành `(tabs)` cho Home/History/Notifications/
 
 ### Đặt chuyến customer
 
-- Tìm địa điểm sau khi nhập ít nhất 2 ký tự, debounce 350ms và hủy request cũ. Geocoding/reverse geocoding và đường đi đều qua backend `/location/*`; thứ tự tọa độ gửi Mapbox là `lng,lat`. Có GPS, địa chỉ gần đây và chọn ghim trên bản đồ.
+- Tìm địa điểm sau khi nhập ít nhất 2 ký tự, debounce 350ms và hủy request cũ. `/location/places/search` trả gợi ý; Goong dùng `/location/places/detail?id=...` khi chọn để lấy đúng tọa độ, `/location/places/reverse` lấy địa chỉ tại ghim. Ưu tiên điểm đón/GPS được cấp quyền; khi chưa có tọa độ dùng Hà Nội. Không cắt địa chỉ dài chứa số nhà/ngõ/ngách.
+- Backend đọc `GOONG_API_KEY` từ `.env`; key REST chỉ nằm ở server. `PLACES_PROVIDER=auto` tự dùng Goong V2 khi có key, thiếu key dùng Mapbox (kể cả khi chọn `goong`). `PLACES_PROVIDER=mapbox` buộc dùng Mapbox. Mapbox fallback tắt fuzzy matching, kiểm tra từng từ/số nhà và loại kết quả thiếu liên quan: không dùng “Phố Tây Sơn” thay cho “Hồ Tây”. Mapbox v5 không còn POI; khi chưa có Goong key, địa danh ngoài dữ liệu có thể không có kết quả. Đường đi/bản đồ tiếp tục dùng Mapbox (`lng,lat`); Goong nhận tọa độ `lat,lng`.
 - Zustand giữ bản nháp; React Query quản lý phương tiện, chuyến đang hoạt động, báo giá và ưu đãi. Bản đồ native/web tách riêng; web cần `mapbox-gl`, cả hai dùng `EXPO_PUBLIC_MAPBOX_TOKEN=pk...`.
 - Xác nhận hiển thị các thành phần giá backend, giá tối thiểu, giảm giá và tổng thanh toán. Chọn ưu đãi qua modal và xác thực bằng báo giá backend trước khi áp dụng. Có modal giờ hẹn, ghi chú và thanh toán tiền mặt.
 - Trước khi tạo chuyến, kiểm tra lại chuyến đang chạy và báo giá. Giá thay đổi yêu cầu xác nhận lại; retry cùng nội dung dùng lại idempotency key. Không cho đặt khi thiếu địa chỉ/xe/giá hoặc còn chuyến chưa hoàn tất.

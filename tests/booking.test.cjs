@@ -17,19 +17,6 @@ const utils = load('bookingUtils.ts');
 const pickup = { id: 'a', name: 'A', address: 'Điểm A', coordinate: { lat: 10.77, lng: 106.7 } };
 const dropoff = { id: 'b', name: 'B', address: 'Điểm B', coordinate: { lat: 10.78, lng: 106.71 } };
 
-test('place search retains all valid results and converts longitude/latitude correctly', () => {
-  const places = utils.parsePlaces(JSON.stringify({ features: [
-    { id: 'one', text: 'Chợ', place_name: 'Chợ, Quận 1', geometry: { coordinates: [106.7, 10.77] } },
-    { id: 'two', place_name: 'Bến xe, Quận 2', geometry: { coordinates: [106.8, 10.8] } },
-    { place_name: 'Bad', geometry: { coordinates: [200, 100] } },
-    { place_name: '', geometry: { coordinates: [106, 10] } },
-  ] }));
-  assert.equal(places.length, 2);
-  assert.equal(places[0].coordinate.lat, 10.77);
-  assert.equal(places[0].coordinate.lng, 106.7);
-  assert.equal(places[1].name, 'Bến xe');
-});
-
 test('quote request rejects missing places, identical points and invalid coordinates', () => {
   assert.throws(() => utils.estimateRequest(null, dropoff, 1, null), /chọn đủ/);
   assert.throws(() => utils.estimateRequest(pickup, pickup, 1, null), /khác nhau/);
@@ -55,21 +42,69 @@ test('fare breakdown accounts for the backend minimum without a hardcoded tariff
   assert.equal(utils.minimumFareAdjustment({ ...quote, estimatedFare: 25000 }), 0);
 });
 
-test('map selection preserves the exact pin and sends longitude first to geocoding', async () => {
+test('map selection preserves the exact pin instead of the reverse geocoder center', async () => {
   let requested;
   const signal = new AbortController().signal;
   const api = load('api.ts', {
     '@/lib/api': { request: async (url, options) => {
       requested = { url, options };
-      return JSON.stringify({ features: [{ place_name: 'Địa chỉ gần ghim', geometry: { coordinates: [106.71, 10.78] } }] });
+      return { id: 'nearby', name: 'Địa chỉ gần ghim', address: 'Ngõ 165 Cầu Giấy, Hà Nội', coordinate: { lat: 10.78, lng: 106.71 } };
     } },
     '@/lib/customerApi': { customerApi: {} }, './bookingUtils': utils,
   });
   const pin = { lat: 10.7701234, lng: 106.7009876 };
   const place = await api.reverseBookingPlace(pin, signal);
   assert.equal(place.coordinate, pin);
-  assert.equal(new URL('https://test' + requested.url).searchParams.get('address'), '106.7009876,10.7701234');
+  const query = new URL('https://test' + requested.url);
+  assert.equal(query.pathname, '/location/places/reverse');
+  assert.equal(query.searchParams.get('lat'), '10.7701234');
+  assert.equal(query.searchParams.get('lng'), '106.7009876');
   assert.equal(requested.options.signal, signal);
+});
+
+test('search forwards the exact Vietnamese query and real proximity with cancellation', async () => {
+  const signal = new AbortController().signal;
+  const api = load('api.ts', {
+    '@/lib/api': { request: async (url, options) => {
+      const query = new URL('https://test' + url);
+      assert.equal(query.searchParams.get('query'), 'Ngách 12/3, Hồ Tây');
+      assert.equal(query.searchParams.get('proximityLat'), '21.03');
+      assert.equal(query.searchParams.get('proximityLng'), '105.84');
+      assert.equal(options.signal, signal);
+      return { provider: 'goong', limitedCoverage: false, places: [] };
+    } }, '@/lib/customerApi': { customerApi: {} }, './bookingUtils': utils,
+  });
+  await api.searchBookingPlaces(' Ngách 12/3, Hồ Tây ', { lat: 21.03, lng: 105.84 }, signal);
+});
+
+test('Goong suggestions resolve by ID before booking and retain the chosen alley address', async () => {
+  let calls = 0;
+  const api = load('api.ts', {
+    '@/lib/api': { request: async url => {
+      calls++;
+      assert.equal(new URL('https://test' + url).searchParams.get('id'), 'place/a+b==');
+      return { id: 'place/a+b==', name: 'Tên từ chi tiết', address: 'Địa chỉ chi tiết', coordinate: { lat: 21.03, lng: 105.84 } };
+    } }, '@/lib/customerApi': { customerApi: {} }, './bookingUtils': utils,
+  });
+  const place = await api.resolveBookingPlace({ id: 'place/a+b==', provider: 'goong', name: 'Ngách 12/3', address: 'Ngách 12/3, Ngõ 12, Hà Nội' });
+  assert.equal(place.address, 'Ngách 12/3, Ngõ 12, Hà Nội');
+  assert.equal(place.coordinate.lat, 21.03);
+  await api.resolveBookingPlace(pickup);
+  assert.equal(calls, 1);
+});
+
+test('Hanoi is the fallback search/map center', () => {
+  assert.equal(utils.DEFAULT_MAP_CENTER.lat, 21.0285);
+  assert.equal(utils.DEFAULT_MAP_CENTER.lng, 105.8542);
+});
+
+test('a place without valid provider coordinates cannot become a booking point', async () => {
+  const api = load('api.ts', {
+    '@/lib/api': { request: async () => ({ id: 'a', coordinate: { lat: 200, lng: 100 } }) },
+    '@/lib/customerApi': { customerApi: {} }, './bookingUtils': utils,
+  });
+  await assert.rejects(api.resolveBookingPlace({ id: 'a', provider: 'goong', name: 'A', address: 'A' }), /Chưa lấy được vị trí/);
+  await assert.rejects(api.resolveBookingPlace({ id: 'a', provider: 'mapbox', name: 'A', address: 'A' }), /Chưa có tọa độ chính xác/);
 });
 
 test('starting a new booking clears old vehicle, destination and voucher selections', () => {
