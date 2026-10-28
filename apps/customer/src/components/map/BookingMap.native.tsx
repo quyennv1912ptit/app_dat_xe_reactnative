@@ -3,10 +3,10 @@ import { initializeMapbox } from '@/lib/initializeMapbox';
 import Mapbox, { Camera, CircleLayer, LineLayer, MapView, ShapeSource } from '@rnmapbox/maps';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import type { BookingMapProps } from '../types';
-import { bookingStyles as s } from './bookingStyles';
+import type { BookingMapProps } from './types';
+import { bookingStyles as s } from './mapStyles';
 
-export function BookingMap({ center, pickup, dropoff, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
+export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const camera = useRef<Camera>(null);
   const readyCallback = useRef(onReadyChange);
@@ -21,9 +21,10 @@ export function BookingMap({ center, pickup, dropoff, route, interactive = true,
   useEffect(() => {
     if (status === 'ready' && !dropoff) camera.current?.setCamera({ centerCoordinate: [center.lng, center.lat], zoomLevel: 16, animationDuration: 350 });
   }, [center.lat, center.lng, dropoff, status]);
-  const markers = useMemo(() => ({ type: 'FeatureCollection' as const, features: [pickup, dropoff].flatMap((place, index) => place ? [{ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [place.coordinate.lng, place.coordinate.lat] }, properties: { kind: index } }] : []) }), [pickup, dropoff]);
+  const markers = useMemo(() => ({ type: 'FeatureCollection' as const, features: [pickup, dropoff, driver ? { coordinate: driver } : null].flatMap((place, index) => place ? [{ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [place.coordinate.lng, place.coordinate.lat] }, properties: { kind: index } }] : []) }), [pickup, dropoff, driver]);
   const line = useMemo(() => ({ type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: (route ?? []).map(point => [point.lng, point.lat]) }, properties: {} }), [route]);
-  const bounds = pickup && dropoff ? { ne: [Math.max(pickup.coordinate.lng, dropoff.coordinate.lng) + 0.002, Math.max(pickup.coordinate.lat, dropoff.coordinate.lat) + 0.002], sw: [Math.min(pickup.coordinate.lng, dropoff.coordinate.lng) - 0.002, Math.min(pickup.coordinate.lat, dropoff.coordinate.lat) - 0.002], paddingTop: 45, paddingBottom: 45, paddingLeft: 40, paddingRight: 40 } : undefined;
+  const points = [pickup?.coordinate, dropoff?.coordinate, driver].filter((point): point is { lat: number; lng: number } => Boolean(point));
+  const bounds = points.length >= 2 ? { ne: [Math.max(...points.map(point => point.lng)) + 0.002, Math.max(...points.map(point => point.lat)) + 0.002], sw: [Math.min(...points.map(point => point.lng)) - 0.002, Math.min(...points.map(point => point.lat)) - 0.002], paddingTop: 45, paddingBottom: 45, paddingLeft: 40, paddingRight: 40 } : undefined;
   if (status !== 'ready') return <View style={[s.flex, s.empty, { justifyContent: 'center', backgroundColor: '#E9F0F3' }]}>{status === 'loading' ? <ActivityIndicator /> : null}<Text style={s.muted}>{status === 'loading' ? 'Đang mở bản đồ…' : 'Bản đồ chưa khả dụng. Bạn vẫn có thể tìm và chọn địa chỉ.'}</Text></View>;
   return <MapView style={StyleSheet.absoluteFill} styleURL="mapbox://styles/mapbox/streets-v12" scrollEnabled={interactive} zoomEnabled={interactive} rotateEnabled={false} pitchEnabled={false}
     onMapIdle={event => { const [lng, lat] = event.properties.center; onCenterChange?.({ lat, lng }); }}
@@ -34,6 +35,7 @@ export function BookingMap({ center, pickup, dropoff, route, interactive = true,
     <ShapeSource id="booking-points" shape={markers}>
       <CircleLayer id="booking-pickup" filter={['==', ['get', 'kind'], 0]} style={{ circleColor: '#12B76A', circleRadius: 8, circleStrokeWidth: 3, circleStrokeColor: '#FFFFFF' }} />
       <CircleLayer id="booking-dropoff" filter={['==', ['get', 'kind'], 1]} style={{ circleColor: '#F04438', circleRadius: 8, circleStrokeWidth: 3, circleStrokeColor: '#FFFFFF' }} />
+      <CircleLayer id="live-driver" filter={['==', ['get', 'kind'], 2]} style={{ circleColor: '#2563EB', circleRadius: 10, circleStrokeWidth: 4, circleStrokeColor: '#FFFFFF' }} />
     </ShapeSource>
   </MapView>;
 }

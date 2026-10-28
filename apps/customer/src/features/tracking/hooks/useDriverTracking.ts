@@ -5,15 +5,17 @@ import { useEffect,useState } from 'react';
 import { Alert } from 'react-native';
 import { cancelCustomerRide,getCustomerVehicles } from '../api';
 import { useRideQuery } from './useRideQuery';
+import { useLiveDriverLocation } from './useLiveDriverLocation';
 export function useDriverTracking() {
 const router = useRouter();
 const params = useLocalSearchParams<{ rideId?: string }>();
 const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
-const query = useRideQuery(rideId, true);
+const query = useRideQuery(rideId, false);
 const ride = query.data;
 const error = !rideId ? 'Thiếu mã chuyến.' : query.error?.message ?? '';
 const [cancelling, setCancelling] = useState(false);
-const refresh = () => query.refetch();
+const refresh = query.refetch;
+const live = useLiveDriverLocation(rideId, Boolean(ride && !['COMPLETED', 'CANCELLED', 'NO_DRIVER_FOUND', 'EXPIRED'].includes(ride.status)), refresh);
 const vehiclesQuery = useQuery({queryKey:['customer','getCustomerVehicles'],queryFn:getCustomerVehicles,enabled:Boolean(ride?.vehicleId)});
 const vehicle = vehiclesQuery.data?.find(item=>item.id===ride?.vehicleId) ?? null;
 useEffect(() => { if (ride) useSessionStore.getState().setActiveRide(ride); }, [ride]);
@@ -30,5 +32,5 @@ const cancel = () => Alert.alert('Hủy chuyến', 'Bạn có muốn hủy chuy�
       finally { setCancelling(false); }
     })(); } },
   ]);
-return { router, params, rideId, ride, vehicle, error, cancelling, refresh, pendingPickup, pendingDropoff, cancel };
+return { router, params, rideId, ride, vehicle, error, cancelling, refresh, pendingPickup, pendingDropoff, cancel, live };
 }

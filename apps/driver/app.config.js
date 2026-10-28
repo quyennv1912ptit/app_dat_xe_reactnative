@@ -5,7 +5,8 @@ module.exports = ({ config }) => {
   const facebookAppId = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
   const facebookClientToken = process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
   const plugins = [
-    ...(config.plugins ?? []),
+    ...(config.plugins ?? []).filter(plugin => (Array.isArray(plugin) ? plugin[0] : plugin) !== 'expo-location'),
+    ['expo-location', { isAndroidBackgroundLocationEnabled: true, isAndroidForegroundServiceEnabled: true, isIosBackgroundLocationEnabled: true, locationAlwaysAndWhenInUsePermission: 'Cho phép vị trí trong chuyến để khách theo dõi khi bạn mở ứng dụng chỉ đường.' }],
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
     '@react-native-google-signin/google-signin',

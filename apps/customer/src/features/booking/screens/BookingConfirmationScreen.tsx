@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_MAP_CENTER, money } from '../bookingUtils';
-import { BookingMap } from '../components/BookingMap';
+import { BookingMap } from '@/components/map/BookingMap';
 import { bookingStyles as s } from '../components/bookingStyles';
 import { FareDetails } from '../components/FareDetails';
 import { RouteSummary } from '../components/RouteSummary';

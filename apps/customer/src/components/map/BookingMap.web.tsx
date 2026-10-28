@@ -3,12 +3,13 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import type { BookingMapProps } from '../types';
-import { bookingStyles as s } from './bookingStyles';
+import type { BookingMapProps } from './types';
+import { bookingStyles as s } from './mapStyles';
 
-export function BookingMap({ center, pickup, dropoff, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
+export function BookingMap({ center, pickup, dropoff, driver, route, interactive = true, onCenterChange, onReadyChange }: BookingMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const driverMarker = useRef<mapboxgl.Marker | null>(null);
   const callbacks = useRef({ onCenterChange, onReadyChange });
   const initial = useRef({ center, pickup, dropoff, route, interactive });
   const [failed, setFailed] = useState(!env.mapboxToken);
@@ -37,6 +38,17 @@ export function BookingMap({ center, pickup, dropoff, route, interactive = true,
     return () => { map.current?.remove(); map.current = null; };
   }, []);
   useEffect(() => { if (!dropoff) map.current?.easeTo({ center: [center.lng, center.lat], duration: 300 }); }, [center.lat, center.lng, dropoff]);
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !driver) { driverMarker.current?.remove(); driverMarker.current = null; return; }
+    const draw = () => {
+      driverMarker.current ??= new mapboxgl.Marker({ color: '#2563EB' }).setLngLat([driver.lng, driver.lat]).addTo(instance);
+      driverMarker.current.setLngLat([driver.lng, driver.lat]);
+      if (!instance.getBounds().contains([driver.lng, driver.lat])) instance.fitBounds(instance.getBounds().extend([driver.lng, driver.lat]), { padding: 45, maxZoom: 16 });
+    };
+    if (instance.isStyleLoaded()) draw(); else instance.once('load', draw);
+    return () => { instance.off('load', draw); };
+  }, [driver]);
   useEffect(() => {
     const instance = map.current;
     if (!instance || !route || route.length < 2) return;

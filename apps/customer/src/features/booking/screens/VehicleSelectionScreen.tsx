@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_MAP_CENTER } from '../bookingUtils';
-import { BookingMap } from '../components/BookingMap';
+import { BookingMap } from '@/components/map/BookingMap';
 import { bookingStyles as s } from '../components/bookingStyles';
 import { RouteSummary } from '../components/RouteSummary';
 import { useVehicleSelection } from '../hooks/useVehicleSelection';

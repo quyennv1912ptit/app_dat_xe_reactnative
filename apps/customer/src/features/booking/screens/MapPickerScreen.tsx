@@ -3,7 +3,7 @@ import { colors } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BookingMap } from '../components/BookingMap';
+import { BookingMap } from '@/components/map/BookingMap';
 import { bookingStyles as s } from '../components/bookingStyles';
 import { useMapPicker } from '../hooks/useMapPicker';
 export default function MapPickerScreen() {
