@@ -12,6 +12,10 @@ module.exports = ({ config }) => {
     '@rnmapbox/maps',
     'expo-status-bar',
     '../../packages/config/plugins/with-short-cmake-paths',
+    ['../../packages/config/plugins/with-team-dev-signing', {
+      keystoreFile: 'team-dev-customer.jks',
+      keyAlias: 'team-dev-customer',
+    }],
     [
       'expo-build-properties',
       {

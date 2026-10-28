@@ -14,6 +14,8 @@ npm run driver
 
 Customer chạy cổng **8081**, driver chạy cổng **8082**. Hai app dùng Firebase native, Google/Facebook sign-in và customer có Mapbox, vì vậy cần **development build** đã cài trên thiết bị, không dùng Expo Go.
 
+Trước khi build Android, chép key team vào `apps/customer/team-dev-customer.jks` và `apps/driver/team-dev-driver.jks`. Lệnh `npm run android -w <app>` tự áp dụng cấu hình ký debug. Xem [hướng dẫn team dev và SHA Firebase](docs/team-dev-signing.md).
+
 ```powershell
 npm run android -w customer
 npm run android -w driver

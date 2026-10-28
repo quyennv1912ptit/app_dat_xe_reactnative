@@ -12,3 +12,6 @@ dist/
 .migration-backup/
 .expo-export/
 .native-build/
+*.jks
+*.keystore
+signing.properties

@@ -11,6 +11,10 @@ module.exports = ({ config }) => {
     '@react-native-google-signin/google-signin',
     'expo-status-bar',
     '../../packages/config/plugins/with-short-cmake-paths',
+    ['../../packages/config/plugins/with-team-dev-signing', {
+      keystoreFile: 'team-dev-driver.jks',
+      keyAlias: 'team-dev-driver',
+    }],
     [
       'expo-build-properties',
       {

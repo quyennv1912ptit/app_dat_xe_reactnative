@@ -1,0 +1,6 @@
+# Optional override only. The shared dev key uses android/android by default.
+# Java Properties syntax: escape a literal backslash as \\.
+storePassword=android
+keyPassword=android
+# Public key alias (already configured as the default in app.config.js):
+keyAlias=team-dev-driver
