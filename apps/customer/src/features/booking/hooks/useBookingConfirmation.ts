@@ -1,15 +1,15 @@
+import { localizedAlert } from '@datxe/ui';
+import { translate as i18nT , AuthApiError } from '@datxe/shared';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
-import { AuthApiError } from '@datxe/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
 import { estimateRequest } from '../bookingUtils';
 import { useBookingDraft } from '../store';
 
 function friendlyPriceError(error: unknown): string {
-  if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return 'Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.';
+  if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return i18nT("Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.");
   return error instanceof Error ? error.message : '';
 }
 export function useBookingConfirmation() {
@@ -32,7 +32,7 @@ export function useBookingConfirmation() {
   let requestError = '';
   let input: ReturnType<typeof estimateRequest> | null = null;
   try { input = estimateRequest(draft.pickup, draft.dropoff, draft.vehicleId, scheduledAt, draft.voucherCode); }
-  catch (error) { requestError = error instanceof Error ? error.message : 'Thiếu thông tin chuyến.'; }
+  catch (error) { requestError = error instanceof Error ? error.message : i18nT("Thiếu thông tin chuyến."); }
   const keyFor = (request: ReturnType<typeof estimateRequest>) => ['customer', 'bookingEstimate', request] as const;
   const estimate = useQuery({ queryKey: input ? keyFor(input) : ['customer', 'bookingEstimate', 'incomplete'], queryFn: () => getRideEstimate(input!), enabled: Boolean(input && vehicle && !active.data), staleTime: 15000, retry: false });
   const vouchers = useQuery({ queryKey: ['customer', 'getCustomerVouchers'], queryFn: getCustomerVouchers, enabled: voucherVisible || Boolean(draft.voucherCode) });
@@ -51,14 +51,14 @@ export function useBookingConfirmation() {
   };
   const create = useMutation({
     mutationFn: async () => {
-      if (!ready || !input || !estimate.data) throw new Error('Vui lòng chờ báo giá mới nhất trước khi đặt chuyến.');
-      if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) throw new Error('Giờ hẹn đã qua. Hãy chọn lại thời gian đón.');
+      if (!ready || !input || !estimate.data) throw new Error(i18nT("Vui lòng chờ báo giá mới nhất trước khi đặt chuyến."));
+      if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) throw new Error(i18nT("Giờ hẹn đã qua. Hãy chọn lại thời gian đón."));
       const currentRide = await getActiveCustomerRide();
       if (currentRide) { client.setQueryData(['customer', 'getActiveCustomerRide'], currentRide); router.replace({ pathname: '/ride/tracking', params: { rideId: String(currentRide.id) } }); return null; }
       const latest = await getRideEstimate({ ...input, routeQuoteId: estimate.data.route?.id });
       client.setQueryData(keyFor(input), latest);
       if (latest.payableFare !== estimate.data.payableFare) {
-        Alert.alert('Giá chuyến đã cập nhật', 'Vui lòng kiểm tra tổng thanh toán mới và nhấn đặt chuyến lần nữa.');
+        localizedAlert(i18nT("Giá chuyến đã cập nhật"), i18nT("Vui lòng kiểm tra tổng thanh toán mới và nhấn đặt chuyến lần nữa."));
         return null;
       }
       const payload = { ...input, routeQuoteId: latest.route?.id, type: scheduledAt ? 'SCHEDULED' as const : 'INSTANT' as const, paymentMethod: 'CASH' as const, note: note.trim() || null, pickupNote: draft.pickupNote.trim() || null };
@@ -72,7 +72,7 @@ export function useBookingConfirmation() {
       router.replace({ pathname: '/ride/find-driver', params: { rideId: String(ride.id) } });
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
-    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); Alert.alert('Chưa thể đặt chuyến', error.message); },
+    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); localizedAlert(i18nT("Chưa thể đặt chuyến"), error.message); },
     onSettled: () => { submitting.current = false; },
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };

@@ -1,3 +1,7 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemeColors } from "../theme/ThemeProvider";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet,Text,View } from 'react-native';
 
@@ -12,20 +16,26 @@ type Props = {
 };
 
 export function AuthHero({ icon, title, subtitle, brandLabel, detail }: Props) {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
         <MaterialIcons color={colors.primary} name={icon} size={fontSize.icon3xl} />
       </View>
-      {brandLabel ? <Text style={styles.brandLabel}>{brandLabel}</Text> : null}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
+      {brandLabel ? <Text style={styles.brandLabel}>{i18nT(brandLabel)}</Text> : null}
+      <Text style={styles.title}>{i18nT(title)}</Text>
+      <Text style={styles.subtitle}>{i18nT(subtitle)}</Text>
+      {detail ? <Text style={styles.detail}>{i18nT(detail)}</Text> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     marginBottom: spacing.spaceLg,

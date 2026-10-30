@@ -1,3 +1,4 @@
+import { translate as i18nT } from '@datxe/shared';
 import { request } from '@/lib/api';
 import { customerApi } from '@/lib/customerApi';
 import type { CreateCustomerRideRequest,CreateCustomerRideResponse,NearbyDriverMarker,RideCoordinates,RideEstimate,RideEstimateRequest } from '@datxe/shared';
@@ -12,10 +13,10 @@ export async function searchBookingPlaces(text: string, proximity?: RideCoordina
 
 export async function resolveBookingPlace(suggestion: PlaceSuggestion, signal?: AbortSignal): Promise<BookingPlace> {
   if (suggestion.coordinate && isCoordinate(suggestion.coordinate)) return { ...suggestion, coordinate: suggestion.coordinate };
-  if (suggestion.provider !== 'goong') throw new Error('Chưa có tọa độ chính xác. Hãy chọn vị trí trên bản đồ.');
+  if (suggestion.provider !== 'goong') throw new Error(i18nT("Chưa có tọa độ chính xác. Hãy chọn vị trí trên bản đồ."));
   const query = new URLSearchParams({ id: suggestion.id });
   const place = (await request<PlaceSuggestion>(`/location/places/detail?${query.toString()}`, { signal }))!;
-  if (!place.coordinate || !isCoordinate(place.coordinate)) throw new Error('Chưa lấy được vị trí của địa chỉ này. Hãy thử lại hoặc chọn ghim trên bản đồ.');
+  if (!place.coordinate || !isCoordinate(place.coordinate)) throw new Error(i18nT("Chưa lấy được vị trí của địa chỉ này. Hãy thử lại hoặc chọn ghim trên bản đồ."));
   // Keep the exact suggestion address the user chose; details supplies verified coordinates.
   return { ...place, name: suggestion.name, address: suggestion.address, secondaryAddress: suggestion.secondaryAddress ?? place.secondaryAddress, coordinate: place.coordinate };
 }

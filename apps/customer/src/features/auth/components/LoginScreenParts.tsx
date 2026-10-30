@@ -1,5 +1,5 @@
-import { AuthApiError } from '@datxe/shared';
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT , AuthApiError } from '@datxe/shared';
+import { useLanguage , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import {
 Image,
 Pressable,
@@ -25,6 +25,8 @@ export function SocialButton({
   loading: boolean;
   onPress: () => void;
 }) {
+ useLanguage();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -33,7 +35,7 @@ export function SocialButton({
       style={[styles.socialButton, disabled && styles.disabledButton]}
     >
       <Image source={icon} style={styles.socialIcon} />
-      <Text style={styles.socialLabel}>{loading ? 'Đang kết nối...' : label}</Text>
+      <Text style={styles.socialLabel}>{i18nT(loading ? 'Đang kết nối...' : label)}</Text>
     </Pressable>
   );
 }
@@ -45,10 +47,10 @@ export function isAccountNotFound(error: unknown): boolean {
 export function getErrorMessage(error: unknown): string {
   if (error instanceof AuthApiError) return error.message;
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-  if (code.includes('too-many-requests')) return 'Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.';
-  if (code.includes('invalid-phone-number')) return 'Số điện thoại không hợp lệ.';
-  if (code.includes('account-exists-with-different-credential')) return 'Email này đã được dùng với phương thức đăng nhập khác.';
-  return error instanceof Error ? error.message : 'Không thể đăng nhập lúc này. Vui lòng thử lại.';
+  if (code.includes('too-many-requests')) return i18nT("Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.");
+  if (code.includes('invalid-phone-number')) return i18nT("Số điện thoại không hợp lệ.");
+  if (code.includes('account-exists-with-different-credential')) return i18nT("Email này đã được dùng với phương thức đăng nhập khác.");
+  return error instanceof Error ? error.message : i18nT("Không thể đăng nhập lúc này. Vui lòng thử lại.");
 }
 
 export const styles = StyleSheet.create({

@@ -1,16 +1,17 @@
+import { translate as i18nT,getLocale } from '@datxe/shared';
+import { useThemeColors , borderRadius,spacing,typography } from '@datxe/ui';
 import type { PaymentMethod } from '@datxe/shared';
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet } from 'react-native';
 export function countLabel(value: number | null): string {
-  return value === null ? '—' : new Intl.NumberFormat('vi-VN').format(value);
+  return value === null ? '—' : new Intl.NumberFormat(getLocale()).format(value);
 }
 
 export function getPaymentMethodLabel(method: PaymentMethod | null): string {
-  if (method === 'CASH') return 'Tiền mặt';
-  if (method === 'WALLET') return 'Ví';
+  if (method === 'CASH') return i18nT("Tiền mặt");
+  if (method === 'WALLET') return i18nT("Ví");
   if (method === 'VNPAY') return 'VNPay';
   if (method === 'MOMO') return 'MoMo';
-  return 'Chưa thiết lập';
+  return i18nT("Chưa thiết lập");
 }
 
 export function isPastIsoDate(value: string): boolean {
@@ -26,10 +27,10 @@ export function isPastIsoDate(value: string): boolean {
 }
 
 export function getApiErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Không tải được dữ liệu từ máy chủ.';
+  return error instanceof Error ? error.message : i18nT("Không tải được dữ liệu từ máy chủ.");
 }
 
-export const styles = StyleSheet.create({
+export const makeStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.surface,

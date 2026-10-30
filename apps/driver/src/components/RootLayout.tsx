@@ -1,3 +1,4 @@
+import { useScreenMotion } from '@datxe/ui';
 import { validateEnv } from '@/config/env';
 import '@/lib/auth';
 import '@/lib/logger';
@@ -9,8 +10,9 @@ import { Stack } from 'expo-router';
 import { DriverRealtimeBridge } from './DriverRealtimeBridge';
 
 export default function RootLayout() {
+  const screenOptions = useScreenMotion();
   validateEnv();
   const [loaded,error] = useFonts(MaterialIcons.font);
   if (!loaded && !error) return null;
-  return <QueryClientProvider client={queryClient}><DriverRealtimeBridge /><Stack screenOptions={{headerShown:false}} /></QueryClientProvider>;
+  return <QueryClientProvider client={queryClient}><DriverRealtimeBridge /><Stack screenOptions={screenOptions} /></QueryClientProvider>;
 }

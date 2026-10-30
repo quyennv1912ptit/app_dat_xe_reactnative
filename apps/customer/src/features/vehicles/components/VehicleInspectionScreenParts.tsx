@@ -1,7 +1,10 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet,Text,View } from 'react-native';
 export function Metric({ label, value }: { label: string; value: string }) {
-  return <View style={styles.metric}><Text style={styles.meta}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
+ useLanguage();
+
+  return <View style={styles.metric}><Text style={styles.meta}>{i18nT(label)}</Text><Text style={styles.metricValue}>{i18nT(value)}</Text></View>;
 }
 
 export const styles = StyleSheet.create({

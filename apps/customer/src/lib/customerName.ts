@@ -1,3 +1,4 @@
+import { getLocale } from '@datxe/shared';
 export function getCustomerDisplayName(value: string | null | undefined): string {
   if (!value) return '';
 
@@ -19,5 +20,5 @@ export function getCustomerInitials(value: string | null | undefined): string {
     .slice(-2)
     .map((word) => [...word][0] ?? '')
     .join('')
-    .toLocaleUpperCase('vi-VN');
+    .toLocaleUpperCase(getLocale());
 }

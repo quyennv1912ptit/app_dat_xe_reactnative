@@ -1,1 +1,13 @@
+import { request } from '@/lib/api';
+import { driverApi } from '@/lib/driverApi';
+import { uploadDriverImage } from '@/lib/uploadImage';
+import type { DriverDocument,DriverProfile,DriverSkill } from '@datxe/shared';
 export { authenticateWithBackend,registerWithBackend } from '@datxe/shared';
+export const getDriverDocuments=driverApi.documents;
+export const getDriverProfile=driverApi.profile;
+export const getDriverVerification=driverApi.verification;
+export const getDriverSkills=driverApi.skills;
+export const uploadDocumentImage=(uri:string)=>uploadDriverImage({uri},'DRIVER_DOCUMENT');
+export const submitDocument=(body:{document_type:string;document_number:string|null;secure_url:string;public_id:string;expires_at:string|null})=>request<DriverDocument>('/driver/documents',{method:'POST',body});
+export const updateDriverLicense=(body:{license_number:string;license_class:string;years_of_experience:number;license_image_url:string|null})=>request<DriverProfile>('/driver/profile',{method:'PUT',body});
+export const updateDriverSkills=(skills:Pick<DriverSkill,'vehicle_type'|'transmission'|'license_class'>[])=>request<DriverSkill[]>('/driver/skills',{method:'PUT',body:{skills}});

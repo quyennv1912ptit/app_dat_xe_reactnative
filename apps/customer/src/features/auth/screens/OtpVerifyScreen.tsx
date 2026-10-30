@@ -1,6 +1,8 @@
-import { OtpVerificationScreen } from '@datxe/ui';
+import { useLanguage , OtpVerificationScreen } from '@datxe/ui';
 import { useOtpVerify } from '../hooks/useOtpVerify';
 export default function CustomerOtpVerifyScreen() {
+ useLanguage();
+
 const { phone, router } = useOtpVerify();
 if (!phone) return null;
 return (

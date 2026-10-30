@@ -1,3 +1,4 @@
+import { translate as i18nT,getLocale } from '@datxe/shared';
 import type { CustomerRideDetail,CustomerRideSummary,CustomerVoucher } from '@datxe/shared';
 import { borderRadius,colors,fontWeight,spacing,typography } from '@datxe/ui';
 import {
@@ -6,9 +7,9 @@ StyleSheet
 export const promoImage = require('@/assets/5._trang_ch/promo.jpg');
 
 export function getGreeting(hour: number): string {
-  if (hour < 11) return 'Chào buổi sáng';
-  if (hour < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
+  if (hour < 11) return i18nT("Chào buổi sáng");
+  if (hour < 18) return i18nT("Chào buổi chiều");
+  return i18nT("Chào buổi tối");
 }
 
 export function getRecentDestinations(rides: CustomerRideSummary[]): string[] {
@@ -16,7 +17,7 @@ export function getRecentDestinations(rides: CustomerRideSummary[]): string[] {
   for (const ride of rides) {
     if (['CANCELLED', 'NO_DRIVER_FOUND', 'EXPIRED'].includes(ride.status)) continue;
     const address = ride.dropoffAddress?.trim();
-    if (address) addresses.set(address.toLocaleLowerCase('vi-VN'), address);
+    if (address) addresses.set(address.toLocaleLowerCase(getLocale()), address);
   }
   return [...addresses.values()].slice(0, 3);
 }
@@ -41,31 +42,31 @@ export function getRideStatusLabel(status: CustomerRideDetail['status']): string
 }
 
 export function formatCurrency(amount: number): string {
-  return `${new Intl.NumberFormat('vi-VN').format(amount)}đ`;
+  return i18nT("{0}đ", {"0": new Intl.NumberFormat(getLocale()).format(amount)});
 }
 
 export function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? '—'
-    : new Intl.DateTimeFormat('vi-VN').format(date);
+    : new Intl.DateTimeFormat(getLocale()).format(date);
 }
 
 export function describeVoucher(voucher: CustomerVoucher): string {
   if (voucher.discountType === 'PERCENT') {
     const cap = voucher.maxDiscount === null
       ? ''
-      : `, tối đa ${formatCurrency(voucher.maxDiscount)}`;
-    return `Giảm ${voucher.value}%${cap} cho chuyến đi`;
+      : i18nT(", tối đa {0}", {"0": formatCurrency(voucher.maxDiscount)});
+    return i18nT("Giảm {0}%{1} cho chuyến đi", {"0": voucher.value, "1": cap});
   }
   if (voucher.discountType === 'FIXED') {
-    return `Giảm ${formatCurrency(voucher.value)} cho chuyến đi`;
+    return i18nT("Giảm {0} cho chuyến đi", {"0": formatCurrency(voucher.value)});
   }
-  return 'Ưu đãi dành cho chuyến đi của bạn';
+  return i18nT("Ưu đãi dành cho chuyến đi của bạn");
 }
 
 export function getApiErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Không tải được dữ liệu từ máy chủ.';
+  return error instanceof Error ? error.message : i18nT("Không tải được dữ liệu từ máy chủ.");
 }
 
 export const styles = StyleSheet.create({

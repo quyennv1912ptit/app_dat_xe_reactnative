@@ -1,3 +1,6 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { useState } from 'react';
 import {
 KeyboardAvoidingView,
@@ -35,6 +38,10 @@ type Props = {
 };
 
 export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome }: Props) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -56,7 +63,7 @@ export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome
 
   const handleVerify = async () => {
     if (code.replace(/\D/g, '').length !== 6) {
-      setError('Vui lòng nhập đủ 6 chữ số OTP.');
+      setError(i18nT("Vui lòng nhập đủ 6 chữ số OTP."));
       return;
     }
     setLoading(true);
@@ -66,7 +73,7 @@ export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome
       try {
         const profile = await authenticateWithBackend(role, user);
         if (profile.role !== role.toUpperCase()) {
-          throw new AuthApiError('Tài khoản này không thuộc ứng dụng đang sử dụng.', 'ROLE_MISMATCH');
+          throw new AuthApiError(i18nT("Tài khoản này không thuộc ứng dụng đang sử dụng."), 'ROLE_MISMATCH');
         }
         onHome();
       } catch (cause) {
@@ -103,12 +110,12 @@ export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome
           <AuthHero
             detail={normalizeVietnamPhoneNumber(phone)}
             icon="sms"
-            subtitle="Nhập mã xác thực 6 chữ số vừa được gửi qua SMS."
-            title="Xác thực số điện thoại"
+            subtitle={i18nT("Nhập mã xác thực 6 chữ số vừa được gửi qua SMS.")}
+            title={i18nT("Xác thực số điện thoại")}
           />
 
           <Card style={styles.codeCard}>
-            <Text style={styles.fieldLabel}>Mã OTP</Text>
+            <Text style={styles.fieldLabel}>{i18nT("Mã OTP")}</Text>
             <OtpCodeInput
               autoFocus
               onChange={(value) => {
@@ -117,16 +124,16 @@ export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome
               }}
               value={code}
             />
-            <Text style={styles.helperText}>Mã xác thực có hiệu lực trong thời gian ngắn.</Text>
+            <Text style={styles.helperText}>{i18nT("Mã xác thực có hiệu lực trong thời gian ngắn.")}</Text>
           </Card>
 
-          {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text accessibilityRole="alert" style={styles.errorText}>{i18nT(error)}</Text> : null}
 
           <Button
             disabled={loading}
-            label="Xác nhận OTP"
+            label={i18nT("Xác nhận OTP")}
             loading={loading}
-            loadingLabel="Đang xác thực..."
+            loadingLabel={i18nT("Đang xác thực...")}
             onPress={() => void handleVerify()}
             style={styles.submitButton}
           />
@@ -134,7 +141,7 @@ export function OtpVerificationScreen({ role, phone, onLogin, onRegister, onHome
           <ResendOtpButton disabled={loading} onResend={handleResend} />
 
           <Pressable accessibilityRole="button" disabled={loading} onPress={onLogin} style={styles.secondaryAction}>
-            <Text style={styles.secondaryActionText}>Đổi số điện thoại</Text>
+            <Text style={styles.secondaryActionText}>{i18nT("Đổi số điện thoại")}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -149,13 +156,13 @@ function isAccountNotFound(error: unknown): boolean {
 function getErrorMessage(error: unknown): string {
   if (error instanceof AuthApiError) return error.message;
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-  if (code.includes('invalid-verification-code')) return 'Mã OTP không đúng. Vui lòng thử lại.';
-  if (code.includes('session-expired')) return 'Mã OTP đã hết hạn. Hãy gửi lại mã mới.';
-  if (code.includes('too-many-requests')) return 'Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.';
-  return error instanceof Error ? error.message : 'Không thể xác thực lúc này. Vui lòng thử lại.';
+  if (code.includes('invalid-verification-code')) return i18nT("Mã OTP không đúng. Vui lòng thử lại.");
+  if (code.includes('session-expired')) return i18nT("Mã OTP đã hết hạn. Hãy gửi lại mã mới.");
+  if (code.includes('too-many-requests')) return i18nT("Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.");
+  return error instanceof Error ? error.message : i18nT("Không thể xác thực lúc này. Vui lòng thử lại.");
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.surface },
   flex: { flex: 1 },
   topBar: { paddingHorizontal: spacing.margin, paddingTop: spacing.spaceXs },

@@ -1,19 +1,4 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ITEMS,NotificationFilter } from '../components/NotificationsScreenParts';
-export function useNotifications() {
-const router = useRouter();
-const insets = useSafeAreaInsets();
-const [filter, setFilter] = useState<NotificationFilter>('all');
-const [readIds, setReadIds] = useState<string[]>([]);
-const filteredItems = ITEMS.filter((item) => filter === 'all' || item.category === filter);
-const unreadCount = ITEMS.filter((item) => item.unread && !readIds.includes(item.id)).length;
-const markAllRead = () => {
-    setReadIds(ITEMS.map((item) => item.id));
-  };
-const markOneRead = (id: string) => {
-    setReadIds((current) => (current.includes(id) ? current : [...current, id]));
-  };
-return { router, insets, filter, setFilter, readIds, filteredItems, unreadCount, markAllRead, markOneRead };
-}
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
+import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
+import { notificationsApi as api } from '../api';
+export function useNotifications(){const client=useQueryClient();const query=useQuery({queryKey:['driver','notifications'],queryFn:api.notifications});useRefreshOnFocus(query.refetch);const mark=useMutation({mutationFn:(id:number|null)=>id===null?api.readAllNotifications():api.readNotification(id),onSuccess:()=>client.invalidateQueries({queryKey:['driver','notifications']})});return {query,mark};}

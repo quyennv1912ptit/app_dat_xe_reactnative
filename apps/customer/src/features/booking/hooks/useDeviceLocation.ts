@@ -1,3 +1,4 @@
+import { translate as i18nT } from '@datxe/shared';
 import * as Location from 'expo-location';
 import { useState } from 'react';
 import { reverseBookingPlace } from '../api';
@@ -9,10 +10,10 @@ export function useDeviceLocation() {
     setLocating(true); setError('');
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) throw new Error('Bạn chưa cho phép truy cập vị trí. Hãy tìm địa chỉ hoặc chọn trên bản đồ.');
+      if (!permission.granted) throw new Error(i18nT("Bạn chưa cho phép truy cập vị trí. Hãy tìm địa chỉ hoặc chọn trên bản đồ."));
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       return await reverseBookingPlace({ lat: location.coords.latitude, lng: location.coords.longitude });
-    } catch (error) { setError(error instanceof Error ? error.message : 'Chưa xác định được vị trí hiện tại.'); return null; }
+    } catch (error) { setError(error instanceof Error ? error.message : i18nT("Chưa xác định được vị trí hiện tại.")); return null; }
     finally { setLocating(false); }
   };
   return { locate, locating, locationError };

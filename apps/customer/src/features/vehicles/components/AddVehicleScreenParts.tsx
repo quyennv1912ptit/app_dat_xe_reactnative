@@ -1,12 +1,21 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemeColors , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable,StyleSheet,Text,TextInput,View } from 'react-native';
 export function Field({ label, ...props }: { label: string; value: string; onChangeText: (value: string) => void; placeholder: string; autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'; keyboardType?: 'default' | 'numeric'; maxLength?: number }) {
-  return <View style={styles.group}><Text style={styles.label}>{label}</Text><TextInput {...props} style={styles.input} placeholderTextColor={colors.outline} /></View>;
+ useLanguage();
+
+ const colors=useThemeColors();
+
+  return <View style={styles.group}><Text style={styles.label}>{i18nT(label)}</Text><TextInput {...props} style={styles.input} placeholderTextColor={colors.outline} /></View>;
 }
 
 export function Choice({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={[styles.choice, active && styles.choiceActive]}><MaterialIcons name={active ? 'radio-button-checked' : 'radio-button-unchecked'} size={19} color={active ? colors.primary : colors.outline} /><Text style={[styles.choiceText, active && styles.choiceTextActive]}>{label}</Text></Pressable>;
+ useLanguage();
+
+ const colors=useThemeColors();
+
+  return <Pressable onPress={onPress} style={[styles.choice, active && styles.choiceActive]}><MaterialIcons name={active ? 'radio-button-checked' : 'radio-button-unchecked'} size={19} color={active ? colors.primary : colors.outline} /><Text style={[styles.choiceText, active && styles.choiceTextActive]}>{i18nT(label)}</Text></Pressable>;
 }
 
 export const styles = StyleSheet.create({

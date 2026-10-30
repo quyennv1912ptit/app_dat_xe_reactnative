@@ -1,3 +1,4 @@
+import { getLocale } from '@datxe/shared';
 import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet } from 'react-native';
 export type NotificationFilter = 'all' | 'trip' | 'promo' | 'vehicle';
@@ -11,7 +12,7 @@ export const category = (type: string): NotificationFilter => {
 
 export const readable = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 
-export const titleFor = (type: string) => type.replaceAll('_', ' ').toLocaleLowerCase('vi-VN').replace(/^./, (char) => char.toLocaleUpperCase('vi-VN')) || 'Thông báo';
+export const titleFor = (type: string) => type.replaceAll('_', ' ').toLocaleLowerCase(getLocale()).replace(/^./, (char) => char.toLocaleUpperCase(getLocale())) || 'Thông báo';
 
 export const bodyFor = (rawPayload: unknown) => {
   const payload = rawPayload && typeof rawPayload === 'object' ? rawPayload as Record<string, unknown> : {};

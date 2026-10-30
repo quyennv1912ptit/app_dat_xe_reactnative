@@ -1,3 +1,4 @@
+import { translate as i18nT } from '@datxe/shared';
 import type { CustomerChatMessage,CustomerRideDetail } from '@datxe/shared';
 import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,7 +27,7 @@ const applyMessages = (next: CustomerChatMessage[]) => {
   };
 const refresh = useCallback(async (initial = false) => {
     if (!rideId) {
-      setError('Thiếu mã chuyến để mở cuộc trò chuyện.');
+      setError(i18nT("Thiếu mã chuyến để mở cuộc trò chuyện."));
       setLoading(false);
       return;
     }
@@ -58,7 +59,7 @@ const refresh = useCallback(async (initial = false) => {
       }
       setError('');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không tải được cuộc trò chuyện.');
+      setError(cause instanceof Error ? cause.message : i18nT("Không tải được cuộc trò chuyện."));
     } finally {
       requestInFlight.current = false;
       setLoading(false);
@@ -76,7 +77,7 @@ const loadOlder = async () => {
       applyMessages([...merged.values()].sort((a, b) => a.id - b.id));
       setHasMore(page.hasMore);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không tải được tin nhắn cũ.');
+      setError(cause instanceof Error ? cause.message : i18nT("Không tải được tin nhắn cũ."));
     } finally {
       setLoadingOlder(false);
     }
@@ -93,7 +94,7 @@ const sendText = async () => {
       applyMessages([...merged.values()].sort((a, b) => a.id - b.id));
       setDraft('');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không gửi được tin nhắn.');
+      setError(cause instanceof Error ? cause.message : i18nT("Không gửi được tin nhắn."));
     } finally {
       setSending(false);
     }
@@ -119,7 +120,7 @@ const sendImage = async () => {
       applyMessages([...merged.values()].sort((a, b) => a.id - b.id));
       setDraft('');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không gửi được ảnh.');
+      setError(cause instanceof Error ? cause.message : i18nT("Không gửi được ảnh."));
     } finally {
       setSending(false);
     }

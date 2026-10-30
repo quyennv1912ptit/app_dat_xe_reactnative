@@ -7,3 +7,7 @@ export * from './firebase/phoneNumber';
 export * from './types';
 export * from './utils';
 export * from './ws';
+
+export * from './i18n';
+
+export * from './types/driver';

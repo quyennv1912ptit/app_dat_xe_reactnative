@@ -1,7 +1,8 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemeColors , useThemedStyles , Card,fontSize } from '@datxe/ui';
 import { CustomerTabBar } from '@/components/CustomerTabBar';
 import { HomeMap } from '@/components/map/HomeMap';
 import { HEADER_SAFETY_ACTION_WIDTH,HeaderLabeledIconButton,ScreenHeader } from '@/components/ScreenHeader';
-import { Card,colors,fontSize } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
 ActivityIndicator,
@@ -12,20 +13,26 @@ Text,
 View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { describeVoucher,formatCurrency,formatDate,getGreeting,getRideStatusLabel,promoImage,styles } from '../components/HomeScreenParts';
+import { describeVoucher,formatCurrency,formatDate,getGreeting,getRideStatusLabel,promoImage,styles as base_styles } from '../components/HomeScreenParts';
 import { useHome } from '../hooks/useHome';
 export default function HomeScreen() {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
 const { router, profile, activeRide, recentDestinations, unreadCount, loading, loadError, currentHour, currentLocation, currentCoordinates, nearbyDrivers, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking } = useHome();
 return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScreenHeader
-        title="Trang chủ"
+        title={i18nT("Trang chủ")}
         largeTitle
         sideSlotWidth={HEADER_SAFETY_ACTION_WIDTH}
         rightContent={<HeaderLabeledIconButton
           icon="shield"
-          accessibilityLabel="An toàn chuyến đi"
-          label="An toàn"
+          accessibilityLabel={i18nT("An toàn chuyến đi")}
+          label={i18nT("An toàn")}
           onPress={() => router.push({ pathname: '/support', params: { topic: 'safety' } })}
         />}
       />
@@ -38,25 +45,24 @@ return (
         <Card style={styles.greetingCard}>
           <View style={styles.greetingCopy}>
             <Text style={styles.greetingTitle}>
-              {getGreeting(currentHour)}, {greetingName}
+              {i18nT(getGreeting(currentHour))}, {greetingName}
             </Text>
             <Text style={styles.greetingMeta}>
-              Sẵn sàng cho chuyến đi an toàn hôm nay.
-            </Text>
+              {i18nT("Sẵn sàng cho chuyến đi an toàn hôm nay.")}</Text>
           </View>
           <View style={styles.greetingLocation}>
             <View style={styles.locationBadge}>
               <MaterialIcons name="location-on" size={fontSize.iconLg} color={colors.primary} />
             </View>
             <View style={styles.locationCopy}>
-              <Text style={styles.locationLabel}>ĐANG Ở</Text>
+              <Text style={styles.locationLabel}>{i18nT("ĐANG Ở")}</Text>
               <Text numberOfLines={1} style={styles.currentLocation}>
-                {locationLoading ? 'Đang xác định vị trí…' : currentLocation}
+                {i18nT(locationLoading ? 'Đang xác định vị trí…' : currentLocation)}
               </Text>
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Cập nhật vị trí hiện tại"
+              accessibilityLabel={i18nT("Cập nhật vị trí hiện tại")}
               disabled={locationLoading}
               onPress={() => void refreshLocation(true)}
               style={styles.locationRefresh}
@@ -69,10 +75,10 @@ return (
         </Card>
 
         {loading && !profile ? <ActivityIndicator color={colors.primary} /> : null}
-        {loadError ? <Text accessibilityRole="alert" style={styles.loadError}>{loadError}</Text> : null}
+        {loadError ? <Text accessibilityRole="alert" style={styles.loadError}>{i18nT(loadError)}</Text> : null}
 
         <Pressable
-          accessibilityLabel={activeRide ? 'Theo dõi chuyến đang hoạt động' : 'Nhập điểm đến để bắt đầu đặt xe'}
+          accessibilityLabel={i18nT(activeRide ? 'Theo dõi chuyến đang hoạt động' : 'Nhập điểm đến để bắt đầu đặt xe')}
           onPress={() => openBooking()}
           style={styles.searchBar}
         >
@@ -81,7 +87,7 @@ return (
             size={fontSize.icon2xl}
             color={colors.primary}
           />
-          <Text style={styles.searchPlaceholder}>{activeRide ? 'Theo dõi chuyến đang hoạt động' : 'Chọn điểm đến'}</Text>
+          <Text style={styles.searchPlaceholder}>{i18nT(activeRide ? 'Theo dõi chuyến đang hoạt động' : 'Chọn điểm đến')}</Text>
         </Pressable>
 
         <HomeMap coordinate={currentCoordinates} drivers={nearbyDrivers} />
@@ -89,21 +95,21 @@ return (
         {!activeRide && recentDestinations.length > 0 ? (
           <View style={styles.recentSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Điểm đến gần đây</Text>
-              <Text style={styles.recentHint}>Chạm để đặt lại</Text>
+              <Text style={styles.sectionTitle}>{i18nT("Điểm đến gần đây")}</Text>
+              <Text style={styles.recentHint}>{i18nT("Chạm để đặt lại")}</Text>
             </View>
             {recentDestinations.map((destination) => (
               <Pressable
                 key={destination}
                 accessibilityRole="button"
-                accessibilityLabel={`Đặt chuyến đến ${destination}`}
+                accessibilityLabel={i18nT(i18nT("Đặt chuyến đến {0}", {"0": destination}))}
                 onPress={() => openBooking(destination)}
                 style={styles.recentDestination}
               >
                 <View style={styles.recentDestinationIcon}>
                   <MaterialIcons name="place" size={fontSize.iconMd} color={colors.primary} />
                 </View>
-                <Text numberOfLines={1} style={styles.recentDestinationText}>{destination}</Text>
+                <Text numberOfLines={1} style={styles.recentDestinationText}>{i18nT(destination)}</Text>
                 <MaterialIcons name="chevron-right" size={fontSize.iconLg} color={colors.onSurfaceVariant} />
               </Pressable>
             ))}
@@ -112,7 +118,7 @@ return (
 
         {activeRide ? (
           <Card
-            accessibilityLabel={`Mở chi tiết chuyến ${activeRide.id}`}
+            accessibilityLabel={i18nT(i18nT("Mở chi tiết chuyến {0}", {"0": activeRide.id}))}
             onPress={() => router.push({ pathname: '/ride/tracking', params: { rideId: String(activeRide.id) } })}
             style={styles.tripCard}
             variant="surface"
@@ -121,17 +127,17 @@ return (
             <View style={styles.tripStatusRow}>
               <View style={styles.statusPill}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{getRideStatusLabel(activeRide.status)}</Text>
+                <Text style={styles.statusText}>{i18nT(getRideStatusLabel(activeRide.status))}</Text>
               </View>
-              <Text style={styles.tripCode}>Chuyến #{activeRide.id}</Text>
+              <Text style={styles.tripCode}>{i18nT("Chuyến #")}{' '}{i18nT(activeRide.id)}</Text>
             </View>
 
             <View style={styles.pickupBox}>
               <MaterialIcons name="trip-origin" size={fontSize.iconLg} color={colors.primary} />
               <View style={styles.pickupCopy}>
-                <Text style={styles.pickupLabel}>Điểm đón</Text>
+                <Text style={styles.pickupLabel}>{i18nT("Điểm đón")}</Text>
                 <Text style={styles.pickupValue} numberOfLines={2}>
-                  {activeRide.pickupAddress || 'Chưa có địa chỉ điểm đón'}
+                  {i18nT(activeRide.pickupAddress || 'Chưa có địa chỉ điểm đón')}
                 </Text>
               </View>
             </View>
@@ -139,19 +145,19 @@ return (
             <View style={styles.pickupBox}>
               <MaterialIcons name="location-on" size={fontSize.iconLg} color={colors.secondary} />
               <View style={styles.pickupCopy}>
-                <Text style={styles.pickupLabel}>Điểm đến</Text>
+                <Text style={styles.pickupLabel}>{i18nT("Điểm đến")}</Text>
                 <Text style={styles.pickupValue} numberOfLines={2}>
-                  {activeRide.dropoffAddress || 'Chưa có địa chỉ điểm đến'}
+                  {i18nT(activeRide.dropoffAddress || 'Chưa có địa chỉ điểm đến')}
                 </Text>
               </View>
             </View>
 
             <View style={styles.rideFareRow}>
               <Text style={styles.pickupLabel}>
-                {activeRide.finalFare === null ? 'Giá dự kiến' : 'Giá cuối cùng'}
+                {i18nT(activeRide.finalFare === null ? 'Giá dự kiến' : 'Giá cuối cùng')}
               </Text>
               <Text style={styles.rideFareValue}>
-                {formatCurrency(activeRide.finalFare ?? activeRide.estimatedFare)}
+                {i18nT(formatCurrency(activeRide.finalFare ?? activeRide.estimatedFare))}
               </Text>
             </View>
           </Card>
@@ -159,7 +165,7 @@ return (
 
         {activeVoucher ? (
           <Card
-            accessibilityLabel={`Mở ưu đãi ${activeVoucher.code}`}
+            accessibilityLabel={i18nT(i18nT("Mở ưu đãi {0}", {"0": activeVoucher.code}))}
             gradient={[
               colors.surfaceContainerLowest,
               colors.surfaceContainerLowest,
@@ -178,11 +184,11 @@ return (
                   size={fontSize.iconSm}
                   color={colors.onTertiaryFixed}
                 />
-                <Text style={styles.promoBadgeText}>Mã {activeVoucher.code}</Text>
+                <Text style={styles.promoBadgeText}>{i18nT("Mã")}{' '}{i18nT(activeVoucher.code)}</Text>
               </View>
-              <Text style={styles.promoTitle}>{describeVoucher(activeVoucher)}</Text>
+              <Text style={styles.promoTitle}>{i18nT(describeVoucher(activeVoucher))}</Text>
               <Text style={styles.promoMeta}>
-                Đơn tối thiểu {formatCurrency(activeVoucher.minimumOrderAmount)} · HSD {formatDate(activeVoucher.validTo)}
+                {i18nT("Đơn tối thiểu")}{' '}{i18nT(formatCurrency(activeVoucher.minimumOrderAmount))} · HSD {i18nT(formatDate(activeVoucher.validTo))}
               </Text>
             </View>
             <Image source={promoImage} style={styles.promoImage} />

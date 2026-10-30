@@ -1,9 +1,10 @@
+import { localizedAlert } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import type { CustomerNotification } from '@datxe/shared';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { getCustomerNotifications,getUnreadNotificationCount,markAllCustomerNotificationsRead,markCustomerNotificationRead } from '../api';
 import { NotificationFilter,category } from '../components/NotificationScreenParts';
 export function useNotification() {
@@ -24,7 +25,7 @@ const markRead = async (item: CustomerNotification) => {
       await markCustomerNotificationRead(item.id);
       await client.invalidateQueries({queryKey:['customer']});
     } catch (err) {
-      Alert.alert('Không thể đánh dấu đã đọc', err instanceof Error ? err.message : 'Vui lòng thử lại.');
+      localizedAlert(i18nT("Không thể đánh dấu đã đọc"), err instanceof Error ? err.message : i18nT("Vui lòng thử lại."));
     }
   };
 const markAll = async () => {
@@ -32,7 +33,7 @@ const markAll = async () => {
       await markAllCustomerNotificationsRead();
       await client.invalidateQueries({queryKey:['customer']});
     } catch (err) {
-      Alert.alert('Không thể cập nhật thông báo', err instanceof Error ? err.message : 'Vui lòng thử lại.');
+      localizedAlert(i18nT("Không thể cập nhật thông báo"), err instanceof Error ? err.message : i18nT("Vui lòng thử lại."));
     }
   };
 const openNotification = async (item: CustomerNotification) => {

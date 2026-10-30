@@ -12,17 +12,24 @@ export function useVehicleInspection() {
   const query = useQuery({ queryKey: ['driver', 'activeRide'], queryFn: getDriverActiveRide });
   const ride = query.data; const phase = ride && ['ARRIVED_DESTINATION', 'VEHICLE_RETURNED'].includes(ride.status) ? 'dropoff' : 'pickup';
   const existing = ride?.handoverReports.find(report => report.phase === phase.toUpperCase());
-  const [photos, setPhotos] = useState<Photo[]>([]); const [uploading, setUploading] = useState<string | null>(null);
-  const [odometer, setOdometer] = useState(''); const [fuelLevel, setFuelLevel] = useState(''); const [notes, setNotes] = useState('');
+  const scope=String(ride?.id)+':'+phase;
+  const [draft,setDraft]=useState({scope,photos:[] as Photo[],odometer:'',fuelLevel:'',notes:''});
+  if(draft.scope!==scope)setDraft({scope,photos:[],odometer:'',fuelLevel:'',notes:''});
+  const {photos,odometer,fuelLevel,notes}=draft.scope===scope?draft:{photos:[],odometer:'',fuelLevel:'',notes:''};
+  const setOdometer=(value:string)=>setDraft(previous=>previous.scope===scope?{...previous,odometer:value}:previous);
+  const setFuelLevel=(value:string)=>setDraft(previous=>previous.scope===scope?{...previous,fuelLevel:value}:previous);
+  const setNotes=(value:string)=>setDraft(previous=>previous.scope===scope?{...previous,notes:value}:previous);
+  const [uploading,setUploading]=useState<string|null>(null);
   const capture = async (angle: string) => {
     if (!ride || uploading) return;
+    const capturedScope=scope;
     try {
       if (!(await ImagePicker.requestCameraPermissionsAsync()).granted) throw new Error('Cần quyền camera để chụp ảnh bàn giao.');
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
       if (result.canceled || !result.assets[0]) return;
       setUploading(angle);
       const asset = result.assets[0]; const uploaded = await uploadDriverImage(asset, 'HANDOVER', ride.id);
-      setPhotos(current => [...current.filter(photo => photo.angle !== angle), { angle, uri: asset.uri, fileUrl: uploaded.secureUrl, publicId: uploaded.publicId }]);
+      setDraft(current => current.scope===capturedScope ? {...current,photos:[...current.photos.filter(photo => photo.angle !== angle), { angle, uri: asset.uri, fileUrl: uploaded.secureUrl, publicId: uploaded.publicId }]} : current);
     } catch (error) { Alert.alert('Chưa tải được ảnh', error instanceof Error ? error.message : 'Vui lòng thử lại.'); }
     finally { setUploading(null); }
   };

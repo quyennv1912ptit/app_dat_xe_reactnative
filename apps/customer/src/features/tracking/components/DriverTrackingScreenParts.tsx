@@ -1,4 +1,5 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { Pressable,StyleSheet,Text } from 'react-native';
 export const rideStatusLabel: Record<string, string> = {
   PENDING: 'Đang tiếp nhận yêu cầu', SEARCHING: 'Đang tìm tài xế', DRIVER_ASSIGNED: 'Tài xế đã nhận chuyến',
@@ -13,7 +14,9 @@ export const cancellableStatuses = ['PENDING', 'SEARCHING', 'DRIVER_ASSIGNED', '
 export const chatStatuses = ['DRIVER_ASSIGNED', 'DRIVER_ARRIVING', 'DRIVER_ARRIVED', 'VEHICLE_HANDOVER', 'IN_PROGRESS', 'ARRIVED_DESTINATION', 'VEHICLE_RETURNED'];
 
 export function Action({ label, onPress }: { label: string; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={styles.primary}><Text style={styles.primaryText}>{label}</Text></Pressable>;
+ useLanguage();
+
+  return <Pressable onPress={onPress} style={styles.primary}><Text style={styles.primaryText}>{i18nT(label)}</Text></Pressable>;
 }
 
 export const styles = StyleSheet.create({

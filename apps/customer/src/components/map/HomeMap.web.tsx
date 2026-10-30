@@ -1,8 +1,9 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemedStyles , useTheme , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { env } from '@/config/env';
 import { useMemo } from 'react';
 import { ImageBackground,StyleSheet,Text,View } from 'react-native';
 
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 
 import type { NearbyDriverMarker,RideCoordinates } from '@datxe/shared';
 
@@ -14,42 +15,47 @@ type HomeMapProps = {
 const mapboxToken = env.mapboxToken;
 
 export function HomeMap({ coordinate, drivers }: HomeMapProps) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
+  const {dark}=useTheme();
   const imageUrl = useMemo(() => {
     if (!coordinate || !mapboxToken) return null;
     const features = [
       {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [coordinate.lng, coordinate.lat] },
-        properties: { 'marker-color': colors.primary, 'marker-size': 'large' },
+        properties: { 'marker-color': '#2563EB', 'marker-size': 'large', 'marker-symbol': 'circle' },
       },
       ...drivers.map(({ location }) => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [location.lng, location.lat] },
-        properties: { 'marker-color': '#14A66A', 'marker-size': 'medium' },
+        properties: { 'marker-color': '#14A66A', 'marker-size': 'medium', 'marker-symbol': 'car' },
       })),
     ];
     const overlay = encodeURIComponent(JSON.stringify({ type: 'FeatureCollection', features }));
     const center = `${coordinate.lng},${coordinate.lat},13.5`;
-    return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/geojson(${overlay})/${center}/800x560?attribution=true&logo=true&access_token=${encodeURIComponent(mapboxToken)}`;
-  }, [coordinate, drivers]);
+    return `https://api.mapbox.com/styles/v1/mapbox/${dark?'dark-v11':'streets-v12'}/static/geojson(${overlay})/${center}/800x560?attribution=true&logo=true&access_token=${encodeURIComponent(mapboxToken)}`;
+  }, [coordinate, drivers, dark]);
 
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
         <View style={styles.headingCopy}>
-          <Text style={styles.title}>Tài xế quanh bạn</Text>
-          <Text style={styles.subtitle}>Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư</Text>
+          <Text style={styles.title}>{i18nT("Tài xế quanh bạn")}</Text>
+          <Text style={styles.subtitle}>{i18nT("Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư")}</Text>
         </View>
         <View style={styles.countBadge}>
           <View style={styles.countDot} />
-          <Text style={styles.countText}>{drivers.length}</Text>
+          <Text style={styles.countText}>{i18nT(drivers.length)}</Text>
         </View>
       </View>
 
       <View style={styles.mapFrame}>
         {imageUrl ? (
           <ImageBackground
-            accessibilityLabel="Bản đồ vị trí hiện tại và các tài xế đang trực tuyến gần đó"
+            accessibilityLabel={i18nT("Bản đồ vị trí hiện tại và các tài xế đang trực tuyến gần đó")}
             source={{ uri: imageUrl }}
             resizeMode="cover"
             style={StyleSheet.absoluteFill}
@@ -57,9 +63,9 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
         ) : (
           <View style={styles.mapFallback}>
             <Text style={styles.fallbackText}>
-              {coordinate
+              {i18nT(coordinate
                 ? 'Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.'
-                : 'Cho phép truy cập vị trí để xem bản đồ quanh bạn.'}
+                : 'Cho phép truy cập vị trí để xem bản đồ quanh bạn.')}
             </Text>
           </View>
         )}
@@ -68,18 +74,18 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={styles.passengerDot} />
-          <Text style={styles.legendText}>Bạn</Text>
+          <Text style={styles.legendText}>{i18nT("Bạn")}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={styles.driverDot} />
-          <Text style={styles.legendText}>Tài xế đang trực tuyến</Text>
+          <Text style={styles.legendText}>{i18nT("Tài xế đang trực tuyến")}</Text>
         </View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   section: { gap: spacing.spaceSm },
   heading: {
     flexDirection: 'row',
@@ -104,7 +110,7 @@ const styles = StyleSheet.create({
   countDot: { width: 7, height: 7, borderRadius: borderRadius.full, backgroundColor: '#14A66A' },
   countText: { ...typography.labelMd, color: colors.onSurface },
   mapFrame: {
-    height: 244,
+    height: 330,
     overflow: 'hidden',
     borderRadius: borderRadius.xl,
     backgroundColor: colors.surfaceContainerLow,

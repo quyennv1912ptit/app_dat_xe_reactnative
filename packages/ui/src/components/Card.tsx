@@ -1,7 +1,12 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemedStyles } from "../theme/ThemeProvider";
+import { useThemeColors, useTheme } from '../theme/ThemeProvider';
+import { MotionPressable } from './MotionPressable';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import {
-Pressable,
+
 StyleSheet,
 View,
 type StyleProp,
@@ -39,6 +44,13 @@ export function Card({
   accessibilityLabel,
   style,
 }: CardProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
+  const themeColors=useThemeColors();const {dark}=useTheme();
   const containerStyle = [
     styles.base,
     variant === 'surface' && styles.surface,
@@ -47,7 +59,7 @@ export function Card({
     style,
   ];
 
-  const content = gradient ? (
+  const content = gradient && !dark ? (
     <LinearGradient
       colors={gradient}
       end={gradientEnd}
@@ -65,17 +77,17 @@ export function Card({
   }
 
   return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
+    <MotionPressable
+      accessibilityLabel={i18nT(accessibilityLabel)}
       accessibilityRole="button"
       onPress={onPress}
     >
       {content}
-    </Pressable>
+    </MotionPressable>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   base: {
     borderRadius: borderRadius.xl,
     padding: spacing.spaceMd,

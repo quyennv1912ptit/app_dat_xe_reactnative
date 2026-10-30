@@ -1,4 +1,5 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemedStyles , useThemeColors , borderRadius,spacing,typography } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
@@ -13,6 +14,10 @@ const tabs = [
 export type CustomerTab = (typeof tabs)[number]['id'];
 
 export function CustomerTabBar({ active, unreadCount = 0 }: { active: CustomerTab; unreadCount?: number }) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   const router = useRouter();
 
   return (
@@ -24,7 +29,7 @@ export function CustomerTabBar({ active, unreadCount = 0 }: { active: CustomerTa
             key={tab.id}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={i18nT(tab.label)}
             onPress={() => { if (!selected) router.replace(tab.route); }}
             style={styles.item}
           >
@@ -32,7 +37,7 @@ export function CustomerTabBar({ active, unreadCount = 0 }: { active: CustomerTa
               <MaterialIcons name={tab.icon} size={24} color={selected ? colors.primary : colors.onSurfaceVariant} />
               {tab.id === 'notifications' && unreadCount > 0 ? <View style={styles.dot} /> : null}
             </View>
-            <Text style={[styles.label, selected && styles.labelActive]} numberOfLines={1}>{tab.label}</Text>
+            <Text style={[styles.label, selected && styles.labelActive]} numberOfLines={1}>{i18nT(tab.label)}</Text>
           </Pressable>
         );
       })}
@@ -40,7 +45,7 @@ export function CustomerTabBar({ active, unreadCount = 0 }: { active: CustomerTa
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   bar: {
     width: '100%',
     alignSelf: 'stretch',

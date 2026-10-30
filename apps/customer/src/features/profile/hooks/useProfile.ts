@@ -1,29 +1,20 @@
+import { localizedAlert , ProfileScreenSERVICE_SECTION } from '@datxe/ui';
+import { translate as i18nT , signOutFirebase } from '@datxe/shared';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
-import type { CustomerProfile,PaymentMethod } from '@datxe/shared';
-import { signOutFirebase } from '@datxe/shared';
-import { ProfileScreenSERVICE_SECTION } from '@datxe/ui';
+import type { CustomerProfile } from '@datxe/shared';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
-import { deleteCustomerAccount,getCustomerProfile,getCustomerRideCount,getCustomerVehicles,getCustomerVouchers,getUnreadNotificationCount,updateCustomerProfile,uploadCustomerProfileAvatar } from '../api';
-import { countLabel,getApiErrorMessage,getPaymentMethodLabel,isPastIsoDate } from '../components/ProfileScreenParts';
+import { deleteCustomerAccount,getCustomerProfile,getCustomerRideCount,getCustomerVehicles,getCustomerVouchers,getUnreadNotificationCount,uploadCustomerProfileAvatar } from '../api';
+import { countLabel,getApiErrorMessage,getPaymentMethodLabel } from '../components/ProfileScreenParts';
 export function useProfile() {
 const router = useRouter();
 const [logoutVisible, setLogoutVisible] = useState(false);
 const [deleteVisible, setDeleteVisible] = useState(false);
 const [deletingAccount, setDeletingAccount] = useState(false);
 const [deleteError, setDeleteError] = useState('');
-const [editVisible, setEditVisible] = useState(false);
-const [saving, setSaving] = useState(false);
 const [uploadingAvatar, setUploadingAvatar] = useState(false);
-const [editError, setEditError] = useState('');
-const [draftName, setDraftName] = useState('');
-const [draftEmail, setDraftEmail] = useState('');
-const [draftDateOfBirth, setDraftDateOfBirth] = useState('');
-const [draftGender, setDraftGender] = useState('');
-const [draftPaymentMethod, setDraftPaymentMethod] = useState<PaymentMethod | null>(null);
 const client=useQueryClient();
 const profileQuery=useQuery({queryKey:['customer','getCustomerProfile'],queryFn:getCustomerProfile});
 const ridesQuery=useQuery({queryKey:['customer','getCustomerRideCount'],queryFn:getCustomerRideCount});
@@ -40,16 +31,7 @@ const loading=[profileQuery,ridesQuery,vehiclesQuery,vouchersQuery].some(query=>
 const loadError=[profileQuery,ridesQuery,vehiclesQuery,vouchersQuery].find(query=>query.error)?.error?.message ?? '';
 const refresh=()=>client.invalidateQueries({queryKey:['customer']});
 const setProfile=(value: CustomerProfile)=>client.setQueryData(['customer','getCustomerProfile'],value);
-const openEdit = () => {
-    if (!profile) return;
-    setDraftName(profile.full_name ?? '');
-    setDraftEmail(profile.email ?? '');
-    setDraftDateOfBirth(profile.date_of_birth ?? '');
-    setDraftGender(profile.gender ?? '');
-    setDraftPaymentMethod(profile.default_payment_method === 'CASH' ? 'CASH' : null);
-    setEditError('');
-    setEditVisible(true);
-  };
+const openEdit=()=>router.push('/edit-profile');
 const changeAvatar = async () => {
     if (uploadingAvatar || !profile) return;
     setUploadingAvatar(true);
@@ -58,55 +40,11 @@ const changeAvatar = async () => {
       if (result.canceled || !result.assets[0]) return;
       const asset = result.assets[0];
       setProfile(await uploadCustomerProfileAvatar({ uri: asset.uri, fileName: asset.fileName, mimeType: asset.mimeType }));
-      Alert.alert('Đã cập nhật ảnh', 'Ảnh đại diện đã được lưu vào hồ sơ.');
+      localizedAlert(i18nT("Đã cập nhật ảnh"), i18nT("Ảnh đại diện đã được lưu vào hồ sơ."));
     } catch (error) {
-      Alert.alert('Không thể cập nhật ảnh', getApiErrorMessage(error));
+      localizedAlert(i18nT("Không thể cập nhật ảnh"), getApiErrorMessage(error));
     } finally {
       setUploadingAvatar(false);
-    }
-  };
-const saveProfile = async () => {
-    const fullName = draftName.trim();
-    const email = draftEmail.trim();
-    const dateOfBirth = draftDateOfBirth.trim();
-    if (!fullName) {
-      setEditError('Họ và tên không được để trống.');
-      return;
-    }
-    if (fullName.length > 255) {
-      setEditError('Họ và tên không được dài quá 255 ký tự.');
-      return;
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEditError('Email không đúng định dạng.');
-      return;
-    }
-    if (email.length > 255) {
-      setEditError('Email không được dài quá 255 ký tự.');
-      return;
-    }
-    if (dateOfBirth && !isPastIsoDate(dateOfBirth)) {
-      setEditError('Ngày sinh phải theo định dạng YYYY-MM-DD và nằm trong quá khứ.');
-      return;
-    }
-
-    setSaving(true);
-    setEditError('');
-    try {
-      const updated = await updateCustomerProfile({
-        full_name: fullName,
-        email: email || null,
-        date_of_birth: dateOfBirth || null,
-        gender: draftGender || null,
-        default_payment_method: draftPaymentMethod,
-      });
-      setProfile(updated);
-      setEditVisible(false);
-      Alert.alert('Đã cập nhật', 'Thông tin tài khoản đã được lưu.');
-    } catch (error) {
-      setEditError(getApiErrorMessage(error));
-    } finally {
-      setSaving(false);
     }
   };
 const confirmDeleteAccount = async () => {
@@ -133,7 +71,7 @@ const serviceItems = ProfileScreenSERVICE_SECTION.map((item) => {
       const count = vehicleCount;
       return {
         ...item,
-        subtitle: count === null ? 'Đang tải dữ liệu xe' : `${count} xe đã lưu`,
+        subtitle: count === null ? i18nT("Đang tải dữ liệu xe") : i18nT("{0} xe đã lưu", {"0": count}),
         badge: { label: count === null ? '…' : `${count} xe` },
       };
     }
@@ -142,10 +80,10 @@ const serviceItems = ProfileScreenSERVICE_SECTION.map((item) => {
       return {
         ...item,
         subtitle: count === null
-          ? 'Đang tải ưu đãi'
-          : count === 0 ? 'Chưa có ưu đãi khả dụng' : `${count} ưu đãi đang khả dụng`,
+          ? i18nT("Đang tải ưu đãi")
+          : count === 0 ? i18nT("Chưa có ưu đãi khả dụng") : i18nT("{0} ưu đãi đang khả dụng", {"0": count}),
         badge: {
-          label: count === null ? '…' : `${count} ưu đãi`,
+          label: count === null ? '…' : i18nT("{0} ưu đãi", {"0": count}),
           highlighted: count !== null && count > 0,
         },
       };
@@ -153,11 +91,12 @@ const serviceItems = ProfileScreenSERVICE_SECTION.map((item) => {
     if (item.id === 'payments') {
       return {
         ...item,
-        subtitle: `Mặc định: ${getPaymentMethodLabel(profile?.default_payment_method ?? null)}`,
+        route:'/payment-methods',
+        subtitle: i18nT("Mặc định: {0}", {"0": getPaymentMethodLabel(profile?.default_payment_method ?? null)}),
       };
     }
     return item;
   });
 
-return { router, profile, unreadCount, loading, loadError, refresh, logoutVisible, setLogoutVisible, deleteVisible, setDeleteVisible, deletingAccount, deleteError, setDeleteError, editVisible, setEditVisible, saving, uploadingAvatar, editError, draftName, setDraftName, draftEmail, setDraftEmail, draftDateOfBirth, setDraftDateOfBirth, draftGender, setDraftGender, draftPaymentMethod, setDraftPaymentMethod, openEdit, changeAvatar, saveProfile, confirmDeleteAccount, profileStats, serviceItems };
+return { router, profile, unreadCount, loading, loadError, refresh, logoutVisible, setLogoutVisible, deleteVisible, setDeleteVisible, deletingAccount, deleteError, setDeleteError, uploadingAvatar, openEdit, changeAvatar, confirmDeleteAccount, profileStats, serviceItems };
 }

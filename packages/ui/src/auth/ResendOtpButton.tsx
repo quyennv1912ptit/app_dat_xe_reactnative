@@ -1,3 +1,6 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { useEffect,useState } from 'react';
 import { Pressable,StyleSheet,Text } from 'react-native';
 
@@ -10,6 +13,10 @@ type Props = {
 };
 
 export function ResendOtpButton({ onResend, disabled = false, delaySeconds = 30 }: Props) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
   const [secondsLeft, setSecondsLeft] = useState(delaySeconds);
   const [sending, setSending] = useState(false);
 
@@ -40,13 +47,13 @@ export function ResendOtpButton({ onResend, disabled = false, delaySeconds = 30 
       style={styles.button}
     >
       <Text style={[styles.label, isDisabled && styles.labelDisabled]}>
-        {sending ? 'Đang gửi mã...' : secondsLeft > 0 ? `Gửi lại mã sau ${secondsLeft}s` : 'Gửi lại mã OTP'}
+        {i18nT(sending ? 'Đang gửi mã...' : secondsLeft > 0 ? i18nT("Gửi lại mã sau {0}s", {"0": secondsLeft}) : 'Gửi lại mã OTP')}
       </Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   button: {
     minHeight: 44,
     alignItems: 'center',

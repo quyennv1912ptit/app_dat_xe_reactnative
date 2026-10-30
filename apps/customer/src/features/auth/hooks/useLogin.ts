@@ -1,4 +1,4 @@
-import { AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,sendPhoneCode,signInWithFacebook,signInWithGoogle,toInternationalPhoneNumber } from '@datxe/shared';
+import { translate as i18nT , AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,sendPhoneCode,signInWithFacebook,signInWithGoogle,toInternationalPhoneNumber } from '@datxe/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SignInMethod,getErrorMessage,isAccountNotFound } from '../components/LoginScreenParts';
@@ -10,7 +10,7 @@ const [busy, setBusy] = useState<SignInMethod>(null);
 const [error, setError] = useState('');
 const continueWithPhone = async () => {
     if (!isValidInternationalPhoneNumber(phone, country)) {
-      setError(`Vui lòng nhập số điện thoại ${country.name} hợp lệ.`);
+      setError(i18nT("Vui lòng nhập số điện thoại {0} hợp lệ.", {"0": country.name}));
       return;
     }
     setBusy('phone');
@@ -37,7 +37,7 @@ const continueWithSocial = async (method: Exclude<SignInMethod, 'phone' | null>)
       try {
         const profile = await authenticateWithBackend('customer', user);
         if (profile.role !== 'CUSTOMER') {
-          throw new AuthApiError('Tài khoản này không phải tài khoản khách hàng.', 'ROLE_MISMATCH');
+          throw new AuthApiError(i18nT("Tài khoản này không phải tài khoản khách hàng."), 'ROLE_MISMATCH');
         }
         if (!profile.phoneNumber) {
           router.replace('/(auth)/add-phone-number' as never);

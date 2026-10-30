@@ -1,5 +1,5 @@
-import { toInternationalPhoneNumber } from '@datxe/shared';
-import { AuthBackButton,AuthHero,Button,Card,OtpCodeInput,PhoneNumberInput,ResendOtpButton } from '@datxe/ui';
+import { translate as i18nT , toInternationalPhoneNumber } from '@datxe/shared';
+import { useLanguage , useThemedStyles , AuthBackButton,AuthHero,Button,Card,OtpCodeInput,PhoneNumberInput,ResendOtpButton } from '@datxe/ui';
 import {
 KeyboardAvoidingView,
 Platform,
@@ -9,9 +9,13 @@ Text,
 View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { styles } from '../components/AddPhoneNumberScreenParts';
+import { styles as base_styles } from '../components/AddPhoneNumberScreenParts';
 import { useAddPhoneNumber } from '../hooks/useAddPhoneNumber';
 export default function AddPhoneNumberScreen() {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
 const { user, router, accountProvider, country, setCountry, phone, setPhone, otp, setOtp, otpStep, invalid, setInvalid, submitting, error, setError, notice, setNotice, onChangePhone, onSubmit, resendCode, switchAccount, changePhone } = useAddPhoneNumber();
 if (!user) return null;
 return (
@@ -34,15 +38,15 @@ return (
           <AuthHero
             detail={otpStep ? toInternationalPhoneNumber(phone, country) : undefined}
             icon={otpStep ? 'sms' : 'phone-android'}
-            subtitle={otpStep
+            subtitle={i18nT(otpStep
               ? 'Nhập mã xác thực 6 chữ số vừa được gửi qua SMS.'
-              : 'Liên kết số điện thoại đã xác thực với tài khoản khách hàng của bạn.'}
-            title={otpStep ? 'Xác thực số điện thoại' : 'Thêm số điện thoại'}
+              : 'Liên kết số điện thoại đã xác thực với tài khoản khách hàng của bạn.')}
+            title={i18nT(otpStep ? 'Xác thực số điện thoại' : 'Thêm số điện thoại')}
           />
 
           <View style={styles.connectedPill}>
             <View style={styles.connectedDot} />
-            <Text style={styles.connectedText}>Tài khoản {accountProvider} đã kết nối</Text>
+            <Text style={styles.connectedText}>{i18nT("Tài khoản")}{' '}{i18nT(accountProvider)} {i18nT("đã kết nối")}</Text>
           </View>
 
           <Card style={styles.formCard}>
@@ -52,7 +56,7 @@ return (
                   country={country}
                   disabled={submitting}
                   invalid={invalid}
-                  label="Số điện thoại nhận OTP"
+                  label={i18nT("Số điện thoại nhận OTP")}
                   onChangeText={onChangePhone}
                   onSelectCountry={(value) => {
                     setCountry(value);
@@ -63,11 +67,11 @@ return (
                   }}
                   value={phone}
                 />
-                <Text style={styles.helperText}>Chúng tôi sẽ gửi mã xác thực qua SMS.</Text>
+                <Text style={styles.helperText}>{i18nT("Chúng tôi sẽ gửi mã xác thực qua SMS.")}</Text>
               </>
             ) : (
               <>
-                <Text style={styles.fieldLabel}>Mã OTP gồm 6 chữ số</Text>
+                <Text style={styles.fieldLabel}>{i18nT("Mã OTP gồm 6 chữ số")}</Text>
                 <OtpCodeInput
                   autoFocus
                   disabled={submitting}
@@ -78,19 +82,19 @@ return (
                   }}
                   value={otp}
                 />
-                <Text style={styles.helperText}>Bạn có thể dán mã OTP hoặc chọn mã được gợi ý từ SMS.</Text>
+                <Text style={styles.helperText}>{i18nT("Bạn có thể dán mã OTP hoặc chọn mã được gợi ý từ SMS.")}</Text>
               </>
             )}
 
-            {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-            {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
+            {error ? <Text accessibilityRole="alert" style={styles.errorText}>{i18nT(error)}</Text> : null}
+            {notice ? <Text style={styles.noticeText}>{i18nT(notice)}</Text> : null}
 
             <Button
               disabled={submitting}
               icon="arrow-forward"
-              label={otpStep ? 'Xác nhận và liên kết số' : 'Gửi mã OTP'}
+              label={i18nT(otpStep ? 'Xác nhận và liên kết số' : 'Gửi mã OTP')}
               loading={submitting}
-              loadingLabel={otpStep ? 'Đang xác thực...' : 'Đang gửi mã...'}
+              loadingLabel={i18nT(otpStep ? 'Đang xác thực...' : 'Đang gửi mã...')}
               onPress={() => void onSubmit()}
               style={styles.submitButton}
             />
@@ -99,7 +103,7 @@ return (
               <>
                 <ResendOtpButton disabled={submitting} onResend={resendCode} />
                 <Pressable accessibilityRole="button" disabled={submitting} onPress={changePhone} style={styles.secondaryAction}>
-                  <Text style={styles.secondaryActionText}>Đổi số điện thoại</Text>
+                  <Text style={styles.secondaryActionText}>{i18nT("Đổi số điện thoại")}</Text>
                 </Pressable>
               </>
             ) : null}
@@ -111,7 +115,7 @@ return (
             onPress={() => void switchAccount()}
             style={styles.switchAccount}
           >
-            <Text style={styles.switchAccountText}>Đăng nhập bằng tài khoản khác</Text>
+            <Text style={styles.switchAccountText}>{i18nT("Đăng nhập bằng tài khoản khác")}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

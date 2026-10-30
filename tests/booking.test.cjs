@@ -10,7 +10,7 @@ function load(file, mocks = {}) {
   const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? require(name) });
+  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? (name === '@datxe/shared' ? require('./i18n-loader.cjs') : require(name)) });
   return exports;
 }
 const utils = load('bookingUtils.ts');

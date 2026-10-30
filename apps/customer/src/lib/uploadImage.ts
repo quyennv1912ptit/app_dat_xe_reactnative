@@ -1,6 +1,6 @@
+import { translate as i18nT , AuthApiError } from '@datxe/shared';
 import { request } from '@/lib/api';
 import type { CustomerImageFile } from '@datxe/shared';
-import { AuthApiError } from '@datxe/shared';
 import { Platform } from 'react-native';
 export async function uploadCustomerImage(
   file: CustomerImageFile,
@@ -42,7 +42,7 @@ export async function uploadCustomerImage(
       body: form,
     });
   } catch {
-    throw new AuthApiError('Không kết nối được máy chủ tải ảnh.', 'UPLOAD_NETWORK_ERROR');
+    throw new AuthApiError(i18nT("Không kết nối được máy chủ tải ảnh."), 'UPLOAD_NETWORK_ERROR');
   }
   const uploaded = await result.json() as { secure_url?: string; public_id?: string; error?: { message?: string } };
   if (!result.ok || !uploaded.secure_url || !uploaded.public_id) {

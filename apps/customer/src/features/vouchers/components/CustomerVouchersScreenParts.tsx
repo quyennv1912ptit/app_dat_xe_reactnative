@@ -1,8 +1,9 @@
+import { translate as i18nT , getLocale } from '@datxe/shared';
 import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet } from 'react-native';
-export const money = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)} đ`;
+export const money = (amount: number) => i18nT("{0} đ", {"0": new Intl.NumberFormat(getLocale()).format(amount)});
 
-export const date = (value: string) => new Date(value).toLocaleDateString('vi-VN');
+export const date = (value: string) => new Date(value).toLocaleDateString(getLocale());
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },

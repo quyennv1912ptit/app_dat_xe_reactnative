@@ -1,3 +1,6 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { useState } from 'react';
 import { StyleSheet,Text,TextInput,View,type TextInputProps } from 'react-native';
 
@@ -16,8 +19,12 @@ export function OtpCodeInput({
   onChange,
   autoFocus = false,
   disabled = false,
-  accessibilityLabel = 'Mã xác thực 6 chữ số',
+  accessibilityLabel = i18nT("Mã xác thực 6 chữ số"),
 }: Props) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
   const [focused, setFocused] = useState(false);
   const activeIndex = Math.min(value.length, 5);
 
@@ -34,12 +41,12 @@ export function OtpCodeInput({
               disabled && styles.codeBoxDisabled,
             ]}
           >
-            <Text style={styles.codeDigit}>{value[index] ?? ''}</Text>
+            <Text style={styles.codeDigit}>{i18nT(value[index] ?? '')}</Text>
           </View>
         ))}
       </View>
       <TextInput
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={i18nT(accessibilityLabel)}
         autoComplete="sms-otp"
         autoFocus={autoFocus}
         caretHidden
@@ -58,7 +65,7 @@ export function OtpCodeInput({
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   container: {
     width: '100%',
     maxWidth: spacing.otpMaxWidth,

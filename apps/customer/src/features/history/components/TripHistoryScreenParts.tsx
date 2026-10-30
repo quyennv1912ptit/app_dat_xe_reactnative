@@ -1,3 +1,4 @@
+import { translate as i18nT , getLocale } from '@datxe/shared';
 import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet } from 'react-native';
 export type Filter = 'all' | 'completed' | 'cancelled';
@@ -8,7 +9,7 @@ export const labelForStatus: Record<string, string> = {
   VEHICLE_RETURNED: 'Đã trả xe', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy', NO_DRIVER_FOUND: 'Không tìm được tài xế', EXPIRED: 'Hết hạn',
 };
 
-export const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
+export const money = (value: number) => i18nT("{0} đ", {"0": new Intl.NumberFormat(getLocale()).format(value)});
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },

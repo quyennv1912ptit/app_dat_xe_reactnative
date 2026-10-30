@@ -1,11 +1,10 @@
 import type { RideCoordinates } from '@datxe/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { reverseBookingPlace } from '../api';
 import { DEFAULT_MAP_CENTER } from '../bookingUtils';
 import { useBookingDraft } from '../store';
-import { useDebouncedValue } from './useDebouncedValue';
 import { useDeviceLocation } from './useDeviceLocation';
 
 export function useMapPicker() {
@@ -16,11 +15,23 @@ export function useMapPicker() {
   const [center, setCenter] = useState(draft[kind]?.coordinate ?? draft.pickup?.coordinate ?? DEFAULT_MAP_CENTER);
   const [point, setPoint] = useState<RideCoordinates | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [mapMoving, setMapMoving] = useState(false);
+  const [mapMoving, updateMapMoving] = useState(false);
   const pointKey = point ? `${point.lat.toFixed(5)},${point.lng.toFixed(5)}` : '';
-  const debouncedKey = useDebouncedValue(pointKey, 450);
-  const moving = pointKey !== debouncedKey;
-  const query = useQuery({ queryKey: ['customer', 'reversePlace', debouncedKey], queryFn: ({ signal }) => { const [lat, lng] = debouncedKey.split(',').map(Number); return reverseBookingPlace({ lat, lng }, signal); }, enabled: mapReady && Boolean(debouncedKey) && !moving, retry: false });
+  const [selection, setSelection] = useState<{ key: string; point: RideCoordinates } | null>(null);
+  useEffect(() => {
+    if (mapMoving || !point || !mapReady) return;
+    const timer = setTimeout(() => setSelection(previous => previous?.key === pointKey ? previous : { key: pointKey, point }), 600);
+    return () => clearTimeout(timer);
+  }, [mapMoving, point, pointKey, mapReady]);
+  const setMapMoving = useCallback((value: boolean) => updateMapMoving(value), []);
+  const moving = !selection || pointKey !== selection.key;
+  const query = useQuery({
+    queryKey: ['map-picker-address', selection?.key],
+    queryFn: ({ signal }) => reverseBookingPlace(selection!.point, signal),
+    enabled: Boolean(selection), staleTime: Infinity, gcTime: 300_000,
+    retry: false, retryOnMount: false, refetchOnMount: false,
+    refetchOnWindowFocus: false, refetchOnReconnect: false,
+  });
   const device = useDeviceLocation();
   const recenter = async () => { const place = await device.locate(); if (place) setCenter(place.coordinate); };
   const movePin = useCallback((next: RideCoordinates) => setPoint(previous => previous && Math.abs(previous.lat - next.lat) < 0.000005 && Math.abs(previous.lng - next.lng) < 0.000005 ? previous : next), []);

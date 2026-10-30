@@ -1,7 +1,8 @@
+import { localizedAlert } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { confirmCustomerHandover,getCustomerRide } from '../api';
 export function useVehicleInspection() {
 const router = useRouter();
@@ -11,7 +12,7 @@ const phase = (Array.isArray(params.phase) ? params.phase[0] : params.phase) ===
 const query = useQuery({queryKey:['customer','getCustomerRide',rideId],queryFn:()=>getCustomerRide(rideId),enabled:rideId>0});
 const ride = query.data;
 const loading = query.isLoading;
-const error = !rideId ? 'Thiếu mã chuyến.' : query.error?.message ?? '';
+const error = !rideId ? i18nT("Thiếu mã chuyến.") : query.error?.message ?? '';
 const [saving,setSaving] = useState(false);
 const report = ride?.handoverReports.find(item=>item.phase===phase);
 const refresh = () => query.refetch();
@@ -21,9 +22,9 @@ const confirm = async () => {
     try {
       await confirmCustomerHandover(rideId, phase === 'PICKUP' ? 'pickup' : 'dropoff');
       await refresh();
-      Alert.alert('Đã xác nhận', 'Xác nhận bàn giao đã được ghi nhận trên chuyến đi.', [{ text: 'Đóng', onPress: () => router.back() }]);
+      localizedAlert(i18nT("Đã xác nhận"), i18nT("Xác nhận bàn giao đã được ghi nhận trên chuyến đi."), [{ text: 'Đóng', onPress: () => router.back() }]);
     } catch (err) {
-      Alert.alert('Không thể xác nhận', err instanceof Error ? err.message : 'Vui lòng thử lại.');
+      localizedAlert(i18nT("Không thể xác nhận"), err instanceof Error ? err.message : i18nT("Vui lòng thử lại."));
     } finally {
       setSaving(false);
     }

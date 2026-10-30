@@ -1,3 +1,7 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemeColors } from "../theme/ThemeProvider";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo,useState } from 'react';
 import {
@@ -37,8 +41,14 @@ export function PhoneNumberInput({
   label,
   disabled = false,
   invalid = false,
-  accessibilityLabel = 'Số điện thoại',
+  accessibilityLabel = i18nT("Số điện thoại"),
 }: Props) {
+ const language = useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
   const [pickerVisible, setPickerVisible] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -46,11 +56,11 @@ export function PhoneNumberInput({
     const query = normalizeSearch(search);
     if (!query) return PHONE_COUNTRIES;
     return PHONE_COUNTRIES.filter((item) =>
-      normalizeSearch(item.name).includes(query)
+      normalizeSearch(i18nT(item.name)).includes(query)
       || item.iso2.toLowerCase().includes(query)
       || item.dialCode.includes(query),
     );
-  }, [search]);
+  }, [search, language]);
 
   const closePicker = () => {
     Keyboard.dismiss();
@@ -65,10 +75,10 @@ export function PhoneNumberInput({
 
   return (
     <>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={styles.label}>{i18nT(label)}</Text> : null}
       <View style={[styles.inputRow, invalid && styles.inputRowInvalid]}>
         <Pressable
-          accessibilityLabel={`Chọn quốc gia, hiện tại ${country.name} ${country.dialCode}`}
+          accessibilityLabel={i18nT(i18nT("Chọn quốc gia, hiện tại {0} {1}", {"0": country.name, "1": country.dialCode}))}
           accessibilityRole="button"
           accessibilityState={{ disabled }}
           disabled={disabled}
@@ -78,26 +88,26 @@ export function PhoneNumberInput({
           }}
           style={styles.countryButton}
         >
-          <Text style={styles.flag}>{country.flag}</Text>
-          <Text style={styles.dialCode}>{country.dialCode}</Text>
+          <Text style={styles.flag}>{i18nT(country.flag)}</Text>
+          <Text style={styles.dialCode}>{i18nT(country.dialCode)}</Text>
           <MaterialIcons color={colors.onSurfaceVariant} name="arrow-drop-down" size={fontSize.iconXl} />
         </Pressable>
         <View style={styles.divider} />
         <TextInput
-          accessibilityLabel={accessibilityLabel}
+          accessibilityLabel={i18nT(accessibilityLabel)}
           autoComplete="off"
           editable={!disabled}
           keyboardType="phone-pad"
           maxLength={country.maxLength + country.groups.length}
           onChangeText={(text) => onChangeText(text.replace(/\D/g, '').slice(0, country.maxLength))}
-          placeholder={country.example}
+          placeholder={i18nT(country.example)}
           placeholderTextColor={colors.outline70}
           style={styles.phoneInput}
           value={formatNationalPhoneNumber(value, country)}
         />
         {value ? (
           <Pressable
-            accessibilityLabel="Xóa số đã nhập"
+            accessibilityLabel={i18nT("Xóa số đã nhập")}
             accessibilityRole="button"
             disabled={disabled}
             onPress={() => onChangeText('')}
@@ -117,7 +127,7 @@ export function PhoneNumberInput({
       >
         <View style={styles.modalRoot}>
           <Pressable
-            accessibilityLabel="Đóng danh sách quốc gia"
+            accessibilityLabel={i18nT("Đóng danh sách quốc gia")}
             accessibilityRole="button"
             onPress={closePicker}
             style={StyleSheet.absoluteFill}
@@ -125,9 +135,9 @@ export function PhoneNumberInput({
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Chọn quốc gia hoặc vùng lãnh thổ</Text>
+              <Text style={styles.sheetTitle}>{i18nT("Chọn quốc gia hoặc vùng lãnh thổ")}</Text>
               <Pressable
-                accessibilityLabel="Đóng"
+                accessibilityLabel={i18nT("Đóng")}
                 accessibilityRole="button"
                 onPress={closePicker}
                 style={styles.closeButton}
@@ -139,11 +149,11 @@ export function PhoneNumberInput({
             <View style={styles.searchRow}>
               <MaterialIcons color={colors.onSurfaceVariant} name="search" size={fontSize.iconXl} />
               <TextInput
-                accessibilityLabel="Tìm quốc gia hoặc mã gọi"
+                accessibilityLabel={i18nT("Tìm quốc gia hoặc mã gọi")}
                 autoCapitalize="none"
                 autoCorrect={false}
                 onChangeText={setSearch}
-                placeholder="Tìm tên hoặc mã gọi"
+                placeholder={i18nT("Tìm tên hoặc mã gọi")}
                 placeholderTextColor={colors.outline70}
                 style={styles.searchInput}
                 value={search}
@@ -162,15 +172,15 @@ export function PhoneNumberInput({
                   onPress={() => selectCountry(item)}
                   style={styles.countryRow}
                 >
-                  <Text style={styles.rowFlag}>{item.flag}</Text>
-                  <Text numberOfLines={1} style={styles.countryName}>{item.name}</Text>
-                  <Text style={styles.rowDialCode}>{item.dialCode}</Text>
+                  <Text style={styles.rowFlag}>{i18nT(item.flag)}</Text>
+                  <Text numberOfLines={1} style={styles.countryName}>{i18nT(item.name)}</Text>
+                  <Text style={styles.rowDialCode}>{i18nT(item.dialCode)}</Text>
                   {item.iso2 === country.iso2 ? (
                     <MaterialIcons color={colors.primary} name="check" size={fontSize.iconLg} />
                   ) : null}
                 </Pressable>
               )}
-              ListEmptyComponent={<Text style={styles.emptyText}>Không tìm thấy quốc gia phù hợp.</Text>}
+              ListEmptyComponent={<Text style={styles.emptyText}>{i18nT("Không tìm thấy quốc gia phù hợp.")}</Text>}
             />
           </View>
         </View>
@@ -188,7 +198,7 @@ function normalizeSearch(value: string): string {
     .replace(/đ/g, 'd');
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   label: { ...typography.labelLg, color: colors.onSurface, marginBottom: spacing.gap1_5 },
   inputRow: {
     minHeight: spacing.inputHeight,

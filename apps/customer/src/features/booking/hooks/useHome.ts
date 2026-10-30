@@ -1,3 +1,4 @@
+import { translate as i18nT } from '@datxe/shared';
 import { getCustomerDisplayName } from '@/lib/customerName';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import type { RideCoordinates } from '@datxe/shared';
@@ -10,15 +11,19 @@ Linking
 } from 'react-native';
 import { getActiveCustomerRide,getCustomerProfile,getCustomerRides,getCustomerVouchers,getNearbyCustomerDrivers,getUnreadNotificationCount } from '../api';
 import { getRecentDestinations } from '../components/HomeScreenParts';
+let cachedLocation: { coordinate: RideCoordinates; label: string; updatedAt: number } | null = null;
 export function useHome() {
 const router = useRouter();
 const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
-const [currentLocation, setCurrentLocation] = useState('Đang xác định vị trí…');
-const [currentCoordinates, setCurrentCoordinates] = useState<RideCoordinates | null>(null);
-const [locationLoading, setLocationLoading] = useState(true);
+const [currentLocation, setCurrentLocation] = useState(cachedLocation?.label ?? 'Đang xác định vị trí…');
+const [currentCoordinates, setCurrentCoordinates] = useState<RideCoordinates | null>(cachedLocation?.coordinate ?? null);
+const [locationLoading, setLocationLoading] = useState(!cachedLocation);
 const locationPermissionRequested = useRef(false);
+const locationBusy = useRef(false);
 const refreshLocation = useCallback(async (requestPermission = false) => {
-    setLocationLoading(true);
+    if (locationBusy.current || (!requestPermission && cachedLocation && Date.now() - cachedLocation.updatedAt < 30000)) return;
+    locationBusy.current = true;
+    setLocationLoading(!cachedLocation);
     try {
       let permission = await Location.getForegroundPermissionsAsync();
       if (!permission.granted && permission.canAskAgain && (requestPermission || !locationPermissionRequested.current)) {
@@ -27,41 +32,49 @@ const refreshLocation = useCallback(async (requestPermission = false) => {
       }
 
       if (!permission.granted) {
+        cachedLocation = null;
         setCurrentCoordinates(null);
         if (requestPermission && !permission.canAskAgain) await Linking.openSettings();
         setCurrentLocation(permission.canAskAgain
-          ? 'Cho phép vị trí để xem khu vực hiện tại'
-          : 'Bật quyền vị trí trong cài đặt');
+          ? i18nT("Cho phép vị trí để xem khu vực hiện tại")
+          : i18nT("Bật quyền vị trí trong cài đặt"));
         return;
       }
 
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCurrentCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude });
+      const coordinate = { lat: position.coords.latitude, lng: position.coords.longitude };
+      if (cachedLocation && Math.hypot((coordinate.lat - cachedLocation.coordinate.lat) * 111320, (coordinate.lng - cachedLocation.coordinate.lng) * 111320 * Math.cos(coordinate.lat * Math.PI / 180)) < 20) {
+        cachedLocation.updatedAt = Date.now();
+        return;
+      }
+      setCurrentCoordinates(coordinate);
       const places = await Location.reverseGeocodeAsync(position.coords).catch(() => []);
       const place = places[0];
       const placeParts = [place?.district, place?.city ?? place?.subregion, place?.region]
         .filter((part): part is string => Boolean(part?.trim()));
       const uniquePlaceParts = [...new Set(placeParts)];
-      setCurrentLocation(
+      const label = (
         uniquePlaceParts.slice(0, 2).join(', ')
           || place?.name
-          || `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+          || `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
       );
+      cachedLocation = { coordinate, label, updatedAt: Date.now() };
+      setCurrentLocation(label);
     } catch {
-      setCurrentCoordinates(null);
-      setCurrentLocation('Chưa xác định được vị trí');
+      if (!cachedLocation) setCurrentLocation(i18nT("Chưa xác định được vị trí"));
     } finally {
+      locationBusy.current = false;
       setLocationLoading(false);
     }
   }, []);
-const profileQuery=useQuery({queryKey:['customer','getCustomerProfile'],queryFn:getCustomerProfile});
+const profileQuery=useQuery({queryKey:['customer','getCustomerProfile'],queryFn:getCustomerProfile,staleTime:300000});
 const activeQuery=useQuery({queryKey:['customer','getActiveCustomerRide'],queryFn:getActiveCustomerRide});
-const voucherQuery=useQuery({queryKey:['customer','getCustomerVouchers'],queryFn:getCustomerVouchers});
+const voucherQuery=useQuery({queryKey:['customer','getCustomerVouchers'],queryFn:getCustomerVouchers,staleTime:120000});
 const unreadQuery=useQuery({queryKey:['customer','getUnreadNotificationCount'],queryFn:getUnreadNotificationCount});
 const historyQuery=useQuery({queryKey:['customer','getCustomerRides','recent'],queryFn:()=>getCustomerRides(0,12)});
 const nearbyQuery=useQuery({queryKey:['customer','getNearbyCustomerDrivers',currentCoordinates],queryFn:()=>getNearbyCustomerDrivers(currentCoordinates!),enabled:Boolean(currentCoordinates),refetchInterval:30000});
-useRefreshOnFocus(profileQuery.refetch);useRefreshOnFocus(activeQuery.refetch);useRefreshOnFocus(voucherQuery.refetch);useRefreshOnFocus(unreadQuery.refetch);useRefreshOnFocus(historyQuery.refetch);
-useFocusEffect(useCallback(()=>{void refreshLocation();const timer=setInterval(()=>setCurrentHour(new Date().getHours()),30000);return()=>clearInterval(timer);},[refreshLocation]));
+useRefreshOnFocus(activeQuery.refetch);
+useFocusEffect(useCallback(()=>{void refreshLocation();const timer=setInterval(()=>{setCurrentHour(new Date().getHours());void refreshLocation();},30000);return()=>clearInterval(timer);},[refreshLocation]));
 const profile=profileQuery.data;
 const activeRide=activeQuery.data;
 const vouchers=voucherQuery.data ?? [];
@@ -72,7 +85,7 @@ const loading=[profileQuery,activeQuery,voucherQuery,unreadQuery].some(query=>qu
 const loadError=[profileQuery,activeQuery,voucherQuery,unreadQuery].find(query=>query.error)?.error?.message ?? '';
 const customerName = getCustomerDisplayName(profile?.full_name) || 'bạn';
 const greetingName = customerName === 'bạn'
-    ? customerName
+    ? i18nT('bạn')
     : customerName.split(/\s+/).pop() || customerName;
 const activeVoucher = vouchers[0];
 const openBooking = (destination?: string) => {

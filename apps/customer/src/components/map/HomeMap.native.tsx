@@ -1,10 +1,11 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemeColors , useThemedStyles, useThemeColor , useTheme , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { env } from '@/config/env';
 import { initializeMapbox } from '@/lib/initializeMapbox';
-import Mapbox,{ Camera,CircleLayer,MapView,ShapeSource } from '@rnmapbox/maps';
+import Mapbox,{ Camera,CircleLayer,MapView,ShapeSource,PointAnnotation } from '@rnmapbox/maps';
 import { useEffect,useMemo,useState } from 'react';
 import { ActivityIndicator,StyleSheet,Text,View } from 'react-native';
 
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 
 import type { NearbyDriverMarker,RideCoordinates } from '@datxe/shared';
 
@@ -24,6 +25,14 @@ type MapMarkerFeature = {
 const mapboxToken = env.mapboxToken;
 
 export function HomeMap({ coordinate, drivers }: HomeMapProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+ const themeColor=useThemeColor();
+
+  const {dark}=useTheme();
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'unavailable'>(mapboxToken ? 'loading' : 'unavailable');
   const shape = useMemo(() => {
     const features: MapMarkerFeature[] = [];
@@ -59,21 +68,21 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
   }, []);
 
   const fallbackMessage = !coordinate
-    ? 'Cho phép truy cập vị trí để xem bản đồ quanh bạn.'
+    ? i18nT("Cho phép truy cập vị trí để xem bản đồ quanh bạn.")
     : mapStatus === 'unavailable'
-      ? 'Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.'
-      : 'Đang tải bản đồ…';
+      ? i18nT("Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.")
+      : i18nT("Đang tải bản đồ…");
 
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
         <View style={styles.headingCopy}>
-          <Text style={styles.title}>Tài xế quanh bạn</Text>
-          <Text style={styles.subtitle}>Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư</Text>
+          <Text style={styles.title}>{i18nT("Tài xế quanh bạn")}</Text>
+          <Text style={styles.subtitle}>{i18nT("Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư")}</Text>
         </View>
         <View style={styles.countBadge}>
           <View style={styles.countDot} />
-          <Text style={styles.countText}>{drivers.length}</Text>
+          <Text style={styles.countText}>{i18nT(drivers.length)}</Text>
         </View>
       </View>
 
@@ -81,8 +90,9 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
         {coordinate && mapStatus === 'ready' ? (
           <MapView
             style={StyleSheet.absoluteFill}
-            styleURL="mapbox://styles/mapbox/streets-v11"
+            styleURL={dark?'mapbox://styles/mapbox/dark-v11':'mapbox://styles/mapbox/streets-v11'}
             compassEnabled
+            scaleBarEnabled={false}
             attributionEnabled
             logoEnabled
             onMapLoadingError={() => setMapStatus('unavailable')}
@@ -93,24 +103,16 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
               animationMode="easeTo"
               animationDuration={500}
             />
+            {drivers.map((driver, index) => <PointAnnotation key={String(index)} id={'driver-' + index} coordinate={[driver.location.lng, driver.location.lat]}><View style={{ backgroundColor: themeColor("#FFFFFF","backgroundColor"), borderRadius: 20, padding: 6, borderWidth: 2, borderColor: themeColor("#14A66A","borderColor") }}><Text style={{ fontSize: 22 }}>🚘</Text></View></PointAnnotation>)}
             <ShapeSource id="home-nearby-map-markers" shape={shape}>
-              <CircleLayer
-                id="home-nearby-drivers"
-                filter={['==', ['get', 'markerType'], 'driver']}
-                style={{
-                  circleColor: '#14A66A',
-                  circleRadius: 7,
-                  circleStrokeColor: '#FFFFFF',
-                  circleStrokeWidth: 2,
-                }}
-              />
+              <CircleLayer id="home-passenger-halo" filter={['==', ['get', 'markerType'], 'passenger']} style={{ circleColor: themeColor("#2563EB","circleColor"), circleRadius: 23, circleOpacity: 0.15 }} />
               <CircleLayer
                 id="home-passenger-location"
                 filter={['==', ['get', 'markerType'], 'passenger']}
                 style={{
-                  circleColor: colors.primary,
+                  circleColor: themeColor("#2563EB","circleColor"),
                   circleRadius: 9,
-                  circleStrokeColor: '#FFFFFF',
+                  circleStrokeColor: themeColor("#FFFFFF","circleStrokeColor"),
                   circleStrokeWidth: 3,
                 }}
               />
@@ -121,7 +123,7 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
             {mapStatus === 'loading' && coordinate
               ? <ActivityIndicator color={colors.primary} />
               : null}
-            <Text style={styles.fallbackText}>{fallbackMessage}</Text>
+            <Text style={styles.fallbackText}>{i18nT(fallbackMessage)}</Text>
           </View>
         )}
       </View>
@@ -129,18 +131,18 @@ export function HomeMap({ coordinate, drivers }: HomeMapProps) {
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={styles.passengerDot} />
-          <Text style={styles.legendText}>Bạn</Text>
+          <Text style={styles.legendText}>{i18nT("Bạn")}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={styles.driverDot} />
-          <Text style={styles.legendText}>Tài xế đang trực tuyến</Text>
+          <Text style={styles.legendText}>{i18nT("Tài xế đang trực tuyến")}</Text>
         </View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   section: {
     gap: spacing.spaceSm,
   },
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   mapFrame: {
-    height: 244,
+    height: 330,
     overflow: 'hidden',
     borderRadius: borderRadius.xl,
     backgroundColor: colors.surfaceContainerLow,

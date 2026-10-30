@@ -1,3 +1,7 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemeColors } from "../theme/ThemeProvider";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState,type ReactNode } from 'react';
 import {
@@ -61,6 +65,12 @@ export function Input({
   style,
   inputStyle,
 }: InputProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
   const [focused, setFocused] = useState(false);
   const [secureVisible, setSecureVisible] = useState(false);
 
@@ -68,11 +78,11 @@ export function Input({
     <View style={styles.field}>
       {label && labelAccessory ? (
         <View style={styles.labelRow}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.label}>{i18nT(label)}</Text>
           {labelAccessory}
         </View>
       ) : label ? (
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.label}>{i18nT(label)}</Text>
       ) : null}
 
       <View style={[styles.row, focused && styles.rowFocused, style]}>
@@ -86,7 +96,7 @@ export function Input({
       ) : null}
 
         <TextInput
-          accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityLabel={i18nT(accessibilityLabel ?? label)}
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           editable={editable}
@@ -95,7 +105,7 @@ export function Input({
           onBlur={() => setFocused(false)}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
-          placeholder={placeholder}
+          placeholder={i18nT(placeholder)}
           placeholderTextColor={colors.outline70}
           secureTextEntry={secure && !secureVisible}
           style={[styles.input, inputStyle]}
@@ -104,7 +114,7 @@ export function Input({
 
         {secure ? (
           <Pressable
-            accessibilityLabel="Hiện hoặc ẩn mật khẩu"
+            accessibilityLabel={i18nT("Hiện hoặc ẩn mật khẩu")}
             onPress={() => setSecureVisible((visible) => !visible)}
             style={styles.visibilityButton}
           >
@@ -120,7 +130,7 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   field: {
     gap: spacing.gap1_5,
   },

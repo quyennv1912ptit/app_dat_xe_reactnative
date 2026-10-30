@@ -1,4 +1,5 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemedStyles , useThemeColors , borderRadius,spacing,typography } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ComponentProps,ReactNode } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
@@ -34,10 +35,14 @@ export const HEADER_SAFETY_ACTION_WIDTH = 80;
 export const HEADER_ACTION_GROUP_WIDTH = spacing.iconButtonSm + HEADER_SAFETY_ACTION_WIDTH + spacing.spaceXs;
 
 export function HeaderIconButton({ icon, accessibilityLabel, onPress, tone = 'neutral', compact = false }: HeaderIconButtonProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={i18nT(accessibilityLabel)}
       onPress={onPress}
       style={({ pressed }) => [styles.iconButton, compact && styles.compactIconButton, tone === 'primary' && styles.primaryIconButton, pressed && styles.pressed]}
     >
@@ -47,20 +52,28 @@ export function HeaderIconButton({ icon, accessibilityLabel, onPress, tone = 'ne
 }
 
 export function HeaderLabeledIconButton({ icon, label, accessibilityLabel, onPress, tone = 'primary' }: HeaderLabeledIconButtonProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={i18nT(accessibilityLabel)}
       onPress={onPress}
       style={({ pressed }) => [styles.labeledIconButton, tone === 'primary' && styles.primaryIconButton, pressed && styles.pressed]}
     >
       <MaterialIcons name={icon} size={16} color={tone === 'primary' ? colors.primary : colors.onSurface} />
-      <Text style={[styles.labeledIconText, tone === 'primary' && styles.primaryLabeledIconText]}>{label}</Text>
+      <Text style={[styles.labeledIconText, tone === 'primary' && styles.primaryLabeledIconText]}>{i18nT(label)}</Text>
     </Pressable>
   );
 }
 
 export function HeaderActionGroup({ children }: { children: ReactNode }) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   return <View style={styles.actionGroup}>{children}</View>;
 }
 
@@ -68,7 +81,7 @@ export function ScreenHeader({
   title,
   subtitle,
   onBack,
-  backAccessibilityLabel = 'Quay lại',
+  backAccessibilityLabel = i18nT("Quay lại"),
   backIcon = 'arrow-back-ios-new',
   leadingIcon,
   leadingContent,
@@ -76,8 +89,12 @@ export function ScreenHeader({
   sideSlotWidth = spacing.iconButtonMd,
   largeTitle = false,
 }: ScreenHeaderProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   const left = leadingContent ?? (onBack ? (
-    <HeaderIconButton icon={backIcon} accessibilityLabel={backAccessibilityLabel} onPress={onBack} />
+    <HeaderIconButton icon={backIcon} accessibilityLabel={i18nT(backAccessibilityLabel)} onPress={onBack} />
   ) : leadingIcon ? (
     <View style={styles.leadingIconBadge} accessible={false}>
       <MaterialIcons name={leadingIcon} size={22} color={colors.primary} />
@@ -93,8 +110,8 @@ export function ScreenHeader({
       )}
       {!leadingContent ? (
         <View style={styles.titleBlock}>
-          {title ? <Text numberOfLines={1} style={[styles.title, largeTitle && styles.largeTitle]}>{title}</Text> : null}
-          {subtitle ? <Text numberOfLines={1} style={styles.subtitle}>{subtitle}</Text> : null}
+          {title ? <Text numberOfLines={1} style={[styles.title, largeTitle && styles.largeTitle]}>{i18nT(title)}</Text> : null}
+          {subtitle ? <Text numberOfLines={1} style={styles.subtitle}>{i18nT(subtitle)}</Text> : null}
         </View>
       ) : null}
       {rightContent ? <View style={[styles.sideSlot, styles.rightSlot, { width: sideSlotWidth }]}>{rightContent}</View> : !leadingContent ? <View style={[styles.sideSlot, { width: sideSlotWidth }]} /> : null}
@@ -102,7 +119,7 @@ export function ScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   container: {
     height: spacing.headerHeight,
     flexDirection: 'row',

@@ -9,7 +9,7 @@ export function useInProgress() {
   const ride = query.data;
   const waitingForCustomer = Boolean(ride && ((ride.status === 'VEHICLE_HANDOVER' && !ride.handoverReports.find(report => report.phase === 'PICKUP')?.confirmedByCustomer) || (ride.status === 'VEHICLE_RETURNED' && !ride.handoverReports.find(report => report.phase === 'DROPOFF')?.confirmedByCustomer)));
   const action = ride && !waitingForCustomer ? actions[ride.status] : undefined;
-  const progress = useMutation({ mutationFn: async () => { if (ride && action) await progressDriverRide(ride.id, action[1]); }, onSuccess: () => client.invalidateQueries({ queryKey: ['driver'] }) });
+  const progress = useMutation({ mutationFn: async () => { if (ride && action) await progressDriverRide(ride.id, action[1]); }, onSuccess: async () => { await client.invalidateQueries({ queryKey: ['driver'] }); if (ride && action?.[1] === 'complete') router.replace({pathname:'/ride/complete',params:{rideId:String(ride.id)}}); } });
   const isDropoff = Boolean(ride && ['IN_PROGRESS', 'ARRIVED_DESTINATION', 'VEHICLE_RETURNED', 'COMPLETED'].includes(ride.status));
   return { router, query, ride, action, progress, isDropoff, waitingForCustomer };
 }

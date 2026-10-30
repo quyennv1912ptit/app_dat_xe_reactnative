@@ -1,7 +1,11 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemedStyles } from "../theme/ThemeProvider";
+import { MotionPressable } from './MotionPressable';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
 ActivityIndicator,
-Pressable,
+
 StyleSheet,
 Text,
 type StyleProp,
@@ -68,6 +72,10 @@ export function Button({
   style,
   textStyle,
 }: ButtonProps) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
   const isDisabled = disabled || loading;
   const showSpinner = loading && !loadingIcon;
   const leadingIcon = loading
@@ -82,8 +90,8 @@ export function Button({
       : undefined;
 
   return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel ?? label}
+    <MotionPressable
+      accessibilityLabel={i18nT(accessibilityLabel ?? label)}
       accessibilityRole="button"
       disabled={isDisabled}
       onPress={onPress}
@@ -101,16 +109,16 @@ export function Button({
         <MaterialIcons color={contentColor} name={leadingIcon} size={iconSize} />
       ) : null}
       <Text numberOfLines={numberOfLines} style={[styles.label, textStyle]}>
-        {loading && loadingLabel ? loadingLabel : label}
+        {i18nT(loading && loadingLabel ? loadingLabel : label)}
       </Text>
       {trailingIcon ? (
         <MaterialIcons color={contentColor} name={trailingIcon} size={iconSize} />
       ) : null}
-    </Pressable>
+    </MotionPressable>
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   container: {
     width: '100%',
     height: spacing.ctaHeight,

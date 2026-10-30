@@ -1,4 +1,4 @@
-import { AuthApiError,authenticateWithBackend,getAuthFullNameValidationError,getFirebaseUser,registerWithBackend } from '@datxe/shared';
+import { translate as i18nT , AuthApiError,authenticateWithBackend,getAuthFullNameValidationError,getFirebaseUser,registerWithBackend } from '@datxe/shared';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useEffect,useState } from 'react';
 import { getCustomerProfile,updateCustomerProfile } from '../api';
@@ -28,11 +28,11 @@ const submit = async () => {
       return;
     }
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Email không hợp lệ.');
+      setError(i18nT("Email không hợp lệ."));
       return;
     }
     if (dateOfBirth && !isPastIsoDate(dateOfBirth)) {
-      setError('Ngày sinh cần đúng định dạng YYYY-MM-DD và nằm trong quá khứ.');
+      setError(i18nT("Ngày sinh cần đúng định dạng YYYY-MM-DD và nằm trong quá khứ."));
       return;
     }
     setLoading(true);
@@ -57,7 +57,7 @@ const submit = async () => {
       });
       router.replace('/(tabs)/home' as never);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không thể tạo tài khoản. Vui lòng thử lại.');
+      setError(cause instanceof Error ? cause.message : i18nT("Không thể tạo tài khoản. Vui lòng thử lại."));
     } finally {
       setLoading(false);
     }

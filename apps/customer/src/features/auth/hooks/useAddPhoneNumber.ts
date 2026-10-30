@@ -1,4 +1,4 @@
-import { AuthApiError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,confirmPhoneCode,getFirebaseUser,isValidInternationalPhoneNumber,sendPhoneCode,signOutFirebase,toInternationalPhoneNumber } from '@datxe/shared';
+import { translate as i18nT , AuthApiError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,confirmPhoneCode,getFirebaseUser,isValidInternationalPhoneNumber,sendPhoneCode,signOutFirebase,toInternationalPhoneNumber } from '@datxe/shared';
 import { useRouter } from 'expo-router';
 import { useEffect,useState } from 'react';
 import {
@@ -31,7 +31,7 @@ const onChangePhone = (value: string) => {
 const finishPhoneLink = async () => {
     const profile = await authenticateWithBackend('customer');
     if (profile.role !== 'CUSTOMER') {
-      throw new AuthApiError('Tài khoản này không phải tài khoản khách hàng.', 'ROLE_MISMATCH');
+      throw new AuthApiError(i18nT("Tài khoản này không phải tài khoản khách hàng."), 'ROLE_MISMATCH');
     }
     router.replace('/(tabs)/home' as never);
   };
@@ -47,7 +47,7 @@ const onSubmit = async () => {
     try {
       if (otpStep) {
         if (!/^\d{6}$/.test(otp)) {
-          setError('Nhập mã OTP gồm 6 chữ số.');
+          setError(i18nT("Nhập mã OTP gồm 6 chữ số."));
           return;
         }
         Keyboard.dismiss();
@@ -57,7 +57,7 @@ const onSubmit = async () => {
       }
       if (!isValidInternationalPhoneNumber(phone, country)) {
         setInvalid(true);
-        setError(`Nhập số điện thoại ${country.name} hợp lệ.`);
+        setError(i18nT("Nhập số điện thoại {0} hợp lệ.", {"0": country.name}));
         return;
       }
       Keyboard.dismiss();
@@ -89,7 +89,7 @@ const resendCode = async () => {
         return true;
       }
       setOtp('');
-      setNotice('Mã mới đã được gửi.');
+      setNotice(i18nT("Mã mới đã được gửi."));
       return true;
     } catch (cause) {
       setError(getPhoneError(cause));

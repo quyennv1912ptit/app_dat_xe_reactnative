@@ -1,24 +1,6 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-export function useComplete() {
-const router = useRouter();
-const insets = useSafeAreaInsets();
-const [searchState, setSearchState] = useState<'idle' | 'searching' | 'ready'>('idle');
-const handleNextRide = () => {
-    if (searchState === 'ready') {
-      router.replace('/(tabs)/home' as never);
-      return;
-    }
-    if (searchState === 'searching') return;
-    setSearchState('searching');
-    setTimeout(() => setSearchState('ready'), 1500);
-  };
-const ctaLabel =
-    searchState === 'searching'
-      ? 'Đang tìm cuốc xe mới...'
-      : searchState === 'ready'
-        ? 'Đã sẵn sàng nhận cuốc'
-        : 'Hoàn thành & Nhận cuốc tiếp';
-return { router, insets, searchState, handleNextRide, ctaLabel };
-}
+import { useCallback } from 'react';
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
+import { getDriverRide,confirmCashReceived } from '../api';
+export function useComplete(){const {rideId}=useLocalSearchParams<{rideId?:string}>(),router=useRouter(),client=useQueryClient();const id=Number(rideId);const valid=Number.isSafeInteger(id)&&id>0;const query=useQuery({queryKey:['driver','ride',id],queryFn:()=>getDriverRide(id),enabled:valid});const refetch=query.refetch;useRefreshOnFocus(useCallback(()=>valid?refetch():undefined,[valid,refetch]));const cash=useMutation({mutationFn:()=>{if(!valid||query.data?.status!=='COMPLETED')throw new Error('Chuyến chưa hoàn tất.');return confirmCashReceived(id);},onSuccess:()=>client.invalidateQueries({queryKey:['driver','wallet']})});return {query,cash,router,valid};}

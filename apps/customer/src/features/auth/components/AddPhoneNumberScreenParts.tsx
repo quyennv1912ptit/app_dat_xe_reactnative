@@ -1,4 +1,4 @@
-import { AuthApiError } from '@datxe/shared';
+import { translate as i18nT , AuthApiError } from '@datxe/shared';
 import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import {
 StyleSheet
@@ -6,12 +6,12 @@ StyleSheet
 export function getPhoneError(error: unknown): string {
   if (error instanceof AuthApiError) return error.message;
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-  if (code.includes('invalid-phone-number')) return 'Số điện thoại không hợp lệ.';
-  if (code.includes('phone-number-already-in-use') || code.includes('credential-already-in-use')) return 'Số điện thoại này đã gắn với một tài khoản khác.';
-  if (code.includes('invalid-verification-code')) return 'Mã OTP không đúng. Vui lòng thử lại.';
-  if (code.includes('session-expired')) return 'Mã OTP đã hết hạn. Hãy gửi lại mã mới.';
-  if (code.includes('too-many-requests')) return 'Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.';
-  return error instanceof Error ? error.message : 'Không thể xác minh số điện thoại. Vui lòng thử lại.';
+  if (code.includes('invalid-phone-number')) return i18nT("Số điện thoại không hợp lệ.");
+  if (code.includes('phone-number-already-in-use') || code.includes('credential-already-in-use')) return i18nT("Số điện thoại này đã gắn với một tài khoản khác.");
+  if (code.includes('invalid-verification-code')) return i18nT("Mã OTP không đúng. Vui lòng thử lại.");
+  if (code.includes('session-expired')) return i18nT("Mã OTP đã hết hạn. Hãy gửi lại mã mới.");
+  if (code.includes('too-many-requests')) return i18nT("Bạn đã yêu cầu OTP quá nhiều lần. Hãy thử lại sau.");
+  return error instanceof Error ? error.message : i18nT("Không thể xác minh số điện thoại. Vui lòng thử lại.");
 }
 
 export const styles = StyleSheet.create({

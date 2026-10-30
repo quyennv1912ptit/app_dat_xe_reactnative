@@ -1,3 +1,4 @@
+import { translate as i18nT } from '@datxe/shared';
 import { Platform } from 'react-native';
 // Expo statically replaces direct EXPO_PUBLIC_* reads; keep them explicit.
 const apiUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
@@ -12,6 +13,6 @@ export const env = {
   sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN?.trim(),
 };
 export function validateEnv() {
-  if (!/^https?:\/\//.test(env.apiUrl)) throw new Error('EXPO_PUBLIC_API_URL phải là URL HTTP(S).');
-  if (!__DEV__ && !apiUrl) throw new Error('Thiếu EXPO_PUBLIC_API_URL cho production.');
+  if (!/^https?:\/\//.test(env.apiUrl)) throw new Error(i18nT("EXPO_PUBLIC_API_URL phải là URL HTTP(S)."));
+  if (!__DEV__ && !apiUrl) throw new Error(i18nT("Thiếu EXPO_PUBLIC_API_URL cho production."));
 }

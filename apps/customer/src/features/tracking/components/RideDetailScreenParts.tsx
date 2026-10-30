@@ -1,9 +1,12 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import type { CustomerRideDetail } from '@datxe/shared';
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { StyleSheet,Text,View } from 'react-native';
 export const chatStatuses = ['DRIVER_ASSIGNED', 'DRIVER_ARRIVING', 'DRIVER_ARRIVED', 'VEHICLE_HANDOVER', 'IN_PROGRESS', 'ARRIVED_DESTINATION', 'VEHICLE_RETURNED'];
 
-export function Row({ label, value }: { label: string; value: string }) { return <View style={styles.row}><Text style={styles.meta}>{label}</Text><Text style={styles.body}>{value}</Text></View>; }
+export function Row({ label, value }: { label: string; value: string }) {
+ useLanguage();
+ return <View style={styles.row}><Text style={styles.meta}>{i18nT(label)}</Text><Text style={styles.body}>{i18nT(value)}</Text></View>; }
 
 export function statusLabel(status: CustomerRideDetail['status']): string {
   const labels: Record<CustomerRideDetail['status'], string> = {

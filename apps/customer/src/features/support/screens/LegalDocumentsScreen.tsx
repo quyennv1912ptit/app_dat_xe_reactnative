@@ -1,9 +1,10 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemedStyles , borderRadius,colors,spacing,typography } from '@datxe/ui';
 import { useRouter } from 'expo-router';
 import { ScrollView,StyleSheet,Text,View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
 
 type LegalSection = {
   title: string;
@@ -123,13 +124,15 @@ const PRIVACY_SECTIONS: LegalSection[] = [
 ];
 
 export function TermsOfServiceScreen() {
+ useLanguage();
+
   const router = useRouter();
   return (
     <LegalDocumentScreen
-      title="Điều khoản dịch vụ"
-      intro="Điều khoản này áp dụng khi bạn truy cập hoặc sử dụng ứng dụng khách hàng DriveMate. Vui lòng đọc kỹ trước khi tạo tài khoản hoặc gửi yêu cầu chuyến."
+      title={i18nT("Điều khoản dịch vụ")}
+      intro={i18nT("Điều khoản này áp dụng khi bạn truy cập hoặc sử dụng ứng dụng khách hàng DriveMate. Vui lòng đọc kỹ trước khi tạo tài khoản hoặc gửi yêu cầu chuyến.")}
       sections={TERMS_SECTIONS}
-      otherDocumentTitle="Chính sách bảo mật"
+      otherDocumentTitle={i18nT("Chính sách bảo mật")}
       otherDocumentPath="/privacy-policy"
       onBack={() => router.back()}
     />
@@ -137,13 +140,15 @@ export function TermsOfServiceScreen() {
 }
 
 export function PrivacyPolicyScreen() {
+ useLanguage();
+
   const router = useRouter();
   return (
     <LegalDocumentScreen
-      title="Chính sách bảo mật"
-      intro="Chính sách này mô tả dữ liệu khách hàng DriveMate xử lý, lý do sử dụng và cách bạn quản lý một số thông tin trong ứng dụng."
+      title={i18nT("Chính sách bảo mật")}
+      intro={i18nT("Chính sách này mô tả dữ liệu khách hàng DriveMate xử lý, lý do sử dụng và cách bạn quản lý một số thông tin trong ứng dụng.")}
       sections={PRIVACY_SECTIONS}
-      otherDocumentTitle="Điều khoản dịch vụ"
+      otherDocumentTitle={i18nT("Điều khoản dịch vụ")}
       otherDocumentPath="/terms-of-service"
       onBack={() => router.back()}
     />
@@ -158,39 +163,43 @@ function LegalDocumentScreen({
   otherDocumentPath,
   onBack,
 }: LegalDocumentProps & { onBack: () => void }) {
+ useLanguage();
+
+ const styles=useThemedStyles(base_styles);
+
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <ScreenHeader title={title} onBack={onBack} />
+      <ScreenHeader title={i18nT(title)} onBack={onBack} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.updated}>Cập nhật lần cuối: 23/10/2026</Text>
-        <Text style={styles.intro}>{intro}</Text>
+        <Text style={styles.updated}>{i18nT("Cập nhật lần cuối: 23/10/2026")}</Text>
+        <Text style={styles.intro}>{i18nT(intro)}</Text>
 
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionTitle}>{i18nT(section.title)}</Text>
             {section.paragraphs?.map((paragraph) => (
-              <Text key={paragraph} style={styles.body}>{paragraph}</Text>
+              <Text key={paragraph} style={styles.body}>{i18nT(paragraph)}</Text>
             ))}
             {section.bullets?.map((bullet) => (
               <View key={bullet} style={styles.bulletRow}>
                 <View style={styles.bullet} />
-                <Text style={[styles.body, styles.bulletText]}>{bullet}</Text>
+                <Text style={[styles.body, styles.bulletText]}>{i18nT(bullet)}</Text>
               </View>
             ))}
           </View>
         ))}
 
         <View style={styles.otherDocument}>
-          <Text style={styles.otherDocumentText}>Bạn cũng có thể xem </Text>
+          <Text style={styles.otherDocumentText}>{i18nT("Bạn cũng có thể xem")}</Text>
           <Text
             accessibilityRole="link"
             onPress={() => router.push(otherDocumentPath as never)}
             style={styles.link}
           >
-            {otherDocumentTitle}
+            {i18nT(otherDocumentTitle)}
           </Text>
           <Text style={styles.otherDocumentText}>.</Text>
         </View>
@@ -199,7 +208,7 @@ function LegalDocumentScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.surface },
   content: {
     paddingHorizontal: spacing.margin,

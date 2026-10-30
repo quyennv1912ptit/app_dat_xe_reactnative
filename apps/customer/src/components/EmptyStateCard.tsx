@@ -1,4 +1,5 @@
-import { borderRadius,colors,spacing,typography } from '@datxe/ui';
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage , useThemedStyles , useThemeColors , borderRadius,spacing,typography } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
@@ -12,25 +13,29 @@ type EmptyStateCardProps = {
 };
 
 export function EmptyStateCard({ icon, title, description, actionLabel, onAction }: EmptyStateCardProps) {
+ useLanguage();
+
+ const colors=useThemeColors();
+ const styles=useThemedStyles(makeStyles(colors));
   return (
     <View style={styles.card}>
       <View style={styles.iconBadge}>
         <MaterialIcons name={icon} size={28} color={colors.primary} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Text style={styles.title}>{i18nT(title)}</Text>
+      <Text style={styles.description}>{i18nT(description)}</Text>
       <Pressable
         accessibilityRole="button"
         onPress={onAction}
         style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
       >
-        <Text style={styles.actionText}>{actionLabel}</Text>
+        <Text style={styles.actionText}>{i18nT(actionLabel)}</Text>
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   card: {
     alignItems: 'center',
     gap: spacing.spaceSm,

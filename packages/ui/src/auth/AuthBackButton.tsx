@@ -1,3 +1,7 @@
+import { translate as i18nT } from '@datxe/shared';
+import { useLanguage } from "../useLanguage";
+import { useThemeColors } from "../theme/ThemeProvider";
+import { useThemedStyles } from "../theme/ThemeProvider";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable,StyleSheet } from 'react-native';
 
@@ -8,10 +12,16 @@ type Props = {
   accessibilityLabel?: string;
 };
 
-export function AuthBackButton({ onPress, accessibilityLabel = 'Quay lại' }: Props) {
+export function AuthBackButton({ onPress, accessibilityLabel = i18nT("Quay lại") }: Props) {
+ useLanguage();
+
+ const colors=useThemeColors();
+
+ const styles=useThemedStyles(base_styles);
+
   return (
     <Pressable
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={i18nT(accessibilityLabel)}
       accessibilityRole="button"
       onPress={onPress}
       style={styles.button}
@@ -21,7 +31,7 @@ export function AuthBackButton({ onPress, accessibilityLabel = 'Quay lại' }: P
   );
 }
 
-const styles = StyleSheet.create({
+const base_styles = StyleSheet.create({
   button: {
     width: spacing.iconButtonMd,
     height: spacing.iconButtonMd,
