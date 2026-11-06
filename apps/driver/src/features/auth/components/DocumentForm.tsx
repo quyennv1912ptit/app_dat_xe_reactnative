@@ -59,18 +59,19 @@ export function DocumentForm({ identity = false }: { identity?: boolean }) {
       <GroupedList title={identity ? "Thông tin căn cước" : "Thông tin giấy phép"}>
         <View style={styles.fields}>
           <TextInput label={identity ? "Số căn cước" : "Số giấy phép lái xe"} mode="flat" underlineColor={colors.transparent}
-            keyboardType={identity ? "number-pad" : "default"} editable={!busy} value={h.number} maxLength={identity ? 16 : 50}
+            keyboardType={identity ? "number-pad" : "default"} editable={!busy}
+            value={identity ? h.number : undefined} draftValue={identity ? undefined : h.number} maxLength={identity ? 16 : 50}
             onChangeText={(number) => h.update({ number: identity ? number.replace(/\D/g, "").slice(0, 12) : number })}
             error={attempted && Boolean(numberError)} />
           {attempted && numberError ? <HelperText type="error">{numberError}</HelperText> : null}
           {!identity ? (
             <>
               <TextInput label="Hạng bằng" placeholder="Ví dụ B2, A1" mode="flat" underlineColor={colors.transparent}
-                value={h.licenseClass} autoCapitalize="characters" maxLength={10} editable={!busy}
+                draftValue={h.licenseClass} autoCapitalize="characters" maxLength={10} editable={!busy}
                 onChangeText={(licenseClass) => h.update({ licenseClass })} error={attempted && licenseError} />
               {attempted && licenseError ? <HelperText type="error">Nhập hạng bằng ghi trên giấy phép.</HelperText> : null}
               <TextInput label="Số năm kinh nghiệm" mode="flat" underlineColor={colors.transparent}
-                value={h.years} keyboardType="number-pad" editable={!busy}
+                draftValue={h.years} keyboardType="number-pad" editable={!busy}
                 onChangeText={(years) => h.update({ years })} error={attempted && yearsError} />
               {attempted && yearsError ? <HelperText type="error">Nhập số năm kinh nghiệm hợp lệ.</HelperText> : null}
               <SettingsListItem title="Ngày hết hạn" description={expiry && Number.isFinite(expiry.getTime())

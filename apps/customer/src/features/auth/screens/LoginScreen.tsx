@@ -23,7 +23,6 @@ export default function LoginScreen() {
 
   const {
     router,
-    phone,
     setPhone,
     country,
     setCountry,
@@ -62,11 +61,9 @@ export default function LoginScreen() {
               }}
               onSelectCountry={(value) => {
                 setCountry(value);
-                setPhone((current) => current.slice(0, value.maxLength));
                 setError("");
               }}
               placeholder={i18nT("Nhập số điện thoại của bạn")}
-              value={phone}
             />
             {error ? (
               <Text accessibilityRole="alert" style={styles.errorText}>

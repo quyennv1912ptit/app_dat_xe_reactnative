@@ -265,7 +265,7 @@ export function SupportCenter({
         <TextInput
           accessibilityLabel="Mô tả sự cố"
           placeholder="Nhập mô tả vấn đề…"
-          value={description}
+          draftValue={description}
           editable={!sending}
           onChangeText={setDescription}
           multiline

@@ -110,7 +110,7 @@ export default function TripCompletedScreen() {
           </View>
           <TextInput
             multiline
-            value={comment}
+            draftValue={comment}
             onChangeText={setComment}
             placeholder={i18nT("Nhận xét (không bắt buộc)")}
             style={styles.input}

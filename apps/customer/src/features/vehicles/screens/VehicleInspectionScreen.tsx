@@ -140,7 +140,7 @@ export default function VehicleInspectionScreen() {
         {h.canReview ? <Button label="Thông tin không đúng · Yêu cầu điều chỉnh" variant="secondary" disabled={saving || h.correction.isPending} onPress={() => h.setCorrectionOpen(!h.correctionOpen)} /> : null}
         {h.correctionOpen && h.canReview ? <Card style={styles.card}>
           <Text style={styles.section}>Yêu cầu sửa biên bản phiên bản {report?.revision ?? 1}</Text>
-          <TextInput accessibilityLabel="Lý do yêu cầu điều chỉnh" placeholder="Thông tin nào chưa đúng? Ít nhất 10 ký tự" value={h.reason} onChangeText={h.setReason} multiline maxLength={2000} editable={!h.correction.isPending} />
+          <TextInput accessibilityLabel="Lý do yêu cầu điều chỉnh" placeholder="Thông tin nào chưa đúng? Ít nhất 10 ký tự" draftValue={h.reason} onChangeText={h.setReason} multiline maxLength={2000} editable={!h.correction.isPending} />
           <EvidenceEditor images={h.images} onChange={h.setImages} pick={h.pickSupportImage} disabled={h.correction.isPending} onBusyChange={h.setUploading} />
           {h.correction.error ? <Text style={styles.error}>{h.correction.error.message}</Text> : null}
           <Button label={h.correction.isPending ? 'Đang gửi…' : 'Gửi yêu cầu điều chỉnh'} disabled={saving || h.uploading || h.correction.isPending} onPress={() => h.correction.mutate()} />

@@ -12,6 +12,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
+import { useRef, useState, type ComponentRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   KeyboardAvoidingView,
@@ -27,6 +28,7 @@ import type { PlaceKind } from "../types";
 
 export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
   const extra = useThemedStyles(extraStyles);
+  const searchInput = useRef<ComponentRef<typeof TextInput>>(null);
 
   useLanguage();
 
@@ -35,6 +37,11 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
   const s = useThemedStyles(base_s);
 
   const h = usePlaceSelection(kind);
+  const [searchPreset, setSearchPreset] = useState({ text: h.initialText, revision: 0 });
+  const fillRecentAddress = (address: string) => {
+    setSearchPreset((previous) => ({ text: address, revision: previous.revision + 1 }));
+    h.onChangeText(address);
+  };
   const isPickup = kind === "pickup";
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
@@ -69,8 +76,10 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
               accessibilityLabel={i18nT(
                 isPickup ? "Tìm điểm đón" : "Tìm điểm đến",
               )}
-              value={h.text}
-              onChangeText={h.setText}
+              ref={searchInput}
+              key={searchPreset.revision}
+              defaultValue={searchPreset.text}
+              onChangeText={h.onChangeText}
               placeholder={i18nT("Tìm tên đường, địa chỉ, địa điểm…")}
               maxLength={255}
               style={s.search}
@@ -80,7 +89,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
               <Pressable
                 accessibilityLabel={i18nT("Xóa tìm kiếm")}
                 hitSlop={12}
-                onPress={() => h.setText("")}
+                onPress={() => { searchInput.current?.clear(); h.clearText(); }}
               >
                 <MaterialIcons name="cancel" size={20} color={colors.outline} />
               </Pressable>
@@ -184,7 +193,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
               {h.recentAddresses.map((address) => (
                 <Pressable
                   key={address}
-                  onPress={() => h.setText(address)}
+                  onPress={() => fillRecentAddress(address)}
                   style={s.listItem}
                 >
                   <View style={s.icon}>

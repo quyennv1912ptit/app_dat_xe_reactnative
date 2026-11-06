@@ -117,7 +117,7 @@ function RideChat({ rideId, userId }: { rideId: number; userId: number }) {
           <Pressable accessibilityRole="button" accessibilityLabel="Gửi ảnh cho khách" disabled={!open || h.picking} onPress={() => void h.sendImage()} style={[s.iconButton, (!open || h.picking) && s.disabled]}>
             {h.picking ? <ActivityIndicator color={colors.primary} /> : <MaterialIcons name="image" size={25} color={colors.primary} />}
           </Pressable>
-          <TextInput accessibilityLabel="Tin nhắn cho khách" multiline maxLength={1000} editable={open && !h.picking} value={h.draft} onChangeText={h.setDraft} placeholder={open ? 'Nhập tin nhắn…' : 'Chat chưa khả dụng'} style={s.input} />
+          <TextInput accessibilityLabel="Tin nhắn cho khách" multiline maxLength={1000} editable={open && !h.picking} autoCorrect={false} spellCheck={false} autoCapitalize="none" draftValue={h.draft} onChangeText={h.setDraft} placeholder={open ? 'Nhập tin nhắn…' : 'Chat chưa khả dụng'} style={s.input} />
           <Pressable accessibilityRole="button" accessibilityLabel="Gửi tin nhắn" disabled={!open || !h.draft.trim() || h.picking} onPress={sendText} style={[s.iconButton, s.send, (!open || !h.draft.trim() || h.picking) && s.disabled]}>
             <MaterialIcons name="send" size={23} color={colors.onPrimary} />
           </Pressable>

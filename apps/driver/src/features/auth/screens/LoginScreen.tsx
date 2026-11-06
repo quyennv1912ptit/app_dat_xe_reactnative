@@ -20,7 +20,6 @@ export default function DriverLoginScreen() {
   const themed_styles = useThemedStyles(styles);
 
   const {
-    phone,
     setPhone,
     busy,
     error,
@@ -67,7 +66,6 @@ export default function DriverLoginScreen() {
                 setError("");
               }}
               placeholder="0912 345 678"
-              value={phone}
             />
             <Text style={themed_styles.helperText}>
               Xác thực bằng mã OTP gửi qua SMS.

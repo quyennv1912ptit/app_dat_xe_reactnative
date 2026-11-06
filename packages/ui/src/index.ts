@@ -15,6 +15,7 @@ export * from './motion';
 export * from './theme/ThemeProvider';
 
 export * from './useLanguage';
+export * from './useDebouncedTextChange';
 
 export * from './localizedAlert';
 export * from './usePushForegroundLaunch';

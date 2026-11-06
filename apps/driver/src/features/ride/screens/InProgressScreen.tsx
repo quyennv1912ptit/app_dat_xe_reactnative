@@ -158,7 +158,7 @@ export default function InProgressRideScreen() {
         onDismiss={() => setConfirmation(null)}
         onConfirm={() => { if (confirmation) cancel.mutate({ ...confirmation, reason: reason.trim() }); }}>
         <TextInput label="Lý do hủy" mode="flat" underlineColor={colors.transparent} multiline
-          maxLength={255} value={reason} onChangeText={setReason} editable={!cancel.isPending} />
+          maxLength={255} draftValue={reason} onChangeText={setReason} editable={!cancel.isPending} />
         <Text style={themed_s.label}>{reason.length}/255 ký tự</Text>
       </DriverConfirmationDialog>
     </DriverPage>

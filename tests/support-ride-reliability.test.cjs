@@ -93,6 +93,49 @@ function supportFixture(h) {
   });
 }
 
+test("native draft input leaves composing text alone and clears only on reset", () => {
+  const h = hooksFixture();
+  let commit;
+  const writes = [];
+  const editor = {
+    clear: () => writes.push(""),
+    setNativeProps: ({ text }) => writes.push(text),
+  };
+  const { NativeDraftTextInput } = load("packages/ui/src/components/NativeDraftTextInput.tsx", {
+    react: {
+      ...h.hooks,
+      forwardRef: (render) => render,
+      useImperativeHandle() {},
+      useLayoutEffect: (effect) => { commit = effect; },
+    },
+    "react/jsx-runtime": { jsx },
+    "react-native": { Platform: { OS: "android" }, TextInput: "TextInput" },
+  });
+  let draftValue = "";
+  const render = () => {
+    h.reset();
+    const { props } = NativeDraftTextInput({
+      draftValue,
+      onChangeText: (text) => { draftValue = text; },
+    });
+    props.ref.current = editor;
+    commit();
+    assert.equal(props.value, undefined);
+    return props;
+  };
+  let input = render();
+  for (const text of ["h", "he", "hê"]) {
+    input.onChangeText(text);
+    input = render();
+  }
+  assert.equal(draftValue, "hê");
+  assert.deepEqual(writes, []);
+  draftValue = "";
+  render();
+  render();
+  assert.deepEqual(writes, [""]);
+});
+
 test("support retries reuse receipt key, retain description, and cannot submit before image upload finishes", async () => {
   const h = hooksFixture(),
     sent = [];
@@ -134,7 +177,7 @@ test("support retries reuse receipt key, retain description, and cannot submit b
   await tick();
   tree = render();
   assert.equal(
-    all(tree).find((node) => node.type === "TextInput").props.value,
+    all(tree).find((node) => node.type === "TextInput").props.draftValue,
     "Tôi không cập nhật được hồ sơ",
   );
   assert.equal(sent.length, 1);
@@ -149,7 +192,7 @@ test("support retries reuse receipt key, retain description, and cannot submit b
   );
   tree = render();
   assert.equal(
-    all(tree).find((node) => node.type === "TextInput").props.value,
+    all(tree).find((node) => node.type === "TextInput").props.draftValue,
     "",
   );
   assert.ok(JSON.stringify(tree).includes("HT-42"));

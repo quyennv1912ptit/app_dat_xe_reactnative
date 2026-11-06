@@ -17,7 +17,9 @@ import { useLanguage } from "../useLanguage";
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
 export type InputProps = {
-  value: string;
+  defaultValue?: string;
+  draftValue?: string;
+  value?: string;
   onChangeText: (text: string) => void;
   label?: string;
   /** Nội dung hiển thị bên phải dòng label, ví dụ liên kết "Quên mật khẩu?". */
@@ -38,6 +40,8 @@ export type InputProps = {
 };
 
 export function Input({
+  defaultValue,
+  draftValue,
   value,
   onChangeText,
   label,
@@ -69,6 +73,8 @@ export function Input({
         mode="outlined"
         label={labelAccessory ? undefined : i18nT(label)}
         accessibilityLabel={i18nT(accessibilityLabel ?? label)}
+        defaultValue={defaultValue}
+        draftValue={draftValue}
         value={value}
         onChangeText={onChangeText}
         placeholder={i18nT(placeholder)}

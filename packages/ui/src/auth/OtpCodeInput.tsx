@@ -62,6 +62,9 @@ export function OtpCodeInput({
       <TextInput
         accessibilityLabel={i18nT(accessibilityLabel)}
         autoComplete="sms-otp"
+        autoCorrect={false}
+        spellCheck={false}
+        autoCapitalize="none"
         autoFocus={autoFocus}
         caretHidden
         editable={!disabled}

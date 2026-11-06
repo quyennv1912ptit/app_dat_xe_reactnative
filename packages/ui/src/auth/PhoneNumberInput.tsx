@@ -10,6 +10,7 @@ import {
 import type { ThemeColors } from "../theme/ThemeProvider";
 import { useThemeColors, useThemedStyles } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
+import { useDebouncedTextChange } from "../useDebouncedTextChange";
 
 import {
   formatNationalPhoneNumber,
@@ -19,7 +20,7 @@ import {
 import { fontSize, spacing, typography } from "../theme/colors";
 
 type Props = {
-  value: string;
+  defaultValue?: string;
   country: PhoneCountry;
   onChangeText: (value: string) => void;
   onSelectCountry: (country: PhoneCountry) => void;
@@ -32,7 +33,7 @@ type Props = {
 };
 
 export function PhoneNumberInput({
-  value,
+  defaultValue = "",
   country,
   onChangeText,
   onSelectCountry,
@@ -48,8 +49,10 @@ export function PhoneNumberInput({
 
   const styles = useThemedStyles(base_styles);
 
+  const [value, setValue] = useState(defaultValue);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [search, setSearch] = useState("");
+  const searchInput = useDebouncedTextChange(setSearch);
 
   const filteredCountries = useMemo(() => {
     const query = normalizeSearch(search);
@@ -62,13 +65,20 @@ export function PhoneNumberInput({
     );
   }, [search, language]);
 
+  const changeNumber = (digits: string) => {
+    setValue(digits);
+    onChangeText(digits);
+  };
+
   const closePicker = () => {
+    searchInput.cancel();
     Keyboard.dismiss();
     setPickerVisible(false);
     setSearch("");
   };
 
   const selectCountry = (nextCountry: PhoneCountry) => {
+    changeNumber(value.slice(0, nextCountry.maxLength));
     onSelectCountry(nextCountry);
     closePicker();
   };
@@ -109,7 +119,7 @@ export function PhoneNumberInput({
           keyboardType="phone-pad"
           maxLength={country.maxLength + country.groups.length}
           onChangeText={(text) =>
-            onChangeText(text.replace(/\D/g, "").slice(0, country.maxLength))
+            changeNumber(text.replace(/\D/g, "").slice(0, country.maxLength))
           }
           placeholder={i18nT(placeholder ?? country.example)}
           placeholderTextColor={colors.outline70}
@@ -121,7 +131,7 @@ export function PhoneNumberInput({
             accessibilityLabel={i18nT("Xóa số đã nhập")}
             accessibilityRole="button"
             disabled={disabled}
-            onPress={() => onChangeText("")}
+            onPress={() => changeNumber("")}
             style={styles.clearButton}
           >
             <MaterialIcons
@@ -177,11 +187,11 @@ export function PhoneNumberInput({
                 accessibilityLabel={i18nT("Tìm quốc gia hoặc mã gọi")}
                 autoCapitalize="none"
                 autoCorrect={false}
-                onChangeText={setSearch}
+                onChangeText={searchInput.onChangeText}
                 placeholder={i18nT("Tìm tên hoặc mã gọi")}
                 placeholderTextColor={colors.outline70}
                 style={styles.searchInput}
-                value={search}
+                key={pickerVisible ? "open" : "closed"}
               />
             </View>
 

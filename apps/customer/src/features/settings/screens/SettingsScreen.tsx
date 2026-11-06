@@ -5,6 +5,7 @@ import {
   PaperTextInput as TextInput,
   localizedAlert,
   ScreenWrapper,
+  useDebouncedTextChange,
   useLanguage,
   useThemeColors,
 } from "@datxe/ui";
@@ -55,9 +56,18 @@ export default function SettingsScreen() {
     Awaited<ReturnType<typeof searchSavedPlaces>>
   >([]);
   const [search, setSearch] = useState("");
+  const [searchReset, setSearchReset] = useState(0);
   const [result, setResult] = useState<SavedPlace | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const searchInput = useDebouncedTextChange((value) => {
+    if (value === search) return;
+    setSearch(value);
+    setSuggestions([]);
+    setResult(null);
+    setError("");
+    setBusy(value.trim().length >= 2);
+  });
   const refresh = useCallback(() => {
     void Promise.all([
       Location.getForegroundPermissionsAsync(),
@@ -85,23 +95,19 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (search.trim().length < 2) return;
     const controller = new AbortController();
-    const timer = setTimeout(() => {
-      setBusy(true);
-      void searchSavedPlaces(search.trim(), controller.signal)
-        .then((places) => {
-          if (!controller.signal.aborted) setSuggestions(places);
-        })
-        .catch(() => {
-          if (!controller.signal.aborted)
-            setError(i18nT("Không tìm được địa chỉ."));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setBusy(false);
-        });
-    }, 600);
+    void searchSavedPlaces(search.trim(), controller.signal)
+      .then((places) => {
+        if (!controller.signal.aborted) setSuggestions(places);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setError(i18nT("Không tìm được địa chỉ."));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setBusy(false);
+      });
     return () => {
       controller.abort();
-      clearTimeout(timer);
     };
   }, [search]);
 
@@ -352,16 +358,11 @@ export default function SettingsScreen() {
                 <TextInput
                   mode="outlined"
                   label={i18nT("Tìm địa chỉ")}
-                  value={search}
+                  key={searchReset}
                   left={<TextInput.Icon icon="magnify" />}
                   outlineStyle={settings.inputOutline}
                   style={settings.input}
-                  onChangeText={(value) => {
-                    setSearch(value);
-                    setSuggestions([]);
-                    setResult(null);
-                    setError("");
-                  }}
+                  onChangeText={searchInput.onChangeText}
                 />
                 {busy ? (
                   <ActivityIndicator
@@ -418,7 +419,10 @@ export default function SettingsScreen() {
                                 },
                               ],
                             });
+                            searchInput.cancel();
                             setSearch("");
+                            setBusy(false);
+                            setSearchReset((revision) => revision + 1);
                             setResult(null);
                             setSuggestions([]);
                           }}

@@ -24,7 +24,7 @@ export function CustomerRideCancellationDialog({
               label={i18nT("Lý do hủy")}
               mode="flat"
               multiline
-              value={reason}
+              draftValue={reason}
               onChangeText={setReason}
               maxLength={255}
               editable={canCancel && !busy}

@@ -3,9 +3,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { statusLabel } from "@/lib/displayLabels";
 import { rideStyles } from "@/components/rideStyles";
 import { formatMoney } from "@datxe/shared";
-import { Button, Card, GroupedList, Input, Typography as Text, useThemeColors, useThemedStyles } from "@datxe/ui";
+import { Button, Card, GroupedList, Input, Typography as Text, useDebouncedTextChange, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { List, RadioButton, TouchableRipple } from "react-native-paper";
 import { useHistory } from "../hooks/useHistory";
@@ -16,7 +16,9 @@ export default function HistoryScreen() {
   const router = useRouter();
   const [status, setStatus] = useState("all");
   const [period, setPeriod] = useState("all");
+  const codeDraft = useRef("");
   const [code, setCode] = useState("");
+  const codeInput = useDebouncedTextChange(setCode);
   const q = useHistory(status === "all" ? undefined : status);
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
@@ -32,10 +34,16 @@ export default function HistoryScreen() {
         <List.Accordion title="Tìm và lọc chuyến" theme={{ colors: { background: colors.transparent } }}
           description={status !== "all" || period !== "all" ? "Đang áp dụng bộ lọc" : undefined}>
           <View style={styles.filters}>
-            <Input label="Mã chuyến" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, ""))}
+            <Input label="Mã chuyến" defaultValue={code} onChangeText={(value) => {
+              codeDraft.current = value.replace(/\D/g, "");
+              codeInput.onChangeText(codeDraft.current);
+            }}
               keyboardType="number-pad" maxLength={16} placeholder="Ví dụ 123" />
             <Button label="Mở theo mã chuyến" variant="secondary" disabled={!Number.isSafeInteger(Number(code)) || Number(code) < 1}
-              onPress={() => open(Number(code))} />
+              onPress={() => {
+                const id = Number(codeDraft.current);
+                if (Number.isSafeInteger(id) && id > 0) open(id);
+              }} />
 
             <Text style={s.label}>Trạng thái</Text>
             <RadioButton.Group value={status} onValueChange={setStatus}>

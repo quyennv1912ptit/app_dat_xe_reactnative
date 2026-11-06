@@ -196,7 +196,10 @@ export default function CustomerChatScreen() {
           <TextInput
             accessibilityLabel={i18nT("Tin nhắn")}
             editable={chatEnabled && !sending}
-            value={draft}
+            autoCorrect={false}
+            spellCheck={false}
+            autoCapitalize="none"
+            draftValue={draft}
             onChangeText={setDraft}
             placeholder={i18nT(
               chatEnabled ? "Nhập tin nhắn…" : "Chat chưa khả dụng",

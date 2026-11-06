@@ -1,13 +1,17 @@
 import { AuthApiError,authenticateWithBackend,confirmPhoneCode,getAuthFullNameValidationError,getFirebaseUser,isValidVietnamPhoneNumber,normalizeVietnamPhoneNumber,registerWithBackend,sendPhoneCode } from '@datxe/shared';
 import { useLocalSearchParams,useRouter } from 'expo-router';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { getErrorMessage } from '../components/RegisterScreenParts';
 export function useRegister() {
 const router = useRouter();
 const user = getFirebaseUser();
 const { phone: phoneParam } = useLocalSearchParams<{ phone?: string }>();
-const [fullName, setFullName] = useState(user?.displayName ?? '');
-const [phone, setPhone] = useState(user?.phoneNumber ?? (typeof phoneParam === 'string' ? phoneParam : ''));
+// Read raw editor text at submit time, after the keyboard has composed it.
+const nameDraft = useRef(user?.displayName ?? '');
+const setFullName = (text: string) => { nameDraft.current = text; };
+const initialPhone = user?.phoneNumber ?? (typeof phoneParam === 'string' ? phoneParam : '');
+const phoneDraft = useRef(initialPhone);
+const setPhone = (text: string) => { phoneDraft.current = text; };
 const [code, setCode] = useState('');
 const [codeSent, setCodeSent] = useState(false);
 const [verifiedPhone, setVerifiedPhone] = useState(user?.phoneNumber ?? '');
@@ -17,6 +21,7 @@ useEffect(() => {
     if (!user) router.replace('/(auth)/login' as never);
   }, [router, user]);
 const sendCode = async () => {
+    const phone = phoneDraft.current;
     if (!isValidVietnamPhoneNumber(phone)) {
       setError('Vui lòng nhập số điện thoại Việt Nam hợp lệ.');
       return false;
@@ -46,7 +51,7 @@ const verifyCode = async () => {
     setError('');
     try {
       const linkedUser = await confirmPhoneCode(code);
-      setVerifiedPhone(linkedUser.phoneNumber ?? normalizeVietnamPhoneNumber(phone));
+      setVerifiedPhone(linkedUser.phoneNumber ?? normalizeVietnamPhoneNumber(phoneDraft.current));
       setCodeSent(false);
     } catch (cause) {
       setError(getErrorMessage(cause));
@@ -55,6 +60,7 @@ const verifyCode = async () => {
     }
   };
 const submit = async () => {
+    const fullName = nameDraft.current;
     const nameError = getAuthFullNameValidationError(fullName);
     if (nameError) {
       setError(nameError);
@@ -92,5 +98,5 @@ const submit = async () => {
 
 const resetCode = () => { setCode(""); setCodeSent(false); setError(""); };
 
-return { resetCode, user, router, fullName, setFullName, phone, setPhone, code, setCode, codeSent, verifiedPhone, loading, error, setError, sendCode, verifyCode, submit };
+return { resetCode, user, router, initialName: user?.displayName ?? '', setFullName, initialPhone, setPhone, code, setCode, codeSent, verifiedPhone, loading, error, setError, sendCode, verifyCode, submit };
 }

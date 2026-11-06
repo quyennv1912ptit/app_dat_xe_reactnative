@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 export function Field({
   label,
+  value,
   ...props
 }: {
   label: string;
@@ -35,6 +36,7 @@ export function Field({
       <Text style={themed_styles.label}>{i18nT(label)}</Text>
       <TextInput
         {...props}
+        draftValue={value}
         style={themed_styles.input}
         placeholderTextColor={colors.outline}
       />

@@ -24,9 +24,9 @@ export default function DriverRegisterScreen() {
   const {
     user,
     router,
-    fullName,
+    initialName,
     setFullName,
-    phone,
+    initialPhone,
     setPhone,
     code,
     setCode,
@@ -85,7 +85,7 @@ export default function DriverRegisterScreen() {
               setError("");
             }}
             placeholder="Nguyễn Văn An"
-            value={fullName}
+            defaultValue={initialName}
           />
 
           {verifiedPhone ? (
@@ -112,7 +112,7 @@ export default function DriverRegisterScreen() {
                   setError("");
                 }}
                 placeholder="0912 345 678"
-                value={phone}
+                defaultValue={initialPhone}
               />
               {codeSent ? (
                 <>

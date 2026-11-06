@@ -103,7 +103,7 @@ export default function BookingConfirmationScreen() {
               <Text style={s.section}>{i18nT("Ghi chú điểm đón")}</Text>
               <TextInput
                 accessibilityLabel={i18nT("Ghi chú điểm đón")}
-                value={h.draft.pickupNote}
+                draftValue={h.draft.pickupNote}
                 onChangeText={h.draft.setPickupNote}
                 maxLength={500}
                 multiline
@@ -246,7 +246,7 @@ export default function BookingConfirmationScreen() {
               <Text style={s.section}>{i18nT("Ghi chú cho tài xế")}</Text>
               <TextInput
                 accessibilityLabel={i18nT("Ghi chú cho tài xế")}
-                value={h.note}
+                draftValue={h.note}
                 onChangeText={h.setNote}
                 maxLength={500}
                 multiline

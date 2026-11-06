@@ -18,7 +18,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { usePreventRemove, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -115,9 +115,12 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
     gender: initial.gender ?? "",
   };
   const [draft, setDraft] = useState(seed);
+  // Track only the dirty flag in React; the editor keeps the composed name.
+  const nameDraft = useRef(seed.name);
+  const [nameDirty, setNameDirty] = useState(false);
   const [birthDatePickerVisible, setBirthDatePickerVisible] = useState(false);
   const [saved, setSaved] = useState(false);
-  const dirty = Object.keys(seed).some(
+  const dirty = nameDirty || Object.keys(seed).some(
     (key) =>
       draft[key as keyof typeof draft] !== seed[key as keyof typeof seed],
   );
@@ -144,6 +147,7 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
     try {
       await save.mutateAsync({
         ...draft,
+        name: nameDraft.current,
         birthDate: toIsoDate(draft.birthDate),
       });
       setSaved(true);
@@ -178,14 +182,15 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
                   autoCapitalize="words"
                   editable={!save.isPending}
                   maxLength={255}
-                  onChangeText={(value) =>
-                    setDraft((previous) => ({ ...previous, name: value }))
-                  }
+                  onChangeText={(value) => {
+                    nameDraft.current = value;
+                    setNameDirty(value !== seed.name);
+                  }}
                   placeholder={i18nT("Nhập họ và tên")}
                   placeholderTextColor={c.onSurfaceVariant}
                   selectionColor={c.primary}
                   style={[s.input, s.inputPadded]}
-                  value={draft.name}
+                  defaultValue={draft.name}
                 />
               </View>
             </View>

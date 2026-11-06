@@ -58,7 +58,7 @@ export default function VehicleInspectionScreen() {
               <Text style={themed_s.label}>SỐ KM ĐỒNG HỒ</Text>
               <TextInput
                 accessibilityLabel="Số km đồng hồ"
-                value={h.odometer}
+                draftValue={h.odometer}
                 onChangeText={h.setOdometer}
                 keyboardType="number-pad"
                 style={themed_s.text}
@@ -66,7 +66,7 @@ export default function VehicleInspectionScreen() {
               />
               <Text style={themed_s.label}>NHIÊN LIỆU (%) · TÙY CHỌN</Text>
               <TextInput
-                value={h.fuelLevel}
+                draftValue={h.fuelLevel}
                 onChangeText={h.setFuelLevel}
                 keyboardType="number-pad"
                 style={themed_s.text}
@@ -74,7 +74,7 @@ export default function VehicleInspectionScreen() {
               />
               <TextInput
                 accessibilityLabel="Ghi chú biên bản"
-                value={h.notes}
+                draftValue={h.notes}
                 onChangeText={h.setNotes}
                 multiline
                 maxLength={2000}
