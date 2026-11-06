@@ -10,4 +10,5 @@ export const styles = (colors: ThemeColors) =>
       padding: 16,
     },
     card: { width: "100%", maxWidth: 480, gap: 16 },
+    status: { textAlign: "center" },
   });

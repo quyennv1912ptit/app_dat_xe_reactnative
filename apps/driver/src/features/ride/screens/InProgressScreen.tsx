@@ -1,4 +1,4 @@
-import { ProgressBar, TextInput } from "react-native-paper";
+import { ProgressBar } from "react-native-paper";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
 import { useSessionStore } from "@/lib/store";
@@ -7,13 +7,14 @@ import { useState } from "react";
 import type { CustomerRideDetail } from "@datxe/shared";
 import { cancelDriverRide } from "../api";
 import { rideStyles as s } from "@/components/rideStyles";
-import { DriverChatButton } from "@/components/DriverChatButton";
+import { RideCustomerCard } from "../components/RideCustomerCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { openExternalDirections } from "@/lib/navigation";
 import { formatMoney } from "@datxe/shared";
 import {
   Button,
   Card,
+  PaperTextInput as TextInput,
   Typography as Text,
   useThemeColors,
   useThemedStyles,
@@ -99,7 +100,7 @@ export default function InProgressRideScreen() {
                 </>
               ) : null}
             </Card>
-            <DriverChatButton ride={ride} />
+            <RideCustomerCard key={ride.id} ride={ride} />
             <Card style={themed_s.card}>
               <Text style={themed_s.label}>ĐIỂM ĐÓN</Text>
               <Text style={themed_s.text}>{ride.pickupAddress}</Text>

@@ -1,4 +1,5 @@
 import { ActivityIndicator } from "react-native-paper";
+import { CustomerRideCancellationDialog } from "@/components/CustomerRideCancellationDialog";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
@@ -24,7 +25,7 @@ export default function FindDriverScreen() {
 
   const styles = useThemedStyles(base_styles);
 
-  const { router, ride, error, cancelling, refresh, cancel } = useFindDriver();
+  const { router, ride, error, cancellation, refresh } = useFindDriver();
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
@@ -83,19 +84,19 @@ export default function FindDriverScreen() {
         <Pressable
           disabled={
             !ride ||
-            cancelling ||
+            cancellation.busy ||
             !["PENDING", "SEARCHING"].includes(ride.status)
           }
-          onPress={cancel}
+          onPress={cancellation.open}
           style={[
             styles.cancel,
             (!ride ||
-              cancelling ||
+              cancellation.busy ||
               !["PENDING", "SEARCHING"].includes(ride.status)) &&
               styles.disabled,
           ]}
         >
-          {cancelling ? (
+          {cancellation.busy ? (
             <ActivityIndicator color={colors.error} />
           ) : (
             <Text style={styles.cancelText}>{i18nT("Hủy yêu cầu")}</Text>
@@ -111,6 +112,7 @@ export default function FindDriverScreen() {
           </Pressable>
         ) : null}
       </View>
+      <CustomerRideCancellationDialog cancellation={cancellation} searching />
     </SafeAreaView>
   );
 }

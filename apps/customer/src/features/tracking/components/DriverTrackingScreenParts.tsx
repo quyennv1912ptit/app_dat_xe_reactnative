@@ -25,15 +25,6 @@ export const rideStatusLabel: Record<string, string> = {
   EXPIRED: "Yêu cầu đã hết hạn",
 };
 
-export const cancellableStatuses = [
-  "PENDING",
-  "SEARCHING",
-  "DRIVER_ASSIGNED",
-  "DRIVER_ARRIVING",
-  "DRIVER_ARRIVED",
-  "VEHICLE_HANDOVER",
-];
-
 export const chatStatuses = [
   "DRIVER_ASSIGNED",
   "DRIVER_ARRIVING",

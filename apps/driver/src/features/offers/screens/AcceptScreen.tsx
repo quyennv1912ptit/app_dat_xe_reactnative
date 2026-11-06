@@ -4,6 +4,7 @@ import { openExternalDirections } from "@/lib/navigation";
 import { vehicleTypeLabel, transmissionLabel } from "@/lib/displayLabels";
 import { formatMoney } from "@datxe/shared";
 import { Button, Card, Typography as Text, useThemedStyles } from "@datxe/ui";
+import { StyleSheet, View } from "react-native";
 import { useAccept } from "../hooks/useAccept";
 
 export default function AcceptRideScreen() {
@@ -34,22 +35,27 @@ export default function AcceptRideScreen() {
             <Text style={s.text}>Cước khách trả dự kiến · {formatMoney(offer.fareEstimate)}</Text>
           </Card>
           <Card style={s.card}>
-            <Text style={s.label}>Điểm đón · {offer.customer.displayName}</Text>
-            <Text style={s.text}>{offer.pickup.address}</Text>
-            {offer.distanceToPickupKm != null && offer.etaToPickupMin != null ? (
-              <Text style={s.label}>Đến điểm đón · {offer.distanceToPickupKm} km · Khoảng {offer.etaToPickupMin} phút</Text>
-            ) : null}
-            {offer.pickupNote ? <Text style={s.text}>Ghi chú đón · {offer.pickupNote}</Text> : null}
+            <Text style={s.title}>Lộ trình dự kiến</Text>
+            <Text style={s.label}>Khách · {offer.customer.displayName}</Text>
+            <View style={styles.leg}>
+              <Text style={s.label}>Từ vị trí của bạn đến điểm đón</Text>
+              <Text style={s.text}>
+                {offer.distanceToPickupKm != null && offer.etaToPickupMin != null
+                  ? `Khoảng ${offer.distanceToPickupKm} km · ${offer.etaToPickupMin} phút`
+                  : "Chưa có ước tính đến điểm đón"}
+              </Text>
+              <Text style={s.text}>{offer.pickup.address}</Text>
+              {offer.pickupNote ? <Text style={s.label}>Ghi chú đón · {offer.pickupNote}</Text> : null}
+            </View>
+            <View style={styles.leg}>
+              <Text style={s.label}>Từ điểm đón đến điểm trả</Text>
+              <Text style={s.text}>Khoảng {offer.tripDistanceKm} km · {offer.estDurationMin} phút</Text>
+              <Text style={s.text}>{offer.dropoff.address}</Text>
+            </View>
+            <Text style={s.label}>{vehicleTypeLabel(offer.vehicle.type)} · {transmissionLabel(offer.vehicle.transmission)}</Text>
+            {offer.note ? <Text style={s.text}>{offer.note}</Text> : null}
             <Button variant="ghost" icon="directions" iconPosition="leading" label="Mở chỉ đường tới điểm đón"
               onPress={() => void openExternalDirections(offer.pickup)} />
-            <Text style={s.label}>Điểm trả</Text>
-            <Text style={s.text}>{offer.dropoff.address}</Text>
-          </Card>
-          <Card style={s.card}>
-            <Text style={s.label}>Quãng đường chuyến</Text>
-            <Text style={s.text}>{offer.tripDistanceKm} km · Khoảng {offer.estDurationMin} phút</Text>
-            <Text style={s.text}>{vehicleTypeLabel(offer.vehicle.type)} · {transmissionLabel(offer.vehicle.transmission)}</Text>
-            {offer.note ? <Text style={s.text}>{offer.note}</Text> : null}
           </Card>
         </>
       ) : !h.loading ? (
@@ -63,3 +69,5 @@ export default function AcceptRideScreen() {
     </DriverPage>
   );
 }
+
+const styles = StyleSheet.create({ leg: { gap: 4, paddingVertical: 4 } });

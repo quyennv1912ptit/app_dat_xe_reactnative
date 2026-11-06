@@ -3,11 +3,11 @@ import { DriverPhoto } from "@/components/DriverPhoto";
 import { StatusBadge } from "@/components/StatusBadge";
 import { documentTypeLabel, vehicleTypeLabel, transmissionLabel } from "@/lib/displayLabels";
 import { rideStyles } from "@/components/rideStyles";
-import { Button, Card, CustomDatePickerModal, GroupedList, SettingsListItem, Typography as Text, useThemeColors, useThemedStyles } from "@datxe/ui";
+import { Button, Card, CustomDatePickerModal, GroupedList, PaperTextInput as TextInput, SettingsListItem, Typography as Text, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Dialog, HelperText, Portal, ProgressBar, RadioButton, TextInput } from "react-native-paper";
+import { Dialog, HelperText, Portal, ProgressBar, RadioButton } from "react-native-paper";
 import { useDocuments } from "../hooks/useDocuments";
 import { documentExpiry, documentNumber } from "../onboardingValidation";
 

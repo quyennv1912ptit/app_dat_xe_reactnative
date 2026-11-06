@@ -16,7 +16,7 @@ export default function Index() {
       <View style={s.loading}>
         <Card style={s.card}>
           {!error ? <ActivityIndicator accessibilityLabel="Đang khôi phục phiên" color={colors.primary} /> : null}
-          <Typography accessibilityRole={error ? "alert" : undefined}>
+          <Typography style={s.status} accessibilityRole={error ? "alert" : undefined}>
             {error || (waiting ? "Đang kết nối. Việc khôi phục phiên mất nhiều thời gian hơn dự kiến." : "Đang khôi phục phiên đăng nhập…")}
           </Typography>
           {error ? <Button label="Thử lại" onPress={retry} /> : null}

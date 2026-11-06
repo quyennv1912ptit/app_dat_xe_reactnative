@@ -62,7 +62,13 @@ export type CustomerRideDetail = {
   route?: SavedRideRoute | null;
   id: number;
   customerId: number;
-  customer?: { fullName: string | null } | null;
+  customer?: {
+    fullName: string | null;
+    phoneNumber?: string | null;
+    email?: string | null;
+    avatarUrl?: string | null;
+    averageRating?: number | null;
+  } | null;
   driverId: number | null;
   driver?: CustomerRideDriver | null;
   vehicleId: number;

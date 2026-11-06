@@ -18,6 +18,8 @@ export const ThemedTextInput = forwardRef<
       ref={ref}
       placeholderTextColor={colors.onSurfaceVariant}
       selectionColor={colors.primary}
+      autoCorrect={false}
+      spellCheck={false}
       {...props}
       style={[styles.input, style]}
     />

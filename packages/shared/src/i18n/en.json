@@ -1,4 +1,8 @@
 {
+  "Lý do hủy": "Cancellation reason",
+  "Xác nhận hủy chuyến": "Confirm cancellation",
+  "Giữ chuyến": "Keep ride",
+  "Chuyến đã đổi trạng thái và không thể hủy.": "The ride status has changed and it can no longer be cancelled.",
   "Không tải được tài xế · Thử lại": "Could not load drivers · Retry",
   "Đang tìm tài xế gần bạn…": "Looking for nearby drivers…",
   "{0} tài xế gần bạn": "{0} drivers nearby",

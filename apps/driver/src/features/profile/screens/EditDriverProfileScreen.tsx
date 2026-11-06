@@ -2,12 +2,12 @@ import { DriverPage } from "@/components/DriverPage";
 import { request } from "@/lib/api";
 import { useSessionStore } from "@/lib/store";
 import { AUTH_FULL_NAME_MAX_LENGTH, getAuthFullNameValidationError, type AuthProfile } from "@datxe/shared";
-import { Button, Card, SectionHeading, Typography, useThemeColors } from "@datxe/ui";
+import { Button, Card, PaperTextInput as TextInput, SectionHeading, Typography, useThemeColors } from "@datxe/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet } from "react-native";
-import { TextInput } from "react-native-paper";
+
 import { updateDriverIdentity } from "../api";
 
 export default function EditDriverProfileScreen() {

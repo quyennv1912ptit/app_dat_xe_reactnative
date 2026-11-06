@@ -10,7 +10,8 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { TextInput as PaperInput, Text } from "react-native-paper";
+import { Text } from "react-native-paper";
+import { PaperTextInput as PaperInput } from "./PaperTextInput";
 import { useThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 type IconName = keyof typeof MaterialIcons.glyphMap;

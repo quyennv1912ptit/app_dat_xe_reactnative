@@ -36,7 +36,7 @@ Các biến môi trường được ánh xạ trong `application.properties`, ki
 
 | Biến | Mặc định |
 | --- | --- |
-| MATCHING_OFFER_TTL | 12s |
+| MATCHING_OFFER_TTL | 27s (25s trên app, 2s dự phòng) |
 | MATCHING_SEARCH_TIMEOUT | 90s |
 | MATCHING_RADIUS_STEPS | 2,3,5 |
 | MATCHING_TOP_N | 5 |

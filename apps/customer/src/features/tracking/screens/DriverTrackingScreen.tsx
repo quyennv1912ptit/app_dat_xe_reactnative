@@ -1,4 +1,5 @@
 import { ActivityIndicator } from "react-native-paper";
+import { CustomerRideCancellationDialog } from "@/components/CustomerRideCancellationDialog";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
@@ -18,7 +19,6 @@ import { BookingMap } from "@/components/map/BookingMap";
 import {
   Action,
   styles as base_styles,
-  cancellableStatuses,
   chatStatuses,
   rideStatusLabel,
 } from "../components/DriverTrackingScreenParts";
@@ -39,11 +39,10 @@ export default function DriverTrackingScreen() {
     ride,
     vehicle,
     error,
-    cancelling,
+    cancellation,
     refresh,
     pendingPickup,
     pendingDropoff,
-    cancel,
     live,
   } = useDriverTracking();
   const driver = ride ? assignedDriver(ride) : null;
@@ -252,13 +251,13 @@ export default function DriverTrackingScreen() {
                 {i18nT("Làm mới trạng thái")}
               </Text>
             </Pressable>
-            {cancellableStatuses.includes(ride.status) ? (
+            {cancellation.canCancel ? (
               <Pressable
-                disabled={cancelling}
-                onPress={cancel}
+                disabled={cancellation.busy}
+                onPress={cancellation.open}
                 style={styles.cancel}
               >
-                {cancelling ? (
+                {cancellation.busy ? (
                   <ActivityIndicator color={colors.error} />
                 ) : (
                   <Text style={styles.cancelText}>{i18nT("Hủy chuyến")}</Text>
@@ -269,6 +268,7 @@ export default function DriverTrackingScreen() {
         )}
         {error ? <Text style={styles.error}>{i18nT(error)}</Text> : null}
       </ScrollView>
+      <CustomerRideCancellationDialog cancellation={cancellation} />
     </SafeAreaView>
   );
 }

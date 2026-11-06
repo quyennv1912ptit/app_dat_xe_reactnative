@@ -2,6 +2,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT, getPushPermissionStatus } from "@datxe/shared";
 import {
   GroupedList,
+  PaperTextInput as TextInput,
   localizedAlert,
   ScreenWrapper,
   useLanguage,
@@ -22,7 +23,6 @@ import {
   List,
   RadioButton,
   Text,
-  TextInput,
 } from "react-native-paper";
 
 import { useSettings, type SavedPlace } from "@/lib/settings/SettingsProvider";
