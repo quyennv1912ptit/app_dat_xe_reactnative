@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { HomeMap } from "@/components/map/HomeMap";
 import { translate as i18nT } from "@datxe/shared";
@@ -15,7 +16,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -53,6 +54,8 @@ export default function HomeScreen() {
     currentLocation,
     currentCoordinates,
     nearbyDrivers,
+    nearbyStatus,
+    retryNearby,
     locationLoading,
     refreshLocation,
     greetingName,
@@ -60,8 +63,8 @@ export default function HomeScreen() {
   } = useHome();
 
   // Nút mục tiêu: lấy lại GPS hiện tại rồi đưa camera về đúng vị trí người dùng.
-  const recenter = () => {
-    void refreshLocation(true);
+  const recenter = async () => {
+    await refreshLocation(true);
     setRecenterToken((value) => value + 1);
   };
 
@@ -275,10 +278,25 @@ export default function HomeScreen() {
             ) : null}
 
             <View style={styles.locateRow}>
+              {nearbyStatus !== "location" ? (
+                <Pressable
+                  accessibilityRole={nearbyStatus === "error" ? "button" : "text"}
+                  disabled={nearbyStatus !== "error"}
+                  onPress={() => void retryNearby()}
+                  style={styles.nearbyPill}
+                >
+                  <Text style={styles.nearbyLabel}>
+                    {nearbyStatus === "error" ? i18nT("Không tải được tài xế · Thử lại")
+                      : nearbyStatus === "loading" ? i18nT("Đang tìm tài xế gần bạn…")
+                      : nearbyDrivers.length ? i18nT("{0} tài xế gần bạn", { "0": nearbyDrivers.length })
+                      : i18nT("Chưa có tài xế rảnh trong 5 km")}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={i18nT("Về vị trí hiện tại")}
-                onPress={recenter}
+                onPress={() => void recenter()}
                 style={styles.locateButton}
               >
                 <MaterialIcons

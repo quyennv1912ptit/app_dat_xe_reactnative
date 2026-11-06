@@ -5,7 +5,7 @@ import type {
 } from "@datxe/shared";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, fontWeight, shadowStyle, spacing, typography } from "@datxe/ui";
+import { borderRadius, fontWeight, spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const promoImage = require("@/assets/5._trang_ch/promo.jpg");
 
@@ -18,7 +18,7 @@ export function getGreeting(hour: number): string {
 export function getRecentDestinations(rides: CustomerRideSummary[]): string[] {
   const addresses = new Map<string, string>();
   for (const ride of rides) {
-    if (["CANCELLED", "NO_DRIVER_FOUND", "EXPIRED"].includes(ride.status))
+    if (["CANCELLED", "NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM"].includes(ride.status))
       continue;
     const address = ride.dropoffAddress?.trim();
     if (address) addresses.set(address.toLocaleLowerCase(getLocale()), address);
@@ -41,6 +41,7 @@ export function getRideStatusLabel(
     VEHICLE_RETURNED: "Đang hoàn tất bàn giao",
     COMPLETED: "Đã hoàn thành",
     CANCELLED: "Đã hủy",
+    FAILED_SYSTEM: "Không thể tìm tài xế do lỗi hệ thống",
     NO_DRIVER_FOUND: "Chưa tìm được tài xế",
     EXPIRED: "Yêu cầu đã hết hạn",
   };
@@ -118,7 +119,7 @@ export const styles = (colors: ThemeColors) =>
     heroSafety: {
       width: spacing.iconButtonSm,
       height: spacing.iconButtonSm,
-      borderRadius: borderRadius.full,
+      borderRadius: 24,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.onPrimary20,
@@ -142,17 +143,14 @@ export const styles = (colors: ThemeColors) =>
       alignItems: "center",
       gap: spacing.px3,
       marginHorizontal: spacing.margin,
-      padding: spacing.px3_5,
-      borderRadius: borderRadius.xl,
+      padding: 16,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     searchIconTile: {
       width: spacing.iconButtonMd,
       height: spacing.iconButtonMd,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.primaryTint,
@@ -216,28 +214,33 @@ export const styles = (colors: ThemeColors) =>
     locateRow: {
       flexDirection: "row",
       justifyContent: "flex-end",
+      alignItems: "center",
+      gap: 8,
     },
+    nearbyPill: {
+      marginRight: "auto",
+      flexShrink: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.cardSurface,
+    },
+    nearbyLabel: { ...typography.labelMd, color: colors.onSurface },
     locateButton: {
       width: spacing.iconButtonLg + spacing.spaceSm,
       height: spacing.iconButtonLg + spacing.spaceSm,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     alertPill: {
       alignSelf: "flex-start",
       marginHorizontal: spacing.margin,
       paddingHorizontal: spacing.px3_5,
       paddingVertical: spacing.px2_5,
-      borderRadius: borderRadius.xl,
+      borderRadius: 999,
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     alertText: {
       ...typography.labelSm,
@@ -262,9 +265,6 @@ export const styles = (colors: ThemeColors) =>
       gap: spacing.px3,
       overflow: "hidden",
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     tripAccent: {
       position: "absolute",
@@ -287,14 +287,14 @@ export const styles = (colors: ThemeColors) =>
       gap: spacing.gap1_5,
       paddingHorizontal: spacing.px2_5,
       paddingVertical: spacing.py1,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryTint,
       flexShrink: 1,
     },
     statusDot: {
       width: spacing.badgeSm,
       height: spacing.badgeSm,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
     },
     statusText: {
@@ -307,7 +307,7 @@ export const styles = (colors: ThemeColors) =>
     },
     pickupBox: {
       backgroundColor: colors.surfaceContainerLow,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       padding: spacing.px3,
       flexDirection: "row",
       alignItems: "center",
@@ -339,7 +339,7 @@ export const styles = (colors: ThemeColors) =>
     tripAction: {
       width: "100%",
       height: spacing.buttonPillHeight,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryContainer,
       flexDirection: "row",
       alignItems: "center",
@@ -374,9 +374,8 @@ export const styles = (colors: ThemeColors) =>
       gap: spacing.px3,
       minHeight: 56,
       paddingHorizontal: spacing.px3_5,
-      borderRadius: borderRadius.xl,
-      borderWidth: 1,
-      borderColor: colors.outlineVariant,
+      borderRadius: 24,
+
       backgroundColor: colors.surfaceContainerLowest,
     },
     recentDestinationIcon: {
@@ -384,7 +383,7 @@ export const styles = (colors: ThemeColors) =>
       height: spacing.iconButtonSm - spacing.px1_5,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 24,
       backgroundColor: colors.primaryTint,
     },
     recentDestinationText: {
@@ -412,7 +411,7 @@ export const styles = (colors: ThemeColors) =>
       gap: spacing.gap1,
       paddingHorizontal: spacing.px2,
       paddingVertical: spacing.py0_5,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.tertiaryFixed,
     },
     promoBadgeText: {
@@ -430,7 +429,7 @@ export const styles = (colors: ThemeColors) =>
     promoImage: {
       width: spacing.promoImage,
       height: spacing.promoImage,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
     },
 
     // Tương thích các key cũ còn được tham chiếu từ hook/màn khác.
@@ -448,7 +447,7 @@ export const styles = (colors: ThemeColors) =>
       height: spacing.iconButtonSm,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryTint,
     },
     locationCopy: { flex: 1, minWidth: 0 },
@@ -463,14 +462,14 @@ export const styles = (colors: ThemeColors) =>
       height: spacing.iconButtonSm,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLow,
     },
     notifWrap: { position: "relative" },
     notifButton: {
       width: spacing.iconButtonLg,
       height: spacing.iconButtonLg,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.surfaceContainer,
       alignItems: "center",
       justifyContent: "center",
@@ -481,17 +480,15 @@ export const styles = (colors: ThemeColors) =>
       right: spacing.spaceSm,
       width: spacing.badgeMd,
       height: spacing.badgeMd,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.error,
-      borderWidth: 2,
-      borderColor: colors.surface,
     },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
       height: spacing.searchBarHeight,
       backgroundColor: colors.surfaceContainerLowest,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       paddingHorizontal: spacing.spaceMd,
       gap: spacing.spaceSm,
     },
@@ -517,14 +514,14 @@ export const styles = (colors: ThemeColors) =>
     driverAvatar: {
       width: spacing.avatarLg,
       height: spacing.avatarLg,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
     },
     verifiedBadge: {
       position: "absolute",
       bottom: -spacing.spaceXs,
       right: -spacing.spaceXs,
       backgroundColor: colors.surfaceContainerLowest,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       padding: spacing.py0_5,
     },
     driverCopy: { flex: 1, minWidth: 0 },
@@ -542,14 +539,14 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.tertiaryFixed,
       paddingHorizontal: spacing.gap1_5,
       paddingVertical: spacing.py0_5,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
     },
     ratingText: { ...typography.labelSm, color: colors.onTertiaryFixed },
     driverMeta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     callButton: {
       width: spacing.iconButtonSm,
       height: spacing.iconButtonSm,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.surfaceContainerLow,
       alignItems: "center",
       justifyContent: "center",
@@ -558,13 +555,16 @@ export const styles = (colors: ThemeColors) =>
       alignSelf: "flex-start",
       height: spacing.promoButtonHeight,
       paddingHorizontal: spacing.spaceMd,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryContainer,
       alignItems: "center",
       justifyContent: "center",
       marginTop: spacing.py1,
     },
-    promoButtonText: { ...typography.labelSm, color: colors.onPrimaryContainer },
+    promoButtonText: {
+      ...typography.labelSm,
+      color: colors.onPrimaryContainer,
+    },
     reassurance: {
       flexDirection: "row",
       alignItems: "center",
@@ -581,9 +581,6 @@ export const styles = (colors: ThemeColors) =>
       justifyContent: "space-around",
       paddingHorizontal: spacing.spaceXs,
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     tabItem: {
       flex: 1,
@@ -605,9 +602,7 @@ export const styles = (colors: ThemeColors) =>
       right: 0,
       width: spacing.badgeSm,
       height: spacing.badgeSm,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
-      borderWidth: 2,
-      borderColor: colors.surfaceContainerLowest,
     },
   });

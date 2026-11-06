@@ -1,7 +1,6 @@
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
-  borderRadius,
   Button,
   spacing,
   typography,
@@ -21,6 +20,7 @@ export const rideStatusLabel: Record<string, string> = {
   VEHICLE_RETURNED: "Đang hoàn tất bàn giao xe",
   COMPLETED: "Chuyến đi hoàn thành",
   CANCELLED: "Chuyến đi đã hủy",
+  FAILED_SYSTEM: "Không thể tìm tài xế do lỗi hệ thống",
   NO_DRIVER_FOUND: "Không tìm thấy tài xế",
   EXPIRED: "Yêu cầu đã hết hạn",
 };
@@ -67,15 +67,15 @@ export function Action({
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
+    safe: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.margin, gap: 13, paddingBottom: 34 },
     loading: { alignItems: "center", gap: 12, padding: 28 },
     statusCard: {
       alignItems: "center",
       gap: 9,
       backgroundColor: colors.primaryFixedTint,
-      borderRadius: borderRadius.lg,
-      padding: 20,
+      borderRadius: 24,
+      padding: 16,
     },
     status: {
       ...typography.headlineSm,
@@ -85,7 +85,7 @@ export const styles = (colors: ThemeColors) =>
     meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     card: {
       backgroundColor: colors.surfaceContainerLowest,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       padding: 16,
       gap: 8,
     },
@@ -100,7 +100,7 @@ export const styles = (colors: ThemeColors) =>
     },
     primary: {
       minHeight: 50,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
@@ -111,12 +111,13 @@ export const styles = (colors: ThemeColors) =>
     secondaryText: { ...typography.labelLg, color: colors.primary },
     cancel: {
       minHeight: 50,
-      borderWidth: 1,
-      borderColor: colors.error,
-      borderRadius: borderRadius.full,
+
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
+
+      backgroundColor: colors.errorContainer,
     },
-    cancelText: { ...typography.labelLg, color: colors.error },
+    cancelText: { ...typography.labelLg, color: colors.onErrorContainer },
     error: { ...typography.bodyMd, color: colors.error, textAlign: "center" },
   });

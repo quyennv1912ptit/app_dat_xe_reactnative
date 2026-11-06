@@ -16,7 +16,7 @@ import {
   PHONE_COUNTRIES,
   type PhoneCountry,
 } from "@datxe/shared";
-import { borderRadius, fontSize, spacing, typography } from "../theme/colors";
+import { fontSize, spacing, typography } from "../theme/colors";
 
 type Props = {
   value: string;
@@ -248,7 +248,7 @@ const base_styles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceContainerLowest,
       borderWidth: 1,
       borderColor: colors.outlineVariant,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       paddingHorizontal: spacing.px2_5,
     },
     inputRowInvalid: {
@@ -284,7 +284,7 @@ const base_styles = (colors: ThemeColors) =>
     clearButton: {
       width: spacing.clearButton,
       height: spacing.clearButton,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.surfaceContainerHigh,
       alignItems: "center",
       justifyContent: "center",
@@ -297,8 +297,8 @@ const base_styles = (colors: ThemeColors) =>
     sheet: {
       maxHeight: "82%",
       backgroundColor: colors.surfaceContainerLowest,
-      borderTopLeftRadius: borderRadius.xxl,
-      borderTopRightRadius: borderRadius.xxl,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
       paddingHorizontal: spacing.margin,
       paddingTop: spacing.spaceSm,
       paddingBottom: spacing.spaceXl,
@@ -306,7 +306,9 @@ const base_styles = (colors: ThemeColors) =>
     sheetHandle: {
       width: 36,
       height: 4,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
       backgroundColor: colors.secondaryFixedDim,
       alignSelf: "center",
       marginBottom: spacing.spaceMd,
@@ -332,7 +334,7 @@ const base_styles = (colors: ThemeColors) =>
       alignItems: "center",
       gap: spacing.spaceSm,
       backgroundColor: colors.surfaceContainerLow,
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       paddingHorizontal: spacing.spaceMd,
       marginBottom: spacing.spaceSm,
     },
@@ -348,8 +350,7 @@ const base_styles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.spaceSm,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.outlineVariant,
+
       paddingHorizontal: spacing.spaceXs,
     },
     rowFlag: { fontSize: fontSize.iconXl, width: 30 },

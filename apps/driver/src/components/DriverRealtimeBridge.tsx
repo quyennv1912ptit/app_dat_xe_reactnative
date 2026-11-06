@@ -33,7 +33,18 @@ export function DriverRealtimeBridge() {
   const retryVersion = useDriverHealth(state => state.retryVersion);
   const teardown = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
-    const sub = AppState.addEventListener('change', state => { if (state === 'active') useDriverHealth.getState().retry(); });
+    let lastRetryAt = 0;
+    let leftAt = 0;
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') { leftAt = Date.now(); return; }
+      const now = Date.now();
+      // Permission dialogs also emit an active transition; without this debounce
+      // retry() restarted the GPS effect, which re-opened the permission dialog,
+      // which emitted active again - an endless loop that never got a GPS fix.
+      if (now - lastRetryAt < 15000 || (leftAt > 0 && now - leftAt < 2000)) return;
+      lastRetryAt = now;
+      useDriverHealth.getState().retry();
+    });
     return () => sub.remove();
   }, []);
   useEffect(() => {
@@ -70,38 +81,39 @@ export function DriverRealtimeBridge() {
       await previousTeardown;
       if (cancelled) return;
       const servicesEnabled = await Location.hasServicesEnabledAsync();
-      const foreground = await Location.requestForegroundPermissionsAsync();
+      let foreground = await Location.getForegroundPermissionsAsync();
+      if (!foreground.granted && foreground.canAskAgain) foreground = await Location.requestForegroundPermissionsAsync();
       if (cancelled) return;
       useDriverHealth.getState().update({ foregroundGranted: foreground.granted, servicesEnabled, error: '' });
       if (!foreground.granted) throw new Error("Cần quyền vị trí để nhận chuyến và chia sẻ vị trí.");
       if (!servicesEnabled) throw new Error('Hãy bật dịch vụ vị trí/GPS của thiết bị.');
       if (cancelled) return;
-      const background = await startDriverBackgroundLocation().catch(() => false);
-      const backgroundPermission = await Location.getBackgroundPermissionsAsync();
-      if (cancelled) return;
-      useDriverHealth.getState().update({ backgroundRunning: background, backgroundGranted: backgroundPermission.granted });
-      if (!background) {
-        watcher = await Location.watchPositionAsync(
-          {
-            accuracy: rideId
-              ? Location.Accuracy.High
-              : Location.Accuracy.Balanced,
-            timeInterval: env.locationIntervalMs,
-            distanceInterval: 0,
-          },
-          position => { if (!cancelled) publishDriverLocation(position); },
-        );
-        if (cancelled) watcher.remove();
-      }
-      if (cancelled) return;
-      // Lấy ngay một vị trí hiện tại để có lastKnown cho heartbeat, kể cả khi GPS
-      // không bắn callback ngay sau khi mở app.
-      void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-        .then(position => { if (!cancelled) publishDriverLocation(position); })
-        .catch(() => {});
-      void restoreLastLocation().catch(() => {});
-      // Giữ heartbeat cho backend dù GPS không bắn callback khi tài xế đứng yên.
+      // Foreground GPS must work before (and independently of) the background
+      // permission prompt, which can open Android Settings or fail on web.
       startDriverLocationHeartbeat();
+      void restoreLastLocation().catch(() => {});
+      void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+        .then(position => { if (!cancelled) publishDriverLocation(position); })
+        .catch(() => {
+          if (!cancelled) useDriverHealth.getState().update({ error: 'Chưa lấy được GPS mới. Hãy bật vị trí chính xác và thử ở nơi thoáng.' });
+        });
+      watcher = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: env.locationIntervalMs,
+          distanceInterval: 0,
+        },
+        position => { if (!cancelled) publishDriverLocation(position); },
+      );
+      if (cancelled) { watcher.remove(); return; }
+      const background = await startDriverBackgroundLocation().catch(() => false);
+      if (cancelled) return;
+      useDriverHealth.getState().update({ backgroundRunning: background });
+      const backgroundPermission = await Location.getBackgroundPermissionsAsync().catch(() => null);
+      if (cancelled) return;
+      if (backgroundPermission) useDriverHealth.getState().update({ backgroundGranted: backgroundPermission.granted });
+      // A started native task is not evidence of callbacks while the app is
+      // visible. Keep the foreground watch; repeated GPS samples are deduplicated.
     })().catch((error) => {
       if (!cancelled) useDriverHealth.getState().update({ error: error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.' });
     });

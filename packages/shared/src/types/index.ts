@@ -31,6 +31,7 @@ export type RideStatus =
   | 'VEHICLE_RETURNED'
   | 'COMPLETED'
   | 'CANCELLED'
+  | 'FAILED_SYSTEM'
   | 'NO_DRIVER_FOUND'
   | 'EXPIRED';
 
@@ -61,9 +62,11 @@ export type CustomerRideDetail = {
   route?: SavedRideRoute | null;
   id: number;
   customerId: number;
+  customer?: { fullName: string | null } | null;
   driverId: number | null;
   driver?: CustomerRideDriver | null;
   vehicleId: number;
+  licensePlate?: string | null;
   type: 'INSTANT' | 'SCHEDULED';
   scheduledAt: string | null;
   pickupAddress: string | null;

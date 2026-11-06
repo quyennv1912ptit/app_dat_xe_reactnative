@@ -25,7 +25,7 @@ import {
   type AuthRole,
 } from "@datxe/shared";
 import { Button } from "../components/Button";
-import { borderRadius, spacing, typography } from "../theme/colors";
+import { spacing, typography } from "../theme/colors";
 import { AuthBackButton } from "./AuthBackButton";
 import { OtpCodeInput } from "./OtpCodeInput";
 import { ResendOtpButton } from "./ResendOtpButton";
@@ -36,6 +36,7 @@ type Props = {
   onLogin: () => void;
   onRegister: (phone: string) => void;
   onHome: () => void;
+  onHelp?: () => void;
 };
 
 export function OtpVerificationScreen({
@@ -44,6 +45,7 @@ export function OtpVerificationScreen({
   onLogin,
   onRegister,
   onHome,
+  onHelp,
 }: Props) {
   useLanguage();
 
@@ -161,11 +163,12 @@ export function OtpVerificationScreen({
               {i18nT(notice)}
             </Text>
           ) : null}
+          {onHelp ? <Button variant="ghost" label={i18nT("Chưa nhận được mã?")} onPress={onHelp} /> : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
-            disabled={loading || code.replace(/\D/g, "").length !== 6}
+            disabled={loading || resending || code.replace(/\D/g, "").length !== 6}
             label={i18nT("Xác nhận OTP")}
             loading={loading}
             loadingLabel={i18nT("Đang xác thực...")}
@@ -273,7 +276,7 @@ const base_styles = (colors: ThemeColors) =>
     },
     codeBlock: {
       marginTop: spacing.spaceLg + spacing.spaceSm,
-      gap: spacing.spaceSm,
+      gap: spacing.spaceMd,
     },
     errorText: {
       ...typography.bodyMd,

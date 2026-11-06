@@ -20,3 +20,6 @@ export * from './localizedAlert';
 export * from './usePushForegroundLaunch';
 export * from './SupportCenter';
 export * from './HandoverHistory';
+
+export * from "./theme/AppThemeProvider";
+export * from "./theme/materialTheme";

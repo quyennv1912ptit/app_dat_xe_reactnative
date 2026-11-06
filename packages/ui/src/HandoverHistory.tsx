@@ -20,4 +20,4 @@ export function HandoverHistory({ revisions }: { revisions: { revision: number; 
     </Card>) : null}
   </View>;
 }
-const s = StyleSheet.create({ stack: { gap: 12 }, image: { width: '100%', height: 180, borderRadius: 12 } });
+const s = StyleSheet.create({ stack: { gap: 12 }, image: { width: '100%', height: 180, borderRadius: 24 } });

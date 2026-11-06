@@ -1,10 +1,10 @@
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, spacing, typography } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
-    content: { padding: spacing.margin, gap: 14, paddingBottom: 28 },
+    safe: { flex: 1, backgroundColor: colors.background },
+    content: { padding: spacing.margin, gap: 16, paddingBottom: 28 },
     success: { alignItems: "center", gap: 8, padding: 16 },
     heading: { ...typography.headlineSm, color: colors.onSurface },
     meta: {
@@ -14,9 +14,9 @@ export const styles = (colors: ThemeColors) =>
     },
     card: {
       padding: 16,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLowest,
-      gap: 10,
+      gap: 8,
     },
     section: { ...typography.labelLg, color: colors.onSurface },
     body: { ...typography.bodyMd, color: colors.onSurface },
@@ -28,7 +28,7 @@ export const styles = (colors: ThemeColors) =>
       minHeight: 90,
       borderWidth: 1,
       borderColor: colors.outlineVariant,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       padding: 12,
       textAlignVertical: "top",
       ...typography.bodyMd,
@@ -41,7 +41,7 @@ export const styles = (colors: ThemeColors) =>
     },
     primary: {
       minHeight: 52,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",

@@ -1,5 +1,6 @@
+import { ActivityIndicator } from "react-native-paper";
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Modal, Platform, View } from 'react-native';
+import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, View } from "react-native";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Button, MotionPressable as Pressable, ScreenWrapper, ThemedTextInput as TextInput, Typography as Text, useThemeColors, useThemedStyles } from '@datxe/ui';
@@ -50,8 +51,8 @@ function RideChat({ rideId, userId }: { rideId: number; userId: number }) {
           <MaterialIcons name="arrow-back" size={24} color={colors.onSurface} />
         </Pressable>
         <View style={s.flex}>
-          <Text accessibilityRole="header" style={s.title}>Nhắn tin với khách</Text>
-          <Text style={s.subtitle}>Chuyến #{rideId}</Text>
+          <Text accessibilityRole="header" numberOfLines={1} style={s.title}>{h.ride?.customer?.fullName?.trim() || "Nhắn tin với khách"}</Text>
+          <Text numberOfLines={1} style={s.subtitle}>Chuyến #{rideId}</Text>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Làm mới tin nhắn" onPress={() => void h.session.refresh()} style={s.iconButton}>
           <MaterialIcons name="refresh" size={24} color={colors.primary} />
@@ -78,14 +79,20 @@ function RideChat({ rideId, userId }: { rideId: number; userId: number }) {
           maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 80 }}
           ListEmptyComponent={!h.loading && !h.error ? <View style={s.empty}><Text style={s.body}>{open ? 'Bắt đầu trò chuyện với khách hàng.' : 'Chưa có tin nhắn trong chuyến này.'}</Text></View> : undefined}
           ListFooterComponent={h.hasMore ? <Button label={h.loadingOlder ? 'Đang tải…' : 'Tải tin nhắn cũ'} disabled={h.loadingOlder} onPress={() => void h.session.loadOlder()} /> : undefined}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const message = item.message;
             const pending = item.pending;
             const mine = Boolean(pending || message?.senderRole === 'DRIVER');
             const uri = message?.attachmentUrl ?? pending?.body.attachmentUrl ?? pending?.file?.uri;
             const content = message?.content ?? pending?.body.content;
             const created = message?.createdAt ?? pending!.createdAt;
+            const date = new Date(created).toLocaleDateString("vi-VN");
+            const older = rows[index + 1];
+            const olderDate = older?.message?.createdAt ?? older?.pending?.createdAt;
+            const startsDay = !olderDate || new Date(olderDate).toLocaleDateString("vi-VN") !== date;
             return (
+              <View>
+              {startsDay ? <Text style={[s.meta, { textAlign: "center", paddingVertical: 8 }]}>{date}</Text> : null}
               <View style={[s.row, mine && s.mine]}>
                 <View style={[s.bubble, mine && s.mineBubble]}>
                   {uri ? <Pressable accessibilityRole="button" accessibilityLabel="Xem ảnh tin nhắn" onPress={() => setPreview(uri)}><Image source={{ uri }} style={s.attachment} /></Pressable> : null}
@@ -99,6 +106,7 @@ function RideChat({ rideId, userId }: { rideId: number; userId: number }) {
                     <Button label="Thử gửi lại" disabled={!open} onPress={() => void h.session.retry(pending.key)} />
                   </> : null}
                 </View>
+              </View>
               </View>
             );
           }}

@@ -19,7 +19,7 @@ useEffect(() => {
 const sendCode = async () => {
     if (!isValidVietnamPhoneNumber(phone)) {
       setError('Vui lòng nhập số điện thoại Việt Nam hợp lệ.');
-      return;
+      return false;
     }
     setLoading(true);
     setError('');
@@ -30,10 +30,13 @@ const sendCode = async () => {
         setVerifiedPhone(linkedUser?.phoneNumber ?? normalizeVietnamPhoneNumber(phone));
         setCodeSent(false);
       } else {
+        setCode("");
         setCodeSent(true);
       }
+      return true;
     } catch (cause) {
       setError(getErrorMessage(cause));
+      return false;
     } finally {
       setLoading(false);
     }
@@ -87,5 +90,7 @@ const submit = async () => {
     }
   };
 
-return { user, router, fullName, setFullName, phone, setPhone, code, setCode, codeSent, verifiedPhone, loading, error, setError, sendCode, verifyCode, submit };
+const resetCode = () => { setCode(""); setCodeSent(false); setError(""); };
+
+return { resetCode, user, router, fullName, setFullName, phone, setPhone, code, setCode, codeSent, verifiedPhone, loading, error, setError, sendCode, verifyCode, submit };
 }

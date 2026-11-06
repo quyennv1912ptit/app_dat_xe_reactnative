@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { env } from "@/config/env";
 import { initializeMapbox } from "@/lib/initializeMapbox";
 import { translate as i18nT } from "@datxe/shared";
@@ -18,7 +19,7 @@ import Mapbox, {
   ShapeSource,
 } from "@rnmapbox/maps";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { bookingStyles as base_s } from "./mapStyles";
 import type { BookingMapProps } from "./types";
 

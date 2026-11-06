@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
@@ -9,7 +10,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
 import {
   styles as base_styles,
@@ -101,7 +102,7 @@ export default function FindDriverScreen() {
           )}
         </Pressable>
         {ride &&
-        ["NO_DRIVER_FOUND", "EXPIRED", "CANCELLED"].includes(ride.status) ? (
+        ["NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM", "CANCELLED"].includes(ride.status) ? (
           <Pressable
             onPress={() => router.replace("/(tabs)/home")}
             style={styles.secondary}

@@ -4,11 +4,11 @@ import { StyleSheet } from "react-native";
 export const rideStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
-    page: { padding: 20, gap: 16 },
+    page: { padding: 16, gap: 16 },
     title: {
       fontFamily: fontFamily.inter,
       fontSize: 24,
-      fontWeight: "700",
+      fontWeight: "500",
       color: colors.onSurface,
     },
     text: {
@@ -20,25 +20,26 @@ export const rideStyles = (colors: ThemeColors) =>
     label: {
       fontFamily: fontFamily.inter,
       fontSize: 12,
-      fontWeight: "700",
+      fontWeight: "500",
       color: colors.onSurfaceVariant,
     },
     card: {
-      padding: 18,
-      borderRadius: 18,
-      gap: 10,
+      padding: 16,
+      borderRadius: 24,
+      gap: 8,
       backgroundColor: colors.surfaceContainerLowest,
     },
+    listRow: { paddingVertical: 16, gap: 8 },
     button: {
-      padding: 16,
-      borderRadius: 14,
+      height: 48,
+      paddingVertical: 0,
+      borderRadius: 999,
       backgroundColor: colors.primary,
-      alignItems: "center",
     },
     buttonText: {
       fontFamily: fontFamily.inter,
       fontSize: 16,
-      fontWeight: "700",
+      fontWeight: "500",
       color: colors.onPrimary,
     },
     link: {

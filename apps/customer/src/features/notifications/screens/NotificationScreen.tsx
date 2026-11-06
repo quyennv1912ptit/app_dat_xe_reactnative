@@ -1,3 +1,5 @@
+import { NotificationListItem } from "../components/NotificationListItem";
+import { ActivityIndicator } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { EmptyStateCard } from "@/components/EmptyStateCard";
 import {
@@ -6,7 +8,7 @@ import {
   HeaderLabeledIconButton,
   ScreenHeader,
 } from "@/components/ScreenHeader";
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { translate as i18nT } from "@datxe/shared";
 import {
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
@@ -15,15 +17,9 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, RefreshControl, ScrollView, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
 
-import {
-  styles as base_styles,
-  bodyFor,
-  category,
-  titleFor,
-} from "../components/NotificationScreenParts";
+import { styles as base_styles } from "../components/NotificationScreenParts";
 import { useNotification } from "../hooks/useNotification";
 export default function NotificationScreen() {
   useLanguage();
@@ -82,13 +78,14 @@ export default function NotificationScreen() {
         style={styles.scroll}
       >
         <View style={styles.summary}>
-          <View>
+          <View style={styles.summaryCopy}>
             <Text style={styles.heading}>{i18nT("Hộp thư thông báo")}</Text>
             <Text style={styles.meta}>
               {i18nT(unreadCount)} {i18nT("thông báo chưa đọc")}
             </Text>
           </View>
           <Pressable
+            style={styles.markAllButton}
             disabled={unreadCount === 0}
             onPress={() => void markAll()}
           >
@@ -149,44 +146,17 @@ export default function NotificationScreen() {
             }
           />
         ) : null}
-        {visible.map((item) => {
-          const unread = !item.readAt;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => void openNotification(item)}
-              style={[styles.item, unread && styles.itemUnread]}
-            >
-              <View style={[styles.icon, unread && styles.iconUnread]}>
-                <MaterialIcons
-                  name={
-                    category(item.type) === "vehicle"
-                      ? "directions-car"
-                      : category(item.type) === "promo"
-                        ? "local-offer"
-                        : "notifications"
-                  }
-                  size={22}
-                  color={unread ? colors.primary : colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={styles.copy}>
-                <View style={styles.itemHeader}>
-                  <Text
-                    style={[styles.itemTitle, unread && styles.itemTitleUnread]}
-                  >
-                    {i18nT(titleFor(item.type))}
-                  </Text>
-                  {unread ? <View style={styles.dot} /> : null}
-                </View>
-                <Text style={styles.body}>{i18nT(bodyFor(item.payload))}</Text>
-                <Text style={styles.time}>
-                  {i18nT(new Date(item.createdAt).toLocaleString(getLocale()))}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
+        {visible.length ? (
+          <View style={styles.list}>
+            {visible.map((item) => (
+              <NotificationListItem
+                key={item.id}
+                item={item}
+                onPress={() => void openNotification(item)}
+              />
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
       <CustomerTabBar active="notifications" unreadCount={unreadCount} />
     </SafeAreaView>

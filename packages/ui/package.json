@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@datxe/shared": "*"
+    "@datxe/shared": "*",
+    "react-native-paper": "^5"
   },
   "peerDependencies": {
     "react": "*",

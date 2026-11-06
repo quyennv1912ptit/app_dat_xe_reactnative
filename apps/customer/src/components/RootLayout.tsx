@@ -3,18 +3,38 @@ import "@/lib/auth";
 import "@/lib/logger";
 import { queryClient } from "@/lib/queryClient";
 import { SettingsProvider } from "@/lib/settings/SettingsProvider";
-import { useLanguage, useScreenMotion, useTheme, usePushForegroundLaunch } from "@datxe/ui";
+import {
+  useLanguage,
+  useScreenMotion,
+  useTheme,
+  usePushForegroundLaunch,
+} from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { usePathname, useRouter, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { BackHandler } from "react-native";
+import { BackHandler, Platform } from "react-native";
 import { PushBridge } from "./PushBridge";
 
 export default function RootLayout() {
   useLanguage();
+
+  // Expo's floating Tools gear covers the app's back action on development builds.
+  // The development menu remains available through the normal device gesture.
+  useEffect(() => {
+    if (!__DEV__ || Platform.OS === "web") return;
+    let mounted = true;
+    void import("expo-dev-client")
+      .then((menu) => {
+        if (mounted) menu.setToolsButtonVisible(false);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   validateEnv();
   const [loaded, error] = useFonts(MaterialIcons.font);
@@ -46,6 +66,7 @@ function useHardwareBack() {
     latest.current = { router, pathname };
   }, [pathname, router]);
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {

@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
 import {
@@ -9,7 +10,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, Image, ScrollView, View } from "react-native";
+import { Image, ScrollView, View } from "react-native";
 
 import {
   Choice,

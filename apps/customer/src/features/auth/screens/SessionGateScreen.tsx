@@ -1,6 +1,7 @@
+import { ActivityIndicator } from "react-native-paper";
 import { Typography as Text, useLanguage, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { Redirect } from "expo-router";
-import { ActivityIndicator, Image, View } from "react-native";
+import { Image, View } from "react-native";
 import { styles as base_styles } from "../components/SessionGateScreenParts";
 import { useSessionGate } from "../hooks/useSessionGate";
 

@@ -1,12 +1,12 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useSupportRequests } from '@/lib/useSupportRequests';
-import { pickSupportImage } from '@/lib/supportImages';
-import { useLocalSearchParams } from 'expo-router';
+import { useSupportRequests } from "@/lib/useSupportRequests";
+import { pickSupportImage } from "@/lib/supportImages";
+import { useLocalSearchParams } from "expo-router";
 import { translate as i18nT } from "@datxe/shared";
 import {
   Card,
   SupportCenter,
-  Button,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
@@ -15,7 +15,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 import {
   styles as base_styles,
@@ -39,98 +39,120 @@ export default function CustomerSupportScreen() {
         title={i18nT(isSafety ? "An toàn chuyến đi" : "Trợ giúp")}
         onBack={() => router.back()}
       />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.notice}>
-          <MaterialIcons
-            name={isSafety ? "shield" : "support-agent"}
-            size={32}
-            color={colors.primary}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={styles.notice}>
+            <MaterialIcons
+              name={isSafety ? "shield" : "support-agent"}
+              size={32}
+              color={colors.primary}
+            />
+            <Text style={styles.heading}>
+              {i18nT(isSafety ? "Công cụ an toàn" : "Trung tâm trợ giúp")}
+            </Text>
+            <Text style={styles.body}>
+              {i18nT(
+                isSafety
+                  ? "Theo dõi chuyến hoặc gửi yêu cầu hỗ trợ nếu có vấn đề."
+                  : "Gửi mô tả và ảnh cho bộ phận hỗ trợ, theo dõi phản hồi bằng mã tiếp nhận.",
+              )}
+            </Text>
+          </View>
+          {support.error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {support.error}
+            </Text>
+          ) : null}
+          {support.loading ? <ActivityIndicator /> : null}
+          <SupportCenter
+            {...support}
+            initialRideId={Number(rideId) || undefined}
+            pickImage={pickSupportImage}
+            onRefresh={() => void support.retry()}
           />
-          <Text style={styles.heading}>
-            {i18nT(isSafety ? "Công cụ an toàn" : "Trung tâm trợ giúp")}
-          </Text>
-          <Text style={styles.body}>
-            {i18nT(
-              isSafety
-                ? "Theo dõi chuyến hoặc gửi yêu cầu hỗ trợ nếu có vấn đề. Kênh này không xử lý khẩn cấp."
-                : "Gửi mô tả và ảnh cho bộ phận hỗ trợ, theo dõi phản hồi bằng mã tiếp nhận.",
-            )}
-          </Text>
-        </View>
-        <Button label="Tải lại phản hồi hỗ trợ" variant="secondary" onPress={() => void support.retry()} />
-        {support.error ? <Text style={styles.body}>{support.error}</Text> : null}
-        {support.loading ? <ActivityIndicator /> : null}
-        <SupportCenter {...support} initialRideId={Number(rideId) || undefined} pickImage={pickSupportImage} />
-        {error ? (
-          <Pressable onPress={() => void retry()}>
-            <Text style={styles.body}>{i18nT(error)}</Text>
-            <Text style={styles.linkText}>{i18nT("Thử lại")}</Text>
-          </Pressable>
-        ) : null}
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : ride ? (
-          <>
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/ride/tracking",
-                  params: { rideId: String(ride.id) },
-                })
-              }
-              style={styles.ride}
-            >
-              <Text style={styles.label}>{i18nT("CHUYẾN ĐANG HOẠT ĐỘNG")}</Text>
-              <Text style={styles.body}>
-                #{i18nT(ride.id)} · {i18nT(ride.status)}
-              </Text>
-              <Text style={styles.meta}>
-                {ride.pickupAddress || i18nT("Điểm đón")} →{" "}
-                {ride.dropoffAddress || i18nT("Điểm đến")}
-              </Text>
+          {error ? (
+            <Pressable onPress={() => void retry()}>
+              <Text style={styles.body}>{i18nT(error)}</Text>
+              <Text style={styles.linkText}>{i18nT("Thử lại")}</Text>
             </Pressable>
-            {ride.driverId && chatStatuses.includes(ride.status) ? (
+          ) : null}
+          {loading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : ride ? (
+            <>
               <Pressable
                 onPress={() =>
                   router.push({
-                    pathname: "/chat",
+                    pathname: "/ride/tracking",
                     params: { rideId: String(ride.id) },
-                  } as never)
+                  })
                 }
-                style={styles.chat}
+                style={styles.ride}
               >
-                <MaterialIcons name="chat" size={20} color={colors.primary} />
-                <Text style={styles.chatText}>
-                  {i18nT("Nhắn tin với tài xế")}
+                <Text style={styles.label}>
+                  {i18nT("CHUYẾN ĐANG HOẠT ĐỘNG")}
+                </Text>
+                <Text style={styles.body}>
+                  #{i18nT(ride.id)} · {i18nT(ride.status)}
+                </Text>
+                <Text style={styles.meta}>
+                  {ride.pickupAddress || i18nT("Điểm đón")} →{" "}
+                  {ride.dropoffAddress || i18nT("Điểm đến")}
                 </Text>
               </Pressable>
-            ) : null}
-          </>
-        ) : !error ? (
-          <Text style={styles.meta}>
-            {i18nT("Hiện không có chuyến đang hoạt động.")}
-          </Text>
-        ) : null}
-        <Card style={styles.card}>
-          <Text style={styles.section}>{i18nT("Quản lý chuyến")}</Text>
-          <Text style={styles.body}>
-            {i18nT(
-              "Mở Lịch sử để xem chi tiết, trạng thái, giá và biên bản bàn giao của chuyến.",
-            )}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/(tabs)/history")}
-            style={styles.link}
-          >
-            <Text style={styles.linkText}>{i18nT("Mở lịch sử chuyến đi")}</Text>
-            <MaterialIcons
-              name="chevron-right"
-              size={22}
-              color={colors.primary}
-            />
-          </Pressable>
-        </Card>
-      </ScrollView>
+              {ride.driverId && chatStatuses.includes(ride.status) ? (
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/chat",
+                      params: { rideId: String(ride.id) },
+                    } as never)
+                  }
+                  style={styles.chat}
+                >
+                  <MaterialIcons name="chat" size={20} color={colors.primary} />
+                  <Text style={styles.chatText}>
+                    {i18nT("Nhắn tin với tài xế")}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : !error ? (
+            <Text style={styles.meta}>
+              {i18nT("Hiện không có chuyến đang hoạt động.")}
+            </Text>
+          ) : null}
+          <Card style={styles.card}>
+            <Text style={styles.section}>{i18nT("Quản lý chuyến")}</Text>
+            <Text style={styles.body}>
+              {i18nT(
+                "Mở Lịch sử để xem chi tiết, trạng thái, giá và biên bản bàn giao của chuyến.",
+              )}
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/history")}
+              style={styles.link}
+            >
+              <Text style={styles.linkText}>
+                {i18nT("Mở lịch sử chuyến đi")}
+              </Text>
+              <MaterialIcons
+                name="chevron-right"
+                size={22}
+                color={colors.primary}
+              />
+            </Pressable>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

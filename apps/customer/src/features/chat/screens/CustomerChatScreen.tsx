@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { HeaderIconButton, ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
@@ -10,14 +11,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  View,
-} from "react-native";
+import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 import { styles as base_styles } from "../components/CustomerChatScreenParts";
 import { useCustomerChat } from "../hooks/useCustomerChat";

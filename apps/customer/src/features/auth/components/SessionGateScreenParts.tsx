@@ -10,7 +10,7 @@ export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.primaryContainer,
+      backgroundColor: colors.background,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -25,7 +25,7 @@ export const styles = (colors: ThemeColors) =>
     logo: {
       width: spacing.radarCore + spacing.spaceLg,
       height: spacing.radarCore + spacing.spaceLg,
-      borderRadius: (spacing.radarCore + spacing.spaceLg) * 0.225,
+      borderRadius: 24,
     },
     tagline: {
       fontFamily: fontFamily.inter,

@@ -39,6 +39,24 @@ test('expired offers/read events are silent, lock screen text excludes private p
   assert.ok(!JSON.stringify(contracts.pushPresentation({ type: 'CHAT_MESSAGE', payload: { content: 'private address' } })).includes('private address'));
 });
 
+test('offer-close pushes route home and assigned push exposes plate and ETA', async () => {
+  for (const type of ['OFFER_EXPIRED', 'OFFER_CANCELLED']) {
+    const target = await contracts.resolvePushDestination({ type, payload: { rideId: 12 } }, 'DRIVER', {
+      ride: async () => { throw new Error('must not fetch a ride'); },
+    });
+    assert.equal(target.pathname, '/(tabs)/home');
+    assert.ok(target.notice);
+  }
+  assert.equal(contracts.pushPresentation({ type: 'OFFER_EXPIRED', payload: { rideId: 12 } }).title, 'Lời mời nhận chuyến đã hết hạn');
+  assert.equal(contracts.pushPresentation({ type: 'OFFER_CANCELLED', payload: { rideId: 12 } }).title, 'Lời mời nhận chuyến đã hủy');
+  const assigned = contracts.pushPresentation({ type: 'RIDE_ASSIGNED', payload: { rideId: 5, licensePlate: 'ABC-123', etaToPickupMin: 4 } });
+  assert.equal(assigned.title, 'Đã có tài xế nhận chuyến');
+  assert.ok(assigned.body.includes('ABC-123'));
+  assert.ok(assigned.body.includes('4 phút'));
+  const noDetails = contracts.pushPresentation({ type: 'RIDE_ASSIGNED', payload: { rideId: 5 } });
+  assert.ok(!noDetails.body.includes('undefined'));
+});
+
 test('offer opens only the matching live server offer; does not open a different newer offer', async () => {
   const live = await contracts.resolvePushDestination(offer, 'DRIVER', { pendingOffer: async () => ({ rideId: 12, expiresAt: 3000 }) }, () => 1000);
   assert.equal(live.pathname, '/ride/accept');
@@ -48,6 +66,8 @@ test('offer opens only the matching live server offer; does not open a different
     assert.equal(target.pathname, '/(tabs)/home');
     assert.ok(target.notice);
   }
+  assert.equal(contracts.pushPresentation({ type: 'OFFER_EXPIRED', payload: { rideId: 12 } }).title, 'Lời mời nhận chuyến đã hết hạn');
+  assert.equal(contracts.pushPresentation({ type: 'OFFER_CANCELLED', payload: { rideId: 12 } }).title, 'Lời mời nhận chuyến đã hủy');
 });
 
 test('offer accepted on another device goes to its active ride; payload status and URLs are ignored', async () => {
@@ -220,4 +240,21 @@ test('notification plugin generates Android channel metadata and iOS APNs/backgr
     assert.equal(firebase.messaging_android_notification_channel_id, contracts.PUSH_CHANNEL);
     assert.deepEqual(firebase.messaging_ios_foreground_presentation_options, []);
   }
+});
+
+test('driver trip notifications never open a different active trip', async () => {
+  const notification = { type: 'RIDE_UPDATED', payload: { rideId: 3 } };
+  const ride = async id => ({ id, status: 'DRIVER_ASSIGNED' });
+  const historical = await contracts.resolvePushDestination(notification, 'DRIVER', {
+    ride,
+    activeRide: async () => ({ id: 4, status: 'DRIVER_ASSIGNED' }),
+  });
+  assert.equal(historical.pathname, '/ride/complete');
+  assert.equal(historical.params.rideId, '3');
+
+  const current = await contracts.resolvePushDestination(notification, 'DRIVER', {
+    ride,
+    activeRide: () => ride(3),
+  });
+  assert.equal(current.pathname, '/ride/in-progress');
 });

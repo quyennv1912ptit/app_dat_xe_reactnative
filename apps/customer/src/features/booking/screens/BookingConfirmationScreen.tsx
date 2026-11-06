@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
@@ -11,14 +12,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import { BookingMap } from "@/components/map/BookingMap";
 import { DEFAULT_MAP_CENTER, money } from "../bookingUtils";
@@ -329,7 +323,7 @@ export default function BookingConfirmationScreen() {
 
 const extraStyles = () =>
   StyleSheet.create({
-    item1: { paddingBottom: 18 },
+    item1: { paddingBottom: 16 },
     item2: { height: 190, overflow: "hidden" },
     item3: { minHeight: 64, textAlignVertical: "top" },
     item4: { fontWeight: "700" },

@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
@@ -11,7 +12,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 import { styles as base_styles } from "../components/TripCompletedScreenParts";
 import { useTripCompleted } from "../hooks/useTripCompleted";

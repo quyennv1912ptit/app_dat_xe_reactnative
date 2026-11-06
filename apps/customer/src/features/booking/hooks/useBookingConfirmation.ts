@@ -10,6 +10,7 @@ import { useBookingDraft } from '../store';
 
 function friendlyPriceError(error: unknown): string {
   if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return i18nT("Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.");
+  if (error instanceof AuthApiError && error.code === 'OUT_OF_SERVICE_AREA') return i18nT("Điểm đón hoặc điểm trả nằm ngoài vùng phục vụ. Vui lòng chọn điểm khác trong khu vực Hà Nội.");
   return error instanceof Error ? error.message : '';
 }
 export function useBookingConfirmation() {
@@ -72,7 +73,7 @@ export function useBookingConfirmation() {
       router.replace({ pathname: '/ride/find-driver', params: { rideId: String(ride.id) } });
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
-    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); localizedAlert(i18nT("Chưa thể đặt chuyến"), error.message); },
+    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); localizedAlert(i18nT("Chưa thể đặt chuyến"), friendlyPriceError(error) || error.message); },
     onSettled: () => { submitting.current = false; },
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };

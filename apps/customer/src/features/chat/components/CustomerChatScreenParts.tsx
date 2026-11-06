@@ -1,6 +1,6 @@
 import type { CustomerRideDetail } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, spacing, typography } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const CHAT_OPEN_STATUSES = new Set<CustomerRideDetail["status"]>([
   "DRIVER_ASSIGNED",
@@ -28,12 +28,12 @@ export function makeUuid(): string {
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
+    safe: { flex: 1, backgroundColor: colors.background },
     flex: { flex: 1 },
     messages: {
       flexGrow: 1,
       padding: spacing.margin,
-      gap: 10,
+      gap: 8,
       justifyContent: "flex-end",
     },
     loadOlder: { alignItems: "center", padding: 8 },
@@ -58,15 +58,18 @@ export const styles = (colors: ThemeColors) =>
     messageRowMine: { alignItems: "flex-end" },
     bubble: {
       maxWidth: "84%",
-      borderRadius: borderRadius.lg,
-      padding: 11,
-      gap: 5,
+      borderRadius: 24,
+      padding: 16,
+      gap: 8,
     },
     bubbleDriver: {
       backgroundColor: colors.surfaceContainerLowest,
-      borderBottomLeftRadius: 4,
+      borderBottomLeftRadius: 24,
     },
-    bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+    bubbleMine: {
+      backgroundColor: colors.primary,
+      borderBottomRightRadius: 24,
+    },
     messageText: { ...typography.bodyMd, color: colors.onSurface },
     messageTextMine: { color: colors.onPrimary },
     messageTime: {
@@ -78,7 +81,7 @@ export const styles = (colors: ThemeColors) =>
     attachment: {
       width: 210,
       height: 180,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerHigh,
     },
     error: {
@@ -103,8 +106,7 @@ export const styles = (colors: ThemeColors) =>
       gap: 8,
       paddingHorizontal: spacing.margin,
       paddingVertical: 10,
-      borderTopWidth: 1,
-      borderTopColor: colors.outlineVariant,
+
       backgroundColor: colors.surface,
     },
     imageButton: {
@@ -112,7 +114,7 @@ export const styles = (colors: ThemeColors) =>
       height: 42,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryFixedTint,
     },
     input: {
@@ -121,7 +123,7 @@ export const styles = (colors: ThemeColors) =>
       minHeight: 42,
       paddingHorizontal: 13,
       paddingVertical: 10,
-      borderRadius: 21,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerHigh,
       ...typography.bodyMd,
       color: colors.onSurface,
@@ -131,7 +133,7 @@ export const styles = (colors: ThemeColors) =>
       height: 42,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
     },
     disabled: { opacity: 0.45 },

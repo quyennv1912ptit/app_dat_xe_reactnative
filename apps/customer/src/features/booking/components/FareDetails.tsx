@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import type { RideEstimate } from "@datxe/shared";
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
@@ -9,7 +10,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { minimumFareAdjustment, money } from "../bookingUtils";
 import { bookingStyles as base_s } from "./bookingStyles";
 function PriceRow({

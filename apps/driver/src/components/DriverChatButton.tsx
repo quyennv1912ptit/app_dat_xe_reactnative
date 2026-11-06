@@ -19,9 +19,9 @@ export function DriverChatButton({ ride, compact = false }: { ride: CustomerRide
   </MotionPressable>;
 }
 const styles = (c: ThemeColors) => StyleSheet.create({
-  button: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, minHeight: 48, borderRadius: 14, backgroundColor: c.surfaceContainerLow },
+  button: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, minHeight: 48, borderRadius: 999, backgroundColor: c.surfaceContainerLow },
   compact: { padding: 8 },
   label: { flex: 1, color: c.primary, fontWeight: '600' },
-  badge: { backgroundColor: c.primary, borderRadius: 12, minWidth: 24, paddingHorizontal: 6, paddingVertical: 2, alignItems: 'center' },
+  badge: { backgroundColor: c.primary, borderRadius: 999, minWidth: 24, paddingHorizontal: 6, paddingVertical: 2, alignItems: 'center' },
   count: { color: c.onPrimary, fontSize: 12, fontWeight: '700' },
 });

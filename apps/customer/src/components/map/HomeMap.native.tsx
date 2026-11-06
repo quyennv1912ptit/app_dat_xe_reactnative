@@ -1,9 +1,9 @@
+import { ActivityIndicator } from "react-native-paper";
 import { env } from "@/config/env";
 import { initializeMapbox } from "@/lib/initializeMapbox";
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
-  borderRadius,
   spacing,
   Typography as Text,
   typography,
@@ -20,9 +20,10 @@ import Mapbox, {
   SymbolLayer,
 } from "@rnmapbox/maps";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { NearbyDriverMarker, RideCoordinates } from "@datxe/shared";
+import { homeMapBounds } from "./homeMapViewport";
 
 /** Logo PtitGo dùng làm thẻ vị trí của người dùng trên bản đồ. */
 const brandMark = require("../../../assets/images/brand-mark.png");
@@ -35,7 +36,6 @@ type HomeMapProps = {
   /** Tăng giá trị này để camera quay lại vị trí người dùng. */
   recenterToken?: number;
 };
-
 
 const mapboxToken = env.mapboxToken;
 
@@ -55,24 +55,22 @@ export function HomeMap({
 
   const camera = useRef<Camera>(null);
   const lastRecenter = useRef(0);
+  const bounds = useMemo(() => coordinate ? homeMapBounds(coordinate) : null, [coordinate]);
 
   const [mapStatus, setMapStatus] = useState<
     "loading" | "ready" | "unavailable"
   >(mapboxToken ? "loading" : "unavailable");
 
-  // Chỉ căn lại camera (có animation) khi người dùng bấm nút mục tiêu.
-  // Lần mount đầu dùng defaultSettings nên bản đồ hiện đúng zoom ngay, không bị zoom nhanh.
   useEffect(() => {
-    if (recenterToken === lastRecenter.current) return;
+    if (recenterToken === lastRecenter.current || !bounds || !camera.current) return;
     lastRecenter.current = recenterToken;
-    if (!coordinate) return;
-    camera.current?.setCamera({
-      centerCoordinate: [coordinate.lng, coordinate.lat],
-      zoomLevel: 13.5,
+    camera.current.setCamera({
+      bounds,
+      padding: { paddingTop: 72, paddingBottom: 56, paddingLeft: 24, paddingRight: 24 },
       animationMode: "easeTo",
       animationDuration: 500,
     });
-  }, [coordinate, recenterToken]);
+  }, [bounds, recenterToken, mapStatus]);
 
   const passengerShape = useMemo(() => {
     if (!coordinate) return null;
@@ -116,18 +114,18 @@ export function HomeMap({
   return (
     <View style={fullscreen ? extra.fullRoot : styles.section}>
       {fullscreen ? null : (
-      <View style={styles.heading}>
-        <View style={styles.headingCopy}>
-          <Text style={styles.title}>{i18nT("Tài xế quanh bạn")}</Text>
-          <Text style={styles.subtitle}>
-            {i18nT("Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư")}
-          </Text>
+        <View style={styles.heading}>
+          <View style={styles.headingCopy}>
+            <Text style={styles.title}>{i18nT("Tài xế quanh bạn")}</Text>
+            <Text style={styles.subtitle}>
+              {i18nT("Vị trí tài xế được hiển thị gần đúng để bảo vệ riêng tư")}
+            </Text>
+          </View>
+          <View style={styles.countBadge}>
+            <View style={styles.countDot} />
+            <Text style={styles.countText}>{i18nT(drivers.length)}</Text>
+          </View>
         </View>
-        <View style={styles.countBadge}>
-          <View style={styles.countDot} />
-          <Text style={styles.countText}>{i18nT(drivers.length)}</Text>
-        </View>
-      </View>
       )}
 
       <View style={fullscreen ? extra.fullFrame : styles.mapFrame}>
@@ -135,7 +133,6 @@ export function HomeMap({
           <MapView
             style={StyleSheet.absoluteFill}
             styleURL="mapbox://styles/mapbox/streets-v11"
-
             compassEnabled={!fullscreen}
             compassViewPosition={1}
             scaleBarEnabled={false}
@@ -146,22 +143,10 @@ export function HomeMap({
             <Camera
               ref={camera}
               defaultSettings={{
-                centerCoordinate: [coordinate.lng, coordinate.lat],
-                zoomLevel: 13.5,
+                bounds: bounds ?? undefined,
+                padding: { paddingTop: 72, paddingBottom: 56, paddingLeft: 24, paddingRight: 24 },
               }}
             />
-            {drivers.map((driver, index) => (
-              <PointAnnotation
-                key={String(index)}
-                id={"driver-" + index}
-                coordinate={[driver.location.lng, driver.location.lat]}
-              >
-                <View style={extra.item1}>
-                  <Text style={extra.item2}>🚘</Text>
-                </View>
-              </PointAnnotation>
-            ))}
-
             {/* Logo PtitGo (đã tách nền) làm marker vị trí: dùng SymbolLayer để ảnh
                 PNG trong suốt hiển thị đúng trên bề mặt bản đồ, không bị khung trắng. */}
             <Images images={{ "passenger-mark": brandMark }} />
@@ -178,6 +163,23 @@ export function HomeMap({
                 />
               </ShapeSource>
             ) : null}
+            {drivers.map(({ location }, index) => {
+              const id = `nearby-driver-${location.lng}-${location.lat}-${index}`;
+              return (
+                <PointAnnotation
+                  key={id}
+                  id={id}
+                  coordinate={[location.lng, location.lat]}
+                  anchor={{ x: 0.5, y: 1 }}
+                >
+                  <View style={extra.driverRing} collapsable={false}>
+                    <View style={extra.driverMarker}>
+                      <Text style={extra.driverIcon}>🚘</Text>
+                    </View>
+                  </View>
+                </PointAnnotation>
+              );
+            })}
           </MapView>
         ) : (
           <View style={styles.mapFallback}>
@@ -190,18 +192,18 @@ export function HomeMap({
       </View>
 
       {fullscreen ? null : (
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={styles.passengerDot} />
-          <Text style={styles.legendText}>{i18nT("Bạn")}</Text>
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={styles.passengerDot} />
+            <Text style={styles.legendText}>{i18nT("Bạn")}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={styles.driverDot} />
+            <Text style={styles.legendText}>
+              {i18nT("Tài xế đang trực tuyến")}
+            </Text>
+          </View>
         </View>
-        <View style={styles.legendItem}>
-          <View style={styles.driverDot} />
-          <Text style={styles.legendText}>
-            {i18nT("Tài xế đang trực tuyến")}
-          </Text>
-        </View>
-      </View>
       )}
     </View>
   );
@@ -238,14 +240,14 @@ const base_styles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: spacing.spaceXs,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.surfaceContainerLow,
     },
     countDot: {
       width: 7,
       height: 7,
-      borderRadius: borderRadius.full,
-      backgroundColor: colors.emerald,
+      borderRadius: 999,
+      backgroundColor: colors.error,
     },
     countText: {
       ...typography.labelMd,
@@ -254,10 +256,8 @@ const base_styles = (colors: ThemeColors) =>
     mapFrame: {
       height: 300,
       overflow: "hidden",
-      borderRadius: borderRadius.xxl,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLow,
-      borderWidth: 1,
-      borderColor: colors.outlineVariant,
     },
     mapFallback: {
       flex: 1,
@@ -285,14 +285,14 @@ const base_styles = (colors: ThemeColors) =>
     passengerDot: {
       width: 10,
       height: 10,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
     },
     driverDot: {
       width: 10,
       height: 10,
-      borderRadius: borderRadius.full,
-      backgroundColor: colors.success,
+      borderRadius: 999,
+      backgroundColor: colors.error,
     },
     legendText: {
       ...typography.labelSm,
@@ -304,12 +304,18 @@ const extraStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fullRoot: { flex: 1 },
     fullFrame: { flex: 1, overflow: "hidden" },
-    item1: {
-      backgroundColor: colors.surfaceContainerLowest,
-      borderRadius: 20,
-      padding: 6,
-      borderWidth: 2,
-      borderColor: colors.success,
+    driverRing: {
+      padding: 2,
+      borderRadius: 18,
+      backgroundColor: colors.error,
     },
-    item2: { fontSize: 22 },
+    driverMarker: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.cardSurface,
+    },
+    driverIcon: { fontSize: 20, lineHeight: 24 },
   });

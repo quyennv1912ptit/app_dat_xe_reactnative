@@ -1,5 +1,5 @@
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, spacing, typography } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const statusText: Record<string, string> = {
   PENDING: "Yêu cầu đang được tiếp nhận",
@@ -12,6 +12,7 @@ export const statusText: Record<string, string> = {
   ARRIVED_DESTINATION: "Xe đã đến điểm trả",
   VEHICLE_RETURNED: "Đang chờ xác nhận hoàn trả xe",
   COMPLETED: "Chuyến đi đã hoàn thành",
+  FAILED_SYSTEM: "Không thể tìm tài xế do lỗi hệ thống",
   NO_DRIVER_FOUND: "Chưa tìm được tài xế",
   EXPIRED: "Yêu cầu chuyến đi đã hết hạn",
   CANCELLED: "Chuyến đi đã bị hủy",
@@ -19,7 +20,7 @@ export const statusText: Record<string, string> = {
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
+    safe: { flex: 1, backgroundColor: colors.background },
     content: {
       flex: 1,
       alignItems: "center",
@@ -30,7 +31,7 @@ export const styles = (colors: ThemeColors) =>
     icon: {
       width: 88,
       height: 88,
-      borderRadius: 44,
+      borderRadius: 24,
       backgroundColor: colors.primaryFixedTint,
       alignItems: "center",
       justifyContent: "center",
@@ -43,7 +44,7 @@ export const styles = (colors: ThemeColors) =>
     meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     route: {
       width: "100%",
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLowest,
       padding: 16,
       gap: 8,
@@ -61,12 +62,13 @@ export const styles = (colors: ThemeColors) =>
     cancel: {
       minHeight: 50,
       width: "100%",
-      borderWidth: 1,
-      borderColor: colors.error,
-      borderRadius: borderRadius.full,
+
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
+
+      backgroundColor: colors.errorContainer,
     },
-    cancelText: { ...typography.labelLg, color: colors.error },
+    cancelText: { ...typography.labelLg, color: colors.onErrorContainer },
     disabled: { opacity: 0.45 },
   });

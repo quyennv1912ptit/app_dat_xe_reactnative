@@ -1,7 +1,10 @@
+import { driverApi } from "@/lib/driverApi";
+import { useQuery } from "@tanstack/react-query";
+import { ActivityIndicator, Appbar } from "react-native-paper";
 import {
   Button,
   Card,
-  MotionPressable,
+  TonalNavigationBar,
   ScreenWrapper,
   Typography,
   spacing,
@@ -10,14 +13,12 @@ import {
   useThemedStyles,
   type ThemeColors,
 } from "@datxe/ui";
-import { MaterialIcons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter, type Href } from "expo-router";
 import type { ReactNode } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { rideStyles } from "./rideStyles";
 import { useSessionStore } from "@/lib/store";
 import { DriverChatButton } from "./DriverChatButton";
-import { DriverReceptionStatus } from './DriverReceptionStatus';
 
 const tabsList = [
   { route: "home", label: "Trang chủ", icon: "home" },
@@ -33,6 +34,8 @@ type Props = {
   error?: string | null;
   retry?: () => unknown;
   tabs?: boolean;
+  footer?: ReactNode;
+  backFallback?: Href;
 };
 export function DriverPage({
   title,
@@ -41,44 +44,44 @@ export function DriverPage({
   error,
   retry,
   tabs = false,
+  footer,
+  backFallback = "/(tabs)/home",
 }: Props) {
   const styles = useThemedStyles(createStyles);
   const shared = useThemedStyles(rideStyles);
   const colors = useThemeColors();
   const router = useRouter();
   const pathname = usePathname();
-  const activeRide = useSessionStore(state => state.activeRide);
+  const activeRide = useSessionStore((state) => state.activeRide);
+  const userId = useSessionStore((state) => state.user?.id);
+  const { data: unread } = useQuery({
+    queryKey: ["driver", "notifications", "count"],
+    queryFn: driverApi.notificationCount,
+    enabled: tabs && Boolean(userId),
+    select: (result) => result?.unread_count ?? 0,
+  });
   return (
     <ScreenWrapper>
-      <View style={styles.header}>
+      <Appbar.Header mode="small" statusBarHeight={0} style={styles.header}>
         {!tabs ? (
-          <MotionPressable
-            accessibilityRole="button"
+          <Appbar.BackAction
             accessibilityLabel="Quay lại"
             onPress={() =>
               router.canGoBack()
                 ? router.back()
-                : router.replace("/(tabs)/home")
+                : router.replace(backFallback)
             }
-            style={styles.back}
-          >
-            <MaterialIcons
-              name="arrow-back"
-              size={24}
-              color={colors.onSurface}
-            />
-          </MotionPressable>
+          />
         ) : null}
-        <Typography accessibilityRole="header" style={styles.title}>
-          {title}
-        </Typography>
-        {tabs && activeRide ? <DriverChatButton ride={activeRide} compact /> : null}
-      </View>
+        <Appbar.Content title={title} titleStyle={styles.title} />
+        {tabs && activeRide ? (
+          <DriverChatButton ride={activeRide} compact />
+        ) : null}
+      </Appbar.Header>
       <ScrollView
         contentContainerStyle={shared.page}
         keyboardShouldPersistTaps="handled"
       >
-        <DriverReceptionStatus />
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? (
           <Card style={styles.errorCard}>
@@ -92,75 +95,31 @@ export function DriverPage({
         ) : null}
         {children}
       </ScrollView>
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
       {tabs ? (
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {tabsList.map((tab) => {
-            const selected = pathname.endsWith("/" + tab.route);
-            return (
-              <MotionPressable
-                key={tab.route}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                accessibilityLabel={tab.label}
-                style={styles.tab}
-                onPress={() => {
-                  if (!selected)
-                    router.navigate(("/(tabs)/" + tab.route) as never);
-                }}
-              >
-                <MaterialIcons
-                  name={tab.icon}
-                  size={24}
-                  color={selected ? colors.primary : colors.onSurfaceVariant}
-                />
-                <Typography
-                  numberOfLines={1}
-                  style={[styles.tabLabel, selected && styles.selected]}
-                >
-                  {tab.label}
-                </Typography>
-              </MotionPressable>
-            );
-          })}
-        </View>
+        <TonalNavigationBar
+          items={tabsList.map((tab) => ({ ...tab, id: tab.route, badge: tab.route === "notifications" ? unread : undefined }))}
+          active={
+            tabsList.find((tab) => pathname.endsWith("/" + tab.route))?.route ??
+            "home"
+          }
+          onSelect={(id) => router.navigate(("/(tabs)/" + id) as never)}
+        />
       ) : null}
     </ScreenWrapper>
   );
 }
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    footer: { padding: 16, gap: 8, backgroundColor: colors.cardSurface },
     header: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: spacing.spaceMd,
       minHeight: spacing.headerHeight,
       gap: spacing.spaceSm,
-      backgroundColor: colors.surfaceContainerLowest,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.outlineVariant,
+      backgroundColor: colors.background,
     },
-    back: {
-      width: spacing.iconButtonMd,
-      height: spacing.iconButtonMd,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    title: { ...typography.headlineMd, color: colors.onSurface, flex: 1 },
+    title: { ...typography.headlineMd, color: colors.onSurface },
     errorCard: { gap: spacing.spaceMd, backgroundColor: colors.errorContainer },
-    tabs: {
-      flexDirection: "row",
-      minHeight: spacing.tabBarHeight,
-      paddingHorizontal: spacing.spaceXs,
-      backgroundColor: colors.surfaceContainerLowest,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.outlineVariant,
-    },
-    tab: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: spacing.spaceXs,
-    },
-    tabLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
-    selected: { color: colors.primary },
   });

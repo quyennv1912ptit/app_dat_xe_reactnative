@@ -1,15 +1,14 @@
 import { logError } from '@/lib/logger';
-import { request } from '@/lib/api';
+import { resolveDriverNotification } from '@/lib/notificationDestination';
 import { pushRegistration } from '@/lib/push';
 import { useSessionStore } from '@/lib/store';
 import { driverRealtime } from '@/lib/realtime';
-import { driverApi } from '@/lib/driverApi';
 import {
   acknowledgePushOpen, createPushOpenCoordinator, initializePushPresentation, isPushForAccount,
   parsePushData, presentPushNotification, rememberPushOpen, requestPushPermission,
-  resolvePushDestination, setPushSignOutCleanup, subscribeToLocalPushOpens,
+  setPushSignOutCleanup, subscribeToLocalPushOpens,
   subscribeToPushMessages, subscribeToRemotePushOpens, syncPushToken, unregisterPushToken,
-  watchPushTokenRefresh, dismissOfferNotifications, offerDeadline, positiveId, record, pushKey, type CustomerRideDetail, type PushEnvelope,
+  watchPushTokenRefresh, dismissOfferNotifications, offerDeadline, positiveId, record, pushKey, type PushEnvelope,
 } from '@datxe/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -23,10 +22,10 @@ export function PushBridge() {
   const pathname = usePathname();
   const segments = useSegments();
   const nav = useRootNavigationState();
-  const latest = useRef({ router, ready: false });
+  const latest = useRef({ router, pathname, ready: false });
   const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments[1] ?? ''));
   const navigationReady = Boolean(nav?.key && userId && pathname !== '/' && !authenticationScreen);
-  useEffect(() => { latest.current = { router, ready: navigationReady }; }, [router, navigationReady]);
+  useEffect(() => { latest.current = { router, pathname, ready: navigationReady }; }, [router, pathname, navigationReady]);
   const controller = useRef<ReturnType<typeof createPushOpenCoordinator> | null>(null);
 
   useEffect(() => {
@@ -37,11 +36,7 @@ export function PushBridge() {
         return user?.role === 'DRIVER' ? { id: user.id, role: 'DRIVER' } : null;
       },
       ready: () => !stopped && latest.current.ready && AppState.currentState === 'active',
-      resolve: event => resolvePushDestination(event, 'DRIVER', {
-        ride: async id => { const ride = await driverApi.ride(id); if (!ride) throw new Error('Không tìm thấy chuyến.'); return ride; },
-        pendingOffer: () => request<{ rideId: number; expiresAt: number }>('/driver/offers/pending', { allowNull: true }),
-        activeRide: () => request<CustomerRideDetail>('/driver/rides/active', { allowNull: true }),
-      }),
+      resolve: resolveDriverNotification,
       navigate: ({ notice, ...destination }) => {
         latest.current.router.navigate(destination as Href);
         if (notice) Alert.alert('Yêu cầu không còn khả dụng', notice);
@@ -63,7 +58,10 @@ export function PushBridge() {
       if (!user || !isPushForAccount(event, 'DRIVER', user.id) || AppState.currentState !== 'active') return;
       void presentPushNotification(event).catch(logError);
       if (event.type === 'RIDE_OFFER' && offerDeadline(event) > Date.now()) coordinator.enqueue({ ...event, messageId: `foreground:${pushKey(event)}` });
-      if (['OFFER_EXPIRED', 'OFFER_CANCELLED'].includes(event.type)) void dismissOfferNotifications(positiveId(record(event.payload).rideId) ?? undefined).catch(logError);
+      if (['OFFER_EXPIRED', 'OFFER_CANCELLED'].includes(event.type)) {
+        void dismissOfferNotifications(positiveId(record(event.payload).rideId) ?? undefined).catch(logError);
+        if (latest.current.ready && latest.current.pathname === '/ride/accept') latest.current.router.replace('/(tabs)/home');
+      }
     };
     const stopMessages = subscribeToPushMessages(receive);
     const stopStomp = driverRealtime.subscribe('/user/queue/trip', message => {

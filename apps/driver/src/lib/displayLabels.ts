@@ -14,6 +14,7 @@ export const rideStatuses = {
   VEHICLE_RETURNED: { label: 'Đang hoàn trả xe', tone: 'active' },
   COMPLETED: { label: 'Đã hoàn tất', tone: 'success' },
   CANCELLED: { label: 'Đã hủy', tone: 'danger' },
+  FAILED_SYSTEM: { label: 'Lỗi hệ thống', tone: 'neutral' },
   NO_DRIVER_FOUND: { label: 'Không tìm được tài xế', tone: 'neutral' },
   EXPIRED: { label: 'Đã hết hạn', tone: 'neutral' },
 } satisfies Record<RideStatus, StatusLabel>;

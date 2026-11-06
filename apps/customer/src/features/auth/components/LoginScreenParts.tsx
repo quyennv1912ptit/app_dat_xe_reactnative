@@ -1,7 +1,6 @@
 import { AuthApiError, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
-  borderRadius,
   MotionPressable as Pressable,
   spacing,
   Typography as Text,
@@ -127,10 +126,9 @@ export const styles = (colors: ThemeColors) =>
     },
     socialButton: {
       minHeight: spacing.buttonPillHeight,
-      borderWidth: 1,
-      borderColor: colors.outlineVariant,
-      borderRadius: borderRadius.xl,
-      backgroundColor: colors.surfaceContainerLowest,
+
+      borderRadius: 999,
+      backgroundColor: colors.surfaceContainerHigh,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",

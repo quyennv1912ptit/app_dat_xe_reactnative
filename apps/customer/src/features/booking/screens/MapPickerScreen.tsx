@@ -1,17 +1,17 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
-  shadowStyle,
   Typography as Text,
   useLanguage,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import { BookingMap } from "@/components/map/BookingMap";
 import { bookingStyles as base_s } from "../components/bookingStyles";
@@ -142,16 +142,13 @@ const extraStyles = (colors: ThemeColors) =>
       right: 20,
       bottom: 20,
       backgroundColor: colors.surfaceContainerLowest,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      ...shadowStyle,
     },
     item3: {
       position: "absolute",
       top: 16,
       alignSelf: "center",
       backgroundColor: colors.inverseSurface80,
-      borderRadius: 18,
+      borderRadius: 24,
       paddingHorizontal: 16,
       paddingVertical: 9,
     },

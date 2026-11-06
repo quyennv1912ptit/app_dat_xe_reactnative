@@ -5,7 +5,7 @@ import { MotionPressable as Pressable } from "../components";
 import { useThemeColors, useThemedStyles } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 
-import { borderRadius, fontSize, spacing } from "../theme/colors";
+import { fontSize, spacing } from "../theme/colors";
 
 type Props = {
   onPress: () => void;
@@ -43,7 +43,7 @@ const base_styles = () =>
     button: {
       width: spacing.iconButtonMd,
       height: spacing.iconButtonMd,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
     },

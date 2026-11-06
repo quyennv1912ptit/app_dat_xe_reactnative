@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import type { CustomerProfile } from "@datxe/shared";
 import { translate as i18nT } from "@datxe/shared";
@@ -7,6 +8,7 @@ import {
   localizedAlert,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
+  SectionHeading,
   Typography as Text,
   ThemedTextInput as TextInput,
   fontSize,
@@ -18,7 +20,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { usePreventRemove, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -56,7 +57,11 @@ function toIsoDate(display: string): string {
 function toDateValue(display: string): Date | null {
   const match = display.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!match) return null;
-  const date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+  const date = new Date(
+    Number(match[3]),
+    Number(match[2]) - 1,
+    Number(match[1]),
+  );
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -137,7 +142,10 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
   const submit = async () => {
     if (save.isPending) return;
     try {
-      await save.mutateAsync({ ...draft, birthDate: toIsoDate(draft.birthDate) });
+      await save.mutateAsync({
+        ...draft,
+        birthDate: toIsoDate(draft.birthDate),
+      });
       setSaved(true);
       localizedAlert(
         i18nT("Đã lưu thông tin"),
@@ -160,7 +168,7 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
         </Text>
 
         <View style={s.group}>
-          <Text style={s.section}>{i18nT("THÔNG TIN CÁ NHÂN")}</Text>
+          <SectionHeading title="Thông tin cá nhân" />
           <View style={s.card}>
             <View style={s.field}>
               <Text style={s.label}>{i18nT("Họ và tên")}</Text>
@@ -262,7 +270,7 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
         </View>
 
         <View style={s.group}>
-          <Text style={s.section}>{i18nT("SỐ ĐIỆN THOẠI")}</Text>
+          <SectionHeading title="Số điện thoại" />
           <View style={s.card}>
             <View style={s.phoneRow}>
               <Text style={s.title}>
@@ -292,9 +300,7 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
         ) : null}
       </ScrollView>
 
-      <View
-        style={[s.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}
-      >
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button
           disabled={!dirty || saved}
           label={i18nT(saved ? "Đã lưu" : "Lưu thay đổi")}

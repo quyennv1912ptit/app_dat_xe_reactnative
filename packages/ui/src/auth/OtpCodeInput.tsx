@@ -9,7 +9,7 @@ import type { ThemeColors } from "../theme/ThemeProvider";
 import { useThemeColors, useThemedStyles } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 
-import { borderRadius, spacing, typography } from "../theme/colors";
+import { spacing, typography } from "../theme/colors";
 
 type Props = {
   value: string;
@@ -89,15 +89,18 @@ const base_styles = (colors: ThemeColors) =>
     codeBoxes: {
       width: "100%",
       flexDirection: "row",
-      justifyContent: "space-between",
+      justifyContent: "center",
       gap: spacing.gap1_5,
     },
     codeBox: {
-      flex: 1,
-      height: spacing.inputHeight,
+      width: 48,
+      height: 56,
+      flexGrow: 0,
+      flexShrink: 1,
+      minWidth: 32,
       borderWidth: 1,
       borderColor: colors.outlineVariant,
-      borderRadius: borderRadius.xl,
+      borderRadius: 8,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.surfaceContainerLowest,
@@ -116,7 +119,7 @@ const base_styles = (colors: ThemeColors) =>
     caret: {
       width: spacing.cursorWidth,
       height: spacing.cursorHeight,
-      borderRadius: borderRadius.sm,
+      borderRadius: 999,
       backgroundColor: colors.primary,
     },
     input: {

@@ -20,7 +20,7 @@ test('every ride status in the shared API contract has a Vietnamese badge label'
   const source = fs.readFileSync('packages/shared/src/types/index.ts', 'utf8');
   const contract = source.match(/export type RideStatus =([\s\S]*?);/)[1];
   const codes = [...contract.matchAll(/'([^']+)'/g)].map(match => match[1]);
-  assert.equal(codes.length, 13);
+  assert.equal(codes.length, 14);
   for (const code of codes) {
     const status = labels.statusLabel('ride', code);
     assert.notEqual(status.label, code);
@@ -108,4 +108,33 @@ test('all badge text has AA contrast on actual driver light and dark surfaces', 
       }
     }
   }
+});
+
+test('handover directions use the address and coordinates of the current phase', () => {
+  const element = (type, props) => ({ type, props });
+  const directions = [];
+  const { RideStopCard } = load('apps/driver/src/features/ride/components/RideStopCard.tsx', {
+    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
+    '@/components/rideStyles': { rideStyles: {} },
+    '@/lib/navigation': { openExternalDirections: point => directions.push(point) },
+    '@datxe/ui': { Button: 'Button', Card: 'Card', Typography: 'Text', useThemedStyles: styles => styles },
+  });
+  const ride = {
+    id: 42,
+    pickupAddress: 'Điểm A',
+    dropoffAddress: 'Điểm B',
+    pickup: { lat: 21, lng: 105 },
+    dropoff: { lat: 22, lng: 106 },
+    pickupNote: 'Gặp ở cổng',
+  };
+
+  const pickup = RideStopCard({ ride, phase: 'pickup' }).props.children;
+  const dropoff = RideStopCard({ ride, phase: 'dropoff' }).props.children;
+  assert.equal(pickup[1].props.children, ride.pickupAddress);
+  assert.equal(dropoff[1].props.children, ride.dropoffAddress);
+  assert.ok(pickup[2]);
+  assert.equal(dropoff[2], null);
+  pickup[3].props.onPress();
+  dropoff[3].props.onPress();
+  assert.deepEqual(directions, [ride.pickup, ride.dropoff]);
 });

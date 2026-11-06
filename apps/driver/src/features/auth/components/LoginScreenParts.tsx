@@ -1,7 +1,6 @@
 import { AuthApiError } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
-  borderRadius,
   MotionPressable as Pressable,
   spacing,
   Typography as Text,
@@ -90,7 +89,7 @@ export const styles = (colors: ThemeColors) =>
       width: 64,
       height: 64,
       alignSelf: "center",
-      borderRadius: borderRadius.xl,
+      borderRadius: 24,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
@@ -114,7 +113,7 @@ export const styles = (colors: ThemeColors) =>
       marginTop: spacing.spaceXs,
       marginBottom: spacing.spaceLg,
     },
-    formCard: { gap: spacing.spaceMd, padding: spacing.spaceMd },
+    formCard: { gap: spacing.spaceMd, padding: 16 },
     helperText: {
       ...typography.labelSm,
       color: colors.onSurfaceVariant,
@@ -136,10 +135,9 @@ export const styles = (colors: ThemeColors) =>
     dividerLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
     socialButton: {
       minHeight: 52,
-      borderWidth: 1,
-      borderColor: colors.outlineVariant,
-      borderRadius: borderRadius.xl,
-      backgroundColor: colors.surfaceContainerLowest,
+
+      borderRadius: 999,
+      backgroundColor: colors.surfaceContainerHigh,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",

@@ -1,14 +1,7 @@
 import type { CustomerRideDetail } from "@datxe/shared";
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import {
-  borderRadius,
-  spacing,
-  Typography as Text,
-  typography,
-  useLanguage,
-  useThemedStyles,
-} from "@datxe/ui";
+import { spacing, Typography as Text, typography, useLanguage, useThemedStyles } from "@datxe/ui";
 import { StyleSheet, View } from "react-native";
 export const chatStatuses = [
   "DRIVER_ASSIGNED",
@@ -45,6 +38,7 @@ export function statusLabel(status: CustomerRideDetail["status"]): string {
     VEHICLE_RETURNED: "Đang hoàn tất bàn giao",
     COMPLETED: "Hoàn thành",
     CANCELLED: "Đã hủy",
+    FAILED_SYSTEM: "Không thể tìm tài xế do lỗi hệ thống",
     NO_DRIVER_FOUND: "Không tìm được tài xế",
     EXPIRED: "Hết hạn",
   };
@@ -53,13 +47,13 @@ export function statusLabel(status: CustomerRideDetail["status"]): string {
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
+    safe: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.margin, gap: 12, paddingBottom: 28 },
     card: {
       padding: 16,
       gap: 9,
       backgroundColor: colors.surfaceContainerLowest,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
     },
     heading: { ...typography.headlineSm, color: colors.onSurface },
     section: { ...typography.labelLg, color: colors.onSurface },
@@ -67,12 +61,12 @@ export const styles = (colors: ThemeColors) =>
     body: { ...typography.bodyMd, color: colors.onSurface },
     meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     divider: { height: 1, backgroundColor: colors.outlineVariant },
-    row: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
-    historyRow: { flexDirection: "row", gap: 10 },
+    row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+    historyRow: { flexDirection: "row", gap: 8 },
     historyDot: {
       width: 9,
       height: 9,
-      borderRadius: 5,
+      borderRadius: 999,
       marginTop: 5,
       backgroundColor: colors.primary,
     },
@@ -81,14 +75,14 @@ export const styles = (colors: ThemeColors) =>
     image: {
       width: 92,
       height: 92,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerHigh,
     },
     primary: {
       minHeight: 50,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primary,
     },
     primaryText: { ...typography.labelLg, color: colors.onPrimary },
@@ -99,7 +93,7 @@ export const styles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryFixedTint,
     },
     secondaryText: { ...typography.labelLg, color: colors.primary },

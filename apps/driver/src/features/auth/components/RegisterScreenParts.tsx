@@ -1,6 +1,6 @@
 import { AuthApiError } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, spacing, typography } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 
 export function getErrorMessage(error: unknown): string {
@@ -29,19 +29,19 @@ export const styles = (colors: ThemeColors) =>
       width: "100%",
       maxWidth: spacing.formMaxWidth + spacing.margin * 2,
       alignSelf: "center",
-      justifyContent: "center",
+      paddingTop: 8,
       paddingHorizontal: spacing.margin,
       paddingBottom: spacing.spaceXl,
     },
     iconCircle: {
       width: 72,
       height: 72,
-      borderRadius: borderRadius.full,
+      borderRadius: 24,
       backgroundColor: colors.primarySoft,
       alignSelf: "center",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: spacing.spaceLg,
+      marginBottom: 8,
     },
     title: {
       ...typography.headlineXlMobile,
@@ -53,15 +53,15 @@ export const styles = (colors: ThemeColors) =>
       color: colors.onSurfaceVariant,
       textAlign: "center",
       marginTop: spacing.spaceXs,
-      marginBottom: spacing.spaceLg,
+      marginBottom: 8,
     },
-    card: { padding: spacing.spaceMd, gap: spacing.spaceMd },
+    card: { padding: 16, gap: spacing.spaceMd },
     verifiedRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.spaceSm,
       padding: spacing.spaceSm,
-      borderRadius: borderRadius.lg,
+      borderRadius: 24,
       backgroundColor: colors.primarySoft,
     },
     verifiedText: { ...typography.labelMd, color: colors.primary, flex: 1 },
@@ -72,6 +72,7 @@ export const styles = (colors: ThemeColors) =>
       marginTop: spacing.spaceXs,
       backgroundColor: colors.primary,
     },
+    step: { ...typography.labelMd, color: colors.primary, textAlign: "center", marginBottom: 8 },
     note: {
       ...typography.labelSm,
       color: colors.onSurfaceVariant,

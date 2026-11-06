@@ -45,6 +45,15 @@ Khóa ride cùng optimistic version của report bảo vệ request đồng th�
 - Server bắt buộc có timestamp đo; tách `receivedAt` do server thêm. Chỉ gia hạn khả dụng ghép chuyến với mẫu còn trong 30 giây; TTL không vượt quá phần thời gian còn mới của mẫu.
 - Customer xét cả thời điểm đo và tình trạng kết nối; frame vừa nhận không làm mẫu GPS cũ trở thành cập nhật trực tiếp.
 
+## Kiểm tra lỗi không nhận chuyến / không có tài xế trên map
+
+- WebSocket kết nối chưa đủ: backend chỉ đưa tài xế ONLINE vào `available_drivers` khi có mẫu GPS còn mới trong 30 giây, không có khóa offer/chuyến. Map khách chỉ hiển thị tài xế khả dụng trong bán kính 3 km; matching mặc định mở rộng lần lượt 2/3/5 km, quét lại đến hạn tìm tổng 90 giây và còn lọc loại xe, hồ sơ, bằng lái.
+- Driver khởi động foreground GPS độ chính xác cao, lấy vị trí ngay và chạy heartbeat trước khi chờ quyền/service nền. Quyền nền bị từ chối, treo hoặc API không hỗ trợ không chặn foreground GPS. Mẫu có `accuracy: null` vẫn hợp lệ theo API; không giả lập độ chính xác hoặc đổi timestamp cũ.
+- Customer hiển thị lỗi query nearby qua vùng lỗi/thử lại của Home; màn tracking ẩn số độ chính xác nếu thiết bị không cung cấp.
+- Backend `DispatchScripts.RELEASE`, `CANCEL_SEARCH`, `ROLLBACK_ACCEPT` dùng khóa heartbeat chuẩn `driver:alive:{id}`. Khóa cũ `driver:{id}:alive` khiến tài xế khỏe bị chuyển OFFLINE sau thu hồi lời mời.
+- Hồi quy frontend: `tests/driver-gps-startup.test.cjs`, `tests/live-location.test.cjs`, `tests/support-ride-reliability.test.cjs`. Hồi quy backend: `python3 -m unittest discover -s src/test/python -v` (thực thi Lua thật với fixture Redis trong bộ nhớ, cần thư viện hệ thống Lua 5.4; không thay thế integration Redis).
+- Cần cập nhật cả app và backend để áp dụng đủ bản sửa. Sau cập nhật, giữ Driver mở, bật nhận đúng loại xe và xác nhận GPS có mẫu mới; Customer ở trong 3 km cần chờ lượt refresh nearby tối đa 30 giây. Kiểm tra thêm từ chối/hết hạn offer rồi nhận chuyến tiếp theo bằng tài khoản thử nghiệm.
+
 ## Kiểm chứng và QA còn cần
 
 Kết quả đã chạy: `npm run check` đạt architecture/typecheck/lint và **106/106 test frontend**. Hồi quy backend đạt **58 test**, **1 test gọi nhà cung cấp thật được skip theo cấu hình**; không chạy test khởi động toàn Spring context. Trong đó 4 test PostgreSQL thật kiểm tra migration/support/payment trong schema rollback. Export Android Customer và Driver qua Metro/Hermes đều thành công; lần export trong sandbox ban đầu bị chặn ghi file tạm, chạy lại ngoài sandbox đã qua.

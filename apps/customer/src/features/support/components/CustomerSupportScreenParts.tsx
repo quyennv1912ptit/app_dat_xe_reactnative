@@ -1,5 +1,5 @@
 import type { ThemeColors } from "@datxe/ui";
-import { borderRadius, spacing, typography } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const chatStatuses = [
   "DRIVER_ASSIGNED",
@@ -13,31 +13,32 @@ export const chatStatuses = [
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
-    content: { padding: spacing.margin, gap: 13, paddingBottom: 28 },
+    safe: { flex: 1, backgroundColor: colors.background },
+    content: { padding: spacing.margin, gap: 16, paddingBottom: 48 },
+    flex: { flex: 1 },
+    error: { color: colors.error, lineHeight: 22 },
     notice: {
-      alignItems: "center",
-      gap: 9,
-      padding: 20,
-      borderRadius: borderRadius.lg,
-      backgroundColor: colors.primaryFixedTint,
+      alignItems: "flex-start",
+      gap: 12,
+      padding: 16,
+      borderRadius: 24,
+      backgroundColor: colors.cardSurface,
     },
     heading: { ...typography.headlineSm, color: colors.onSurface },
     body: { ...typography.bodyMd, color: colors.onSurface, textAlign: "left" },
     meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     card: {
       padding: 16,
-      gap: 9,
-      borderRadius: borderRadius.lg,
+      gap: 12,
+      borderRadius: 24,
       backgroundColor: colors.surfaceContainerLowest,
     },
     section: { ...typography.labelLg, color: colors.onSurface },
     ride: {
-      padding: 15,
-      gap: 7,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.primary,
+      padding: 16,
+      gap: 8,
+      borderRadius: 24,
+
       backgroundColor: colors.surfaceContainerLowest,
     },
     label: { ...typography.labelSm, color: colors.primary },
@@ -54,7 +55,7 @@ export const styles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       backgroundColor: colors.primaryFixedTint,
     },
     chatText: { ...typography.labelLg, color: colors.primary },

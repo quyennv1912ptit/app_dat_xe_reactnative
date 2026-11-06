@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { accountStyles } from "../components/AccountScreenStyles";
 import { useProfileEditor } from "../hooks/useProfileEditor";
@@ -54,7 +55,7 @@ export default function PaymentMethodsScreen() {
           disabled={!query.data || save.isPending}
           style={[
             s.card,
-            { borderColor: selected ? c.primary : c.outlineVariant },
+            { backgroundColor: selected ? c.primaryContainer : c.cardSurface },
           ]}
           accessibilityRole="radio"
           accessibilityState={{ selected }}
@@ -120,5 +121,5 @@ export default function PaymentMethodsScreen() {
 
 const extraStyles = () =>
   StyleSheet.create({
-    item1: { flex: 1, gap: 5 },
+    item1: { flex: 1, gap: 8 },
   });

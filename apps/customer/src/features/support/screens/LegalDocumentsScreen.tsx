@@ -1,14 +1,6 @@
 import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import {
-  borderRadius,
-  ScreenWrapper as SafeAreaView,
-  spacing,
-  Typography as Text,
-  typography,
-  useLanguage,
-  useThemedStyles,
-} from "@datxe/ui";
+import { ScreenWrapper as SafeAreaView, spacing, Typography as Text, typography, useLanguage, useThemedStyles } from "@datxe/ui";
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 
@@ -233,7 +225,7 @@ function LegalDocumentScreen({
 
 const base_styles = (colors: ThemeColors) =>
   StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: colors.surface },
+    safeArea: { flex: 1, backgroundColor: colors.background },
     content: {
       paddingHorizontal: spacing.margin,
       paddingTop: spacing.spaceMd,
@@ -245,8 +237,8 @@ const base_styles = (colors: ThemeColors) =>
       ...typography.bodyLg,
       color: colors.onSurface,
       backgroundColor: colors.primaryFixedTint,
-      padding: spacing.spaceMd,
-      borderRadius: borderRadius.lg,
+      padding: 16,
+      borderRadius: 24,
     },
     section: { gap: spacing.spaceSm },
     sectionTitle: { ...typography.headlineSm, color: colors.onSurface },
@@ -263,7 +255,7 @@ const base_styles = (colors: ThemeColors) =>
     bullet: {
       width: 6,
       height: 6,
-      borderRadius: borderRadius.full,
+      borderRadius: 24,
       backgroundColor: colors.primary,
       marginTop: spacing.spaceSm,
     },

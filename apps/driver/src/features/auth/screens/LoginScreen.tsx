@@ -8,12 +8,14 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 import { SocialButton, styles } from "../components/LoginScreenParts";
 import { useLogin } from "../hooks/useLogin";
 export default function DriverLoginScreen() {
+  const router = useRouter();
   const colors = useThemeColors();
   const themed_styles = useThemedStyles(styles);
 
@@ -107,16 +109,9 @@ export default function DriverLoginScreen() {
             />
           </Card>
 
-          <View style={themed_styles.footer}>
-            <MaterialIcons
-              color={colors.outline}
-              name="verified-user"
-              size={fontSize.iconSm}
-            />
-            <Text style={themed_styles.footerText}>
-              Bảo mật tài khoản bằng Firebase Authentication.
-            </Text>
-          </View>
+          <Button variant="ghost" icon="help-outline" iconPosition="leading" label="Trợ giúp đăng nhập"
+            onPress={() => router.push("/(auth)/login-help")} />
+          <Button variant="ghost" label="Quyền riêng tư trên ứng dụng" onPress={() => router.push("/settings/privacy")} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

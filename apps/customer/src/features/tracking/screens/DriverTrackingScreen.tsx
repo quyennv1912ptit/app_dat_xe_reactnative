@@ -1,3 +1,4 @@
+import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
@@ -11,7 +12,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { BookingMap } from "@/components/map/BookingMap";
 import {
@@ -108,8 +109,10 @@ export default function DriverTrackingScreen() {
                 </Text>
                 {live.sample ? (
                   <Text style={styles.meta}>
-                    GPS ±{i18nT(Math.round(live.sample.accuracy))}{" "}
-                    {i18nT("m · Cập nhật")}{" "}
+                    {live.sample.accuracy != null ? (
+                      <>GPS ±{i18nT(Math.round(live.sample.accuracy))} {i18nT("m")} · </>
+                    ) : null}
+                    {i18nT("Cập nhật")}{" "}
                     {i18nT(
                       new Date(live.sample.timestamp).toLocaleTimeString(
                         getLocale(),
@@ -175,7 +178,7 @@ export default function DriverTrackingScreen() {
                 )}
               </Text>
               <Text style={styles.meta}>
-                {vehicle?.plate_number || i18nT("Chưa có biển số")}
+                {ride.licensePlate || vehicle?.plate_number || i18nT("Chưa có biển số")}
               </Text>
             </Card>
             <Card style={styles.card}>
@@ -236,7 +239,7 @@ export default function DriverTrackingScreen() {
                 }
               />
             ) : null}
-            {["CANCELLED", "NO_DRIVER_FOUND", "EXPIRED"].includes(
+            {["CANCELLED", "NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM"].includes(
               ride.status,
             ) ? (
               <Action
@@ -272,6 +275,6 @@ export default function DriverTrackingScreen() {
 
 const extraStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    item1: { height: 300, borderRadius: 20, overflow: "hidden" },
+    item1: { height: 300, borderRadius: 24, overflow: "hidden" },
     item2: { color: colors.error },
   });

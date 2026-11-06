@@ -4,6 +4,8 @@ import {
   Card,
   Input,
   MotionPressable as Pressable,
+  OtpCodeInput,
+  ResendOtpButton,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
   fontSize,
@@ -29,6 +31,7 @@ export default function DriverRegisterScreen() {
     code,
     setCode,
     codeSent,
+    resetCode,
     verifiedPhone,
     loading,
     error,
@@ -42,7 +45,8 @@ export default function DriverRegisterScreen() {
     <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.back()}
+        accessibilityLabel="Quay lại"
+        onPress={() => router.canGoBack() ? router.back() : router.replace("/(auth)/login")}
         style={themed_styles.backButton}
       >
         <MaterialIcons
@@ -62,6 +66,7 @@ export default function DriverRegisterScreen() {
             size={fontSize.icon3xl}
           />
         </View>
+        <Text style={themed_styles.step}>Bước 1/4 · Thông tin tài khoản</Text>
         <Text style={themed_styles.title}>Đăng ký đối tác tài xế</Text>
         <Text style={themed_styles.subtitle}>
           Xác minh thông tin để bắt đầu hồ sơ tài xế.
@@ -69,6 +74,7 @@ export default function DriverRegisterScreen() {
 
         <Card style={themed_styles.card}>
           <Input
+            editable={!loading}
             autoCapitalize="words"
             autoComplete="name"
             icon="person"
@@ -97,7 +103,7 @@ export default function DriverRegisterScreen() {
             <>
               <Input
                 autoComplete="tel"
-                editable={!codeSent}
+                editable={!codeSent && !loading}
                 icon="call"
                 keyboardType="phone-pad"
                 label="Số điện thoại"
@@ -109,21 +115,17 @@ export default function DriverRegisterScreen() {
                 value={phone}
               />
               {codeSent ? (
-                <Input
-                  autoComplete="sms-otp"
-                  keyboardType="number-pad"
-                  label="Mã OTP"
-                  maxLength={6}
-                  onChangeText={(value) =>
-                    setCode(value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="Nhập mã 6 chữ số"
-                  value={code}
-                />
+                <>
+                  <Text style={themed_styles.note}>Nhập mã 6 chữ số trong tin nhắn SMS.</Text>
+                  <OtpCodeInput value={code} disabled={loading} onChange={setCode} />
+                  <ResendOtpButton disabled={loading} onResend={sendCode} />
+                  <Button variant="ghost" disabled={loading} label="Đổi số điện thoại" onPress={resetCode} />
+                </>
               ) : null}
               <Button
                 label={codeSent ? "Xác minh số điện thoại" : "Gửi mã OTP"}
                 loading={loading}
+                disabled={codeSent && code.length !== 6}
                 loadingLabel="Đang xác minh..."
                 onPress={codeSent ? verifyCode : sendCode}
                 style={themed_styles.secondaryButton}
@@ -149,7 +151,7 @@ export default function DriverRegisterScreen() {
           />
           <Text style={themed_styles.note}>
             Sau khi tạo tài khoản, bạn sẽ hoàn tất hồ sơ và tải giấy tờ lái xe
-            lên.
+            lên, rồi theo dõi kết quả xét duyệt.
           </Text>
         </Card>
       </ScrollView>
