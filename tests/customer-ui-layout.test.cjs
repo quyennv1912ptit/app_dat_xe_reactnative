@@ -56,6 +56,30 @@ function fixture(dark) {
   };
   return { colors, ui };
 }
+
+test("customer payment summary uses the persisted amount and distinguishes unpaid from collected cash", () => {
+  const { ui } = fixture(true);
+  const { CustomerPaymentSummary } = load(
+    "apps/customer/src/components/CustomerPaymentSummary.tsx",
+    {
+      "@datxe/shared": shared,
+      "@datxe/ui": { ...ui, Card: "Card" },
+      "react-native": native,
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "./CustomerRideUI": { customerType: {}, MoneyText: "MoneyText" },
+    },
+  );
+  const ride = { status: "COMPLETED", estimatedFare: 120000, finalFare: 110000, discountAmount: null };
+  const render = (status) => CustomerPaymentSummary({
+    ride: { ...ride, payment: { method: "CASH", status, amount: 95000 } },
+  });
+  assert.equal(all(render("PENDING")).find((node) => node.type === "MoneyText").props.value, 95000);
+  assert.match(JSON.stringify(render("PENDING")), /Tiền mặt cần trả/);
+  assert.match(JSON.stringify(render("PAID")), /Tiền mặt đã thanh toán/);
+  assert.doesNotMatch(JSON.stringify(render("PAID")), /Tiền mặt cần trả/);
+  assert.equal(all(CustomerPaymentSummary({ ride })).find((node) => node.type === "MoneyText").props.value, 110000);
+});
+
 for (const dark of [false, true]) {
   test(`notification and history records retain borderless tonal surfaces and readable insets in ${dark ? "dark" : "light"} mode`, () => {
     const { colors, ui } = fixture(dark);

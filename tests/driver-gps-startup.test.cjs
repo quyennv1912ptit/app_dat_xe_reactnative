@@ -8,7 +8,7 @@ function load(file, mocks) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, require: name => { if (name in mocks) return mocks[name]; throw Error(name); } });
+  }).outputText, { exports, setInterval, clearInterval, require: name => { if (name in mocks) return mocks[name]; throw Error(name); } });
   return exports;
 }
 for (const mode of ['pending', 'denied', 'unsupported']) {

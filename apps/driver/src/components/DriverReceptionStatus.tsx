@@ -19,8 +19,8 @@ export function DriverReceptionStatus({ detailed = false, onDetails }: { detaile
   const online = user.status === "ONLINE";
   const gpsFresh = health.lastSampleAt != null && now - health.lastSampleAt <= 30000;
   const sent = health.lastSentAt != null && now - health.lastSentAt <= 30000;
-  const locationReady = health.connected && health.foregroundGranted && health.servicesEnabled && gpsFresh && sent;
-  const problem = !health.connected
+  const locationReady = health.foregroundGranted && health.servicesEnabled && gpsFresh && sent;
+  const problem = !health.connected && !sent
     ? "Đang kết nối lại với máy chủ."
     : health.servicesEnabled === false
       ? "Bật dịch vụ vị trí để tiếp tục."
@@ -48,7 +48,7 @@ export function DriverReceptionStatus({ detailed = false, onDetails }: { detaile
       {needsLocation && !locationReady ? <Text>{problem}</Text> : null}
       {detailed ? (
         <>
-          <Text>Kết nối: {health.connected ? "đã kết nối" : "đang kết nối lại"}</Text>
+          <Text>Kết nối: {health.connected ? "đã kết nối" : sent ? "đang dùng kết nối dự phòng" : "đang kết nối lại"}</Text>
           <Text>
             GPS: {health.servicesEnabled === false
               ? "dịch vụ vị trí đang tắt"

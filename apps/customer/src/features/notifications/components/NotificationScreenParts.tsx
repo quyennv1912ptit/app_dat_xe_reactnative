@@ -31,6 +31,7 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceContainerLowest,
     },
     list: { gap: 16 },
+    dayGroup: { gap: 8 },
     summaryCopy: { flex: 1, minWidth: 160 },
     markAllButton: {
       minHeight: 48,
@@ -57,14 +58,14 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceContainerHigh,
     },
     filterActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryContainer,
     },
     filterText: {
       ...typography.labelMd,
       color: colors.onSurfaceVariant,
       textAlign: "center",
     },
-    filterTextActive: { color: colors.onPrimary },
+    filterTextActive: { color: colors.onPrimaryContainer },
     item: {
       flexDirection: "row",
       gap: 12,

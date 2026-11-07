@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Divider, List } from "react-native-paper";
 import { translate } from "@datxe/shared";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useThemeColors } from "../theme/ThemeProvider";
+import { useTheme, useThemeColors } from "../theme/ThemeProvider";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
 
@@ -57,8 +57,8 @@ export function SettingsListItem({
   disabled?: boolean;
   destructive?: boolean;
 }) {
-  const colors = useThemeColors();
-  const tint = destructive ? colors.error : colors.primary;
+  const { colors, brand } = useTheme();
+  const tint = destructive ? colors.error : brand === "driver" ? colors.onSurfaceVariant : colors.primary;
   return (
     <List.Item
       title={translate(title)}

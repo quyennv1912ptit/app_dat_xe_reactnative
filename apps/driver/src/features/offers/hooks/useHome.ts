@@ -1,19 +1,17 @@
+import { usePendingOffer } from '@/lib/driverOffer';
 import { driverApi } from '@/lib/driverApi';
 import { useSessionStore } from '@/lib/store';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { getHomeActiveRide,getHomeSession,getHomeVerification,getPendingOffer,setDriverAvailability } from '../api';
+import { getHomeActiveRide,getHomeSession,getHomeVerification,setDriverAvailability } from '../api';
 export function useHome() {
   const router = useRouter();
   const client = useQueryClient();
   const session = useQuery({ queryKey: ['driver', 'session'], queryFn: getHomeSession });
   const verification = useQuery({ queryKey: ['driver', 'verification'], queryFn: getHomeVerification });
   const active = useQuery({ queryKey: ['driver', 'activeRide'], queryFn: getHomeActiveRide });
-  const online = session.data?.status === 'ONLINE';
-  // REST polling remains available for the server-owned offer window.
-  const offer = useQuery({ queryKey: ['driver', 'pendingOffer'], queryFn: getPendingOffer, refetchInterval: online ? 3000 : false });
+  const offer = usePendingOffer();
   const skills = useQuery({ queryKey: ['driver', 'skills'], queryFn: driverApi.skills });
   const documents = useQuery({ queryKey: ['driver', 'documents'], queryFn: driverApi.documents });
   useRefreshOnFocus(session.refetch);
@@ -22,9 +20,6 @@ export function useHome() {
   useRefreshOnFocus(offer.refetch);
   useRefreshOnFocus(skills.refetch);
   useRefreshOnFocus(documents.refetch);
-  useEffect(() => {
-    if (session.data) useSessionStore.getState().setUser(session.data);
-  }, [session.data]);
   const availability = useMutation({
     mutationFn: setDriverAvailability,
     onSuccess: async result => {

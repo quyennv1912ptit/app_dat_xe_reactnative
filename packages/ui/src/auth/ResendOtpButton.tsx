@@ -88,7 +88,8 @@ export function ResendOtpButton({
 const base_styles = (colors: ThemeColors) =>
   StyleSheet.create({
     button: {
-      minHeight: 44,
+      minHeight: 48,
+      minWidth: 48,
       alignSelf: "flex-start",
       flexDirection: "row",
       alignItems: "center",
@@ -100,6 +101,6 @@ const base_styles = (colors: ThemeColors) =>
     buttonPressed: {
       backgroundColor: colors.primaryTint,
     },
-    label: { ...typography.bodyMdMedium, color: colors.onSurfaceVariant },
+    label: { ...typography.bodyMdMedium, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] },
     labelEnabled: { color: colors.primary, fontWeight: "600" },
   });

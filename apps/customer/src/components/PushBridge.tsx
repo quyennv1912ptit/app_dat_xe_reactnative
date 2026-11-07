@@ -1,10 +1,11 @@
 import { logError } from '@/lib/logger';
 import { customerApi } from '@/lib/customerApi';
 import { pushRegistration } from '@/lib/push';
+import { useRideCompletion } from '@/lib/useRideCompletion';
 import { useSessionStore } from '@/lib/store';
 import {
   acknowledgePushOpen, createPushOpenCoordinator, initializePushPresentation, isPushForAccount,
-  presentPushNotification, rememberPushOpen, requestPushPermission, resolvePushDestination,
+  positiveId, record, presentPushNotification, rememberPushOpen, requestPushPermission, resolvePushDestination,
   setPushSignOutCleanup, subscribeToLocalPushOpens, subscribeToPushMessages, subscribeToRemotePushOpens,
   syncPushToken, unregisterPushToken, watchPushTokenRefresh, type PushEnvelope,
 } from '@datxe/shared';
@@ -25,6 +26,7 @@ export function PushBridge() {
   const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify', 'add-phone-number'].includes(String(segments[1] ?? ''));
   const navigationReady = Boolean(nav?.key && userId && pathname !== '/' && !authenticationScreen);
   useEffect(() => { latest.current = { router, ready: navigationReady }; }, [router, navigationReady]);
+  const verifyCompletion = useRideCompletion(userId, navigationReady, pathname);
   const controller = useRef<ReturnType<typeof createPushOpenCoordinator> | null>(null);
   useEffect(() => {
     let stopped = false;
@@ -35,7 +37,10 @@ export function PushBridge() {
       },
       ready: () => !stopped && latest.current.ready && AppState.currentState === 'active',
       resolve: event => resolvePushDestination(event, 'CUSTOMER', { ride: customerApi.getCustomerRide }),
-      navigate: ({ notice: _notice, ...destination }) => latest.current.router.push(destination as Href),
+      navigate: ({ notice: _notice, ...destination }) => {
+        if (destination.pathname === '/ride/completed') latest.current.router.navigate(destination as Href);
+        else latest.current.router.push(destination as Href);
+      },
       acknowledge: acknowledgePushOpen,
       error: (error, retry) => {
         logError(error);
@@ -48,9 +53,14 @@ export function PushBridge() {
     let stopLocal = () => {};
     void subscribeToLocalPushOpens(opened).then(stop => { if (stopped) stop(); else stopLocal = stop; }).catch(logError);
     const stopMessages = subscribeToPushMessages(event => {
-      void client.invalidateQueries({ queryKey: ['customer'] });
       const user = useSessionStore.getState().user;
-      if (user && isPushForAccount(event, 'CUSTOMER', user.id) && AppState.currentState === 'active') void presentPushNotification(event).catch(logError);
+      if (!user || !isPushForAccount(event, 'CUSTOMER', user.id)) return;
+      void client.invalidateQueries({ queryKey: ['customer'] }, { cancelRefetch: false });
+      if (event.type === 'RIDE_COMPLETED') {
+        const id = positiveId(record(event.payload).rideId);
+        if (id) void verifyCompletion(id, user.id).catch(logError);
+      }
+      if (AppState.currentState === 'active') void presentPushNotification(event).catch(logError);
     });
     const appState = AppState.addEventListener('change', state => {
       if (state === 'active') {
@@ -64,7 +74,7 @@ export function PushBridge() {
       stopped = true; coordinator.clear(); controller.current = null;
       stopRemote(); stopLocal(); stopMessages(); appState.remove(); stopTokenRefresh(); setPushSignOutCleanup(null);
     };
-  }, [client]);
+  }, [client, verifyCompletion]);
   useEffect(() => { void controller.current?.drain(); }, [userId, pathname, nav?.key, navigationReady]);
   useEffect(() => {
     if (!userId) return;

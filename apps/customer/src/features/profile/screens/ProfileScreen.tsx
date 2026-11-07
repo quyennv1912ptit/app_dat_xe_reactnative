@@ -133,6 +133,7 @@ export default function ProfileScreen() {
         <Card style={styles.identityCard}>
           <View style={styles.identityRow}>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={i18nT("Thay đổi ảnh đại diện")}
               disabled={uploadingAvatar || !profile}
               onPress={() => void changeAvatar()}
@@ -172,6 +173,7 @@ export default function ProfileScreen() {
               ) : (
                 <Pressable
                   accessibilityRole="button"
+                  style={{ minHeight: 48, minWidth: 48, justifyContent: "center" }}
                   onPress={() =>
                     router.push("/(auth)/add-phone-number" as never)
                   }
@@ -181,7 +183,7 @@ export default function ProfileScreen() {
                   </Text>
                 </Pressable>
               )}
-              <Text style={styles.userEmail} numberOfLines={1}>
+              <Text style={styles.userEmail} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {i18nT(profile?.email || "Chưa cập nhật email")}
               </Text>
             </View>

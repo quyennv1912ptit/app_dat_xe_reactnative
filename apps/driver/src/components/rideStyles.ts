@@ -19,7 +19,7 @@ export const rideStyles = (colors: ThemeColors) =>
     },
     label: {
       fontFamily: fontFamily.inter,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "500",
       color: colors.onSurfaceVariant,
     },
@@ -49,4 +49,6 @@ export const rideStyles = (colors: ThemeColors) =>
       fontWeight: "600",
     },
     error: { fontFamily: fontFamily.inter, fontSize: 14, color: colors.error },
+    amount: { fontSize: 36, fontWeight: "800", fontVariant: ["tabular-nums"], color: colors.onSurface },
+    metric: { fontSize: 22, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.onSurface },
   });

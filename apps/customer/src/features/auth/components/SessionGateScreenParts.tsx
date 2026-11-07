@@ -1,11 +1,7 @@
-import { fontFamily, fontSize, spacing } from "@datxe/ui";
+import { fontFamily, spacing } from "@datxe/ui";
 import type { ThemeColors } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 
-/**
- * Splash: nền coral đặc, logo PtitGo (bo góc mềm) canh giữa,
- * tagline in hoa giãn chữ và spinner mảnh ở gần đáy.
- */
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: {
@@ -29,17 +25,15 @@ export const styles = (colors: ThemeColors) =>
     },
     tagline: {
       fontFamily: fontFamily.inter,
-      fontSize: fontSize.labelSm,
+      fontSize: 13,
       lineHeight: 16,
       fontWeight: "600",
-      letterSpacing: spacing.letterSpacingWidest,
-      color: colors.onPrimaryContainer,
-      marginTop: spacing.spaceLg,
-      opacity: 0.9,
+      textAlign: "center",
+      color: colors.onSurfaceVariant,
     },
     footer: {
-      position: "absolute",
-      bottom: spacing.radarOuter,
       alignItems: "center",
+      gap: 10,
+      marginTop: 24,
     },
   });

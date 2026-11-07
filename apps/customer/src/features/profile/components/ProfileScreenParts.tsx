@@ -65,6 +65,9 @@ export const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     },
     editButton: {
       margin: 0,
+      width: 48,
+      height: 48,
+      borderRadius: 999,
       flexShrink: 0,
       alignSelf: "flex-start",
       backgroundColor: colors.surfaceContainerHigh,

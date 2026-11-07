@@ -10,7 +10,11 @@ const cancellable = new Set<CustomerRideDetail["status"]>([
   "PENDING", "SEARCHING", "DRIVER_ASSIGNED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "VEHICLE_HANDOVER",
 ]);
 
-export function useCustomerRideCancellation(ride: CustomerRideDetail | null | undefined, refresh: () => unknown) {
+export function useCustomerRideCancellation(
+  ride: CustomerRideDetail | null | undefined,
+  refresh: () => unknown,
+  { cancelSearchingImmediately = false } = {},
+) {
   const router = useRouter();
   const client = useQueryClient();
   const [selectedRideId, setSelectedRideId] = useState<number | null>(null);
@@ -18,7 +22,7 @@ export function useCustomerRideCancellation(ride: CustomerRideDetail | null | un
   const submitting = useRef(false);
   const canCancel = Boolean(ride && cancellable.has(ride.status));
   const mutation = useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => customerApi.cancelCustomerRide(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => customerApi.cancelCustomerRide(id, reason),
     onSuccess: (_, { id }) => {
       const store = useSessionStore.getState();
       if (store.activeRide?.id === id) store.setActiveRide(null);
@@ -32,6 +36,11 @@ export function useCustomerRideCancellation(ride: CustomerRideDetail | null | un
   const open = () => {
     if (!ride || !canCancel || submitting.current) return;
     mutation.reset();
+    if (cancelSearchingImmediately && ride.status === "SEARCHING") {
+      submitting.current = true;
+      mutation.mutate({ id: ride.id });
+      return;
+    }
     setReason("");
     setSelectedRideId(ride.id);
   };

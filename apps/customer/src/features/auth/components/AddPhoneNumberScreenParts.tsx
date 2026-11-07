@@ -80,7 +80,7 @@ export const styles = (colors: ThemeColors) =>
     },
     submitButton: { width: "100%" },
     secondaryAction: {
-      minHeight: 44,
+      minHeight: 48,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: spacing.spaceMd,

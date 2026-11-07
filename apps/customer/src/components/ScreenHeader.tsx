@@ -131,7 +131,7 @@ export function ScreenHeader({
   leadingIcon,
   leadingContent,
   rightContent,
-  sideSlotWidth = spacing.iconButtonMd,
+  sideSlotWidth = 48,
   largeTitle = false,
 }: ScreenHeaderProps) {
   useLanguage();
@@ -143,6 +143,7 @@ export function ScreenHeader({
         {onBack ? (
           <Appbar.Action
             isLeading
+            style={styles.leadingAction}
             icon={(props) => <MaterialIcons {...props} name={backIcon} />}
             accessibilityLabel={i18nT(backAccessibilityLabel)}
             onPress={onBack}
@@ -150,6 +151,7 @@ export function ScreenHeader({
         ) : leadingIcon ? (
           <Appbar.Action
             isLeading
+            style={styles.leadingAction}
             icon={(props) => <MaterialIcons {...props} name={leadingIcon} />}
             accessible={false}
           />
@@ -199,6 +201,7 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       paddingHorizontal: 8,
       backgroundColor: colors.background,
     },
+    leadingAction: { width: 48, height: 48, borderRadius: 999 },
     leadingContent: {
       flex: 1,
       minWidth: 0,
@@ -208,26 +211,26 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     title: {
       ...typography.headlineMd,
       color: colors.onSurface,
-      fontWeight: "500",
+      fontWeight: "600",
       textAlign: "left",
     },
     largeTitle: { fontSize: 24, lineHeight: 32 },
-    subtitle: { ...typography.labelSm, color: colors.onSurfaceMuted },
+    subtitle: { ...typography.labelSm, fontSize: 13, lineHeight: 18, color: colors.onSurfaceMuted },
     iconButton: {
-      width: spacing.iconButtonMd,
-      height: spacing.iconButtonMd,
+      width: 48,
+      height: 48,
       alignItems: "center",
       justifyContent: "center",
       borderRadius: 999,
       backgroundColor: colors.surfaceContainerLow,
     },
     compactIconButton: {
-      width: spacing.iconButtonSm,
-      height: spacing.iconButtonSm,
+      width: 48,
+      height: 48,
     },
     labeledIconButton: {
       width: HEADER_SAFETY_ACTION_WIDTH,
-      height: spacing.iconButtonSm,
+      minHeight: 48,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",

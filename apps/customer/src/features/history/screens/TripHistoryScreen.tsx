@@ -1,4 +1,5 @@
 import { HistoryRideListItem } from "../components/HistoryRideListItem";
+import { CustomerNotice } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { EmptyStateCard } from "@/components/EmptyStateCard";
@@ -95,6 +96,8 @@ export default function TripHistoryScreen() {
           ).map(([key, label]) => (
             <Pressable
               key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: filter === key }}
               onPress={() => setFilter(key)}
               style={[styles.filter, filter === key && styles.filterActive]}
             >
@@ -110,7 +113,7 @@ export default function TripHistoryScreen() {
           ))}
         </View>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
-        {error ? <Text style={styles.error}>{i18nT(error)}</Text> : null}
+        {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
         {!loading && !error && rides.length === 0 ? (
           <EmptyStateCard
             icon="history"

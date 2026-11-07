@@ -212,7 +212,7 @@ const extraStyles = (colors: ThemeColors) =>
       backgroundColor: colors.scrim60,
       justifyContent: "flex-end",
     },
-    item2: { flex: 1, minHeight: 40 },
+    item2: { flex: 1, minHeight: 48 },
     item3: { maxHeight: "85%" },
     item4: { gap: 12, paddingBottom: 12 },
     item5: { opacity: 0.5 },

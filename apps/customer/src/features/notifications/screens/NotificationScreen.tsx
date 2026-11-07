@@ -1,4 +1,5 @@
 import { NotificationListItem } from "../components/NotificationListItem";
+import { CustomerNotice } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { EmptyStateCard } from "@/components/EmptyStateCard";
@@ -8,7 +9,7 @@ import {
   HeaderLabeledIconButton,
   ScreenHeader,
 } from "@/components/ScreenHeader";
-import { translate as i18nT } from "@datxe/shared";
+import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
@@ -42,6 +43,13 @@ export default function NotificationScreen() {
     openNotification,
     visible,
   } = useNotification();
+  const groups = new Map<string, typeof visible>();
+  for (const item of visible) {
+    const day = new Date(item.createdAt).toLocaleDateString(getLocale());
+    const group = groups.get(day);
+    if (group) group.push(item);
+    else groups.set(day, [item]);
+  }
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
@@ -84,7 +92,8 @@ export default function NotificationScreen() {
               {i18nT(unreadCount)} {i18nT("thông báo chưa đọc")}
             </Text>
           </View>
-          <Pressable
+          {unreadCount > 0 ? <Pressable
+            accessibilityRole="button"
             style={styles.markAllButton}
             disabled={unreadCount === 0}
             onPress={() => void markAll()}
@@ -92,7 +101,7 @@ export default function NotificationScreen() {
             <Text style={[styles.markAll, unreadCount === 0 && styles.dim]}>
               {i18nT("Đọc tất cả")}
             </Text>
-          </Pressable>
+          </Pressable> : null}
         </View>
         <View style={styles.filters}>
           {(
@@ -105,6 +114,8 @@ export default function NotificationScreen() {
           ).map(([key, label]) => (
             <Pressable
               key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: filter === key }}
               onPress={() => setFilter(key)}
               style={[styles.filter, filter === key && styles.filterActive]}
             >
@@ -120,7 +131,7 @@ export default function NotificationScreen() {
           ))}
         </View>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
-        {error ? <Text style={styles.error}>{i18nT(error)}</Text> : null}
+        {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
         {!loading && !error && !visible.length ? (
           <EmptyStateCard
             icon="notifications-none"
@@ -148,12 +159,13 @@ export default function NotificationScreen() {
         ) : null}
         {visible.length ? (
           <View style={styles.list}>
-            {visible.map((item) => (
-              <NotificationListItem
-                key={item.id}
-                item={item}
-                onPress={() => void openNotification(item)}
-              />
+            {[...groups].map(([day, group]) => (
+              <View key={day} style={styles.dayGroup}>
+                <Text accessibilityRole="header" style={styles.meta}>{day}</Text>
+                {group.map((item) => (
+                  <NotificationListItem key={item.id} item={item} onPress={() => void openNotification(item)} />
+                ))}
+              </View>
             ))}
           </View>
         ) : null}

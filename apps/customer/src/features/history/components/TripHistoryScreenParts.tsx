@@ -41,7 +41,7 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.cardSurface,
       gap: 2,
     },
-    summaryCount: { ...typography.headlineLg, color: colors.primary },
+    summaryCount: { ...typography.headlineLg, fontVariant: ["tabular-nums"], color: colors.onSurface },
     summaryText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     filters: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     filter: {
@@ -58,14 +58,14 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceContainerHigh,
     },
     filterActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryContainer,
     },
     filterText: {
       ...typography.labelMd,
       color: colors.onSurfaceVariant,
       textAlign: "center",
     },
-    filterTextActive: { color: colors.onPrimary },
+    filterTextActive: { color: colors.onPrimaryContainer },
     ride: {
       paddingVertical: 12,
       paddingHorizontal: 16,
@@ -99,10 +99,11 @@ export const styles = (colors: ThemeColors) =>
       flexShrink: 1,
     },
     statusCancelled: { color: colors.error },
-    meta: { ...typography.labelMd, color: colors.onSurfaceMuted },
+    meta: { ...typography.labelMd, fontSize: 13, lineHeight: 19, color: colors.onSurfaceMuted },
     addressRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
     address: {
       ...typography.bodyMd,
+      fontSize: 16, lineHeight: 23,
       color: colors.onSurface,
       flex: 1,
       minWidth: 0,
@@ -115,7 +116,8 @@ export const styles = (colors: ThemeColors) =>
 
       paddingTop: 12,
     },
-    fare: { ...typography.titleLg, color: colors.onSurface, flexShrink: 1 },
+    fareCopy: { flex: 1, minWidth: 0, gap: 2 },
+    fare: { ...typography.titleLg, fontSize: 28, lineHeight: 35, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.onSurface },
     more: { minHeight: 48, justifyContent: "center", alignItems: "center" },
     moreText: { ...typography.labelLg, color: colors.primary },
     error: { ...typography.bodyMd, color: colors.error },

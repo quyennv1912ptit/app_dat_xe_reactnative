@@ -32,7 +32,7 @@ export default function DriverWalletScreen() {
         <>
           <Card style={s.card}>
             <Text style={s.label}>Số dư thu nhập</Text>
-            <Text style={s.title}>{formatMoney(wallet.data.income_balance)}</Text>
+            <Text style={s.amount}>{formatMoney(wallet.data.income_balance)}</Text>
             <Text style={s.text}>Hiển thị tối đa 100 giao dịch gần nhất đã ghi nhận vào ví.</Text>
           </Card>
           <GroupedList>

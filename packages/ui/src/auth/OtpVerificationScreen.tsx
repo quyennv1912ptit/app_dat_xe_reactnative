@@ -148,10 +148,12 @@ export function OtpVerificationScreen({
               }}
               value={code}
             />
-            <ResendOtpButton
-              disabled={loading || resending}
-              onResend={handleResend}
-            />
+            <View style={styles.resend}>
+              <ResendOtpButton
+                disabled={loading || resending}
+                onResend={handleResend}
+              />
+            </View>
           </View>
 
           {error ? (
@@ -164,6 +166,9 @@ export function OtpVerificationScreen({
             </Text>
           ) : null}
           {onHelp ? <Button variant="ghost" label={i18nT("Chưa nhận được mã?")} onPress={onHelp} /> : null}
+          <Pressable accessibilityRole="button" disabled={loading} onPress={onLogin} style={styles.secondaryAction}>
+            <Text style={styles.secondaryActionText}>{i18nT("Đổi số điện thoại")}</Text>
+          </Pressable>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -174,16 +179,6 @@ export function OtpVerificationScreen({
             loadingLabel={i18nT("Đang xác thực...")}
             onPress={() => void handleVerify()}
           />
-          <Pressable
-            accessibilityRole="button"
-            disabled={loading}
-            onPress={onLogin}
-            style={styles.secondaryAction}
-          >
-            <Text style={styles.secondaryActionText}>
-              {i18nT("Đổi số điện thoại")}
-            </Text>
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -278,6 +273,7 @@ const base_styles = (colors: ThemeColors) =>
       marginTop: spacing.spaceLg + spacing.spaceSm,
       gap: spacing.spaceMd,
     },
+    resend: { paddingTop: 36 },
     errorText: {
       ...typography.bodyMd,
       color: colors.error,
@@ -289,12 +285,14 @@ const base_styles = (colors: ThemeColors) =>
       marginTop: spacing.spaceMd,
     },
     footer: {
+      paddingTop: spacing.spaceSm,
+      backgroundColor: colors.background,
       paddingHorizontal: spacing.margin,
       paddingBottom: spacing.spaceSm,
       gap: spacing.spaceXs,
     },
     secondaryAction: {
-      minHeight: 44,
+      minHeight: 48,
       alignItems: "center",
       justifyContent: "center",
     },

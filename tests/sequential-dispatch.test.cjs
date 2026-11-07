@@ -15,7 +15,7 @@ test('accept and reject send the exact offer token the driver reviewed',async()=
   assert.equal(calls[1].options.body.offerId,'offer-b');
 });
 test('offer countdown is twenty-five seconds with a two second server margin even on a skewed phone',()=>{
-  const {offerRemainingMs}=load('apps/driver/src/features/offers/offerTiming.ts');
+  const {offerRemainingMs}=load('apps/driver/src/lib/offerTiming.ts');
   const offer={serverTime:100000,expiresAt:127000,clientExpiresAt:125000};
   for(const received of [1000,100000,10000000]) {
     assert.equal(offerRemainingMs(offer,received,received),25000);

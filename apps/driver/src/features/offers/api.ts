@@ -2,8 +2,6 @@ import { request } from '@/lib/api';
 
 import type { AuthProfile,CustomerRideDetail } from '@datxe/shared';
 import { driverApi } from '@/lib/driverApi';
-export type DriverOffer = { rideId: number; offerId: string; expiresAt: number; serverTime: number; clientExpiresAt: number; pickup: { lat: number; lng: number; address: string }; dropoff: { lat: number; lng: number; address: string }; pickupNote?: string | null; note?: string | null; distanceToPickupKm?: number; etaToPickupMin?: number; tripDistanceKm: number; estDurationMin: number; fareEstimate: number; driverEarning: number; customer: { displayName: string }; vehicle: { type: string; transmission: string } };
-export const getPendingOffer = () => request<DriverOffer>('/driver/offers/pending', { allowNull: true });
 export const acceptDriverOffer = (rideId: number, offerId: string) => request<string>(`/driver/offers/${rideId}/accept`, { method: 'POST', body: { offerId } });
 export const rejectDriverOffer = (rideId: number, offerId: string) => request(`/driver/offers/${rideId}/reject`, { method: 'POST', body: { offerId }, allowNull: true });
 export const getHomeSession=()=>request<AuthProfile>('/auth/me');

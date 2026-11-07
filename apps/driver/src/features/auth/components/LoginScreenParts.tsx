@@ -85,15 +85,7 @@ export const styles = (colors: ThemeColors) =>
       paddingHorizontal: spacing.margin,
       paddingVertical: spacing.spaceXl,
     },
-    brandIcon: {
-      width: 64,
-      height: 64,
-      alignSelf: "center",
-      borderRadius: 24,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    brandIcon: { width: 80, height: 80, alignSelf: "center" },
     brandName: {
       ...typography.labelLg,
       color: colors.primary,

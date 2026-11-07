@@ -19,6 +19,7 @@ export default function DriverSupportScreen() {
         {...support}
         initialRideId={Number(rideId) || undefined}
         pickImage={pickSupportImage}
+        onOpenSafety={() => router.push("/safety")}
         onOpenRide={(id) => router.push({ pathname: "/ride/complete", params: { rideId: String(id) } })}
         onRefresh={() => void support.retry()}
       />

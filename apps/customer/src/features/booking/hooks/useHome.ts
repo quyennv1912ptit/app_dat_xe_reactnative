@@ -1,3 +1,4 @@
+import { activeRideDestination } from '../bookingUtils';
 import { translate as i18nT } from '@datxe/shared';
 import { getCustomerDisplayName } from '@/lib/customerName';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
@@ -7,7 +8,7 @@ import * as Location from 'expo-location';
 import { useFocusEffect,useRouter } from 'expo-router';
 import { useCallback,useRef,useState } from 'react';
 import { Linking, Platform } from 'react-native';
-import { getActiveCustomerRide,getCustomerProfile,getCustomerRides,getCustomerVouchers,getNearbyCustomerDrivers,getUnreadNotificationCount } from '../api';
+import { getActiveCustomerRide,getCustomerProfile,getCustomerRides,getCustomerVouchers,getNearbyCustomerDrivers,getUnreadNotificationCount,reverseBookingPlace } from '../api';
 import { getRecentDestinations } from '../components/HomeScreenParts';
 function getCustomerCoordinate(): Promise<RideCoordinates> {
   if (Platform.OS === "web") {
@@ -68,14 +69,11 @@ const refreshLocation = useCallback(async (requestPermission = false) => {
       cachedLocation = fix;
       setCurrentCoordinates(coordinate);
       setCurrentLocation(label);
-      if (Platform.OS !== "web") {
-        void Location.reverseGeocodeAsync({ latitude: coordinate.lat, longitude: coordinate.lng }).then(([place]) => {
-          if (!place || cachedLocation !== fix) return;
-          const parts = [place.district, place.city ?? place.subregion, place.region].filter(Boolean);
-          fix.label = [...new Set(parts)].slice(0, 2).join(", ") || place.name || label;
-          setCurrentLocation(fix.label);
-        }).catch(() => {});
-      }
+      void reverseBookingPlace(coordinate).then(place => {
+        if (cachedLocation !== fix) return;
+        fix.label = place.address || label;
+        setCurrentLocation(fix.label);
+      }).catch(() => {});
     } catch (error) {
       const webPermissionDenied = Platform.OS === "web" && error && typeof error === "object"
         && "code" in error && error.code === 1;
@@ -128,7 +126,7 @@ const greetingName = customerName === 'bạn'
 const activeVoucher = vouchers[0];
 const openBooking = (destination?: string) => {
     if (activeRide) {
-      router.push({ pathname: '/ride/tracking', params: { rideId: String(activeRide.id) } });
+      router.push(activeRideDestination(activeRide));
       return;
     }
     router.push({ pathname: '/ride/route-selection', params: {

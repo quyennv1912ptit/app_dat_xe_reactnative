@@ -28,7 +28,7 @@ export function NotificationListItem({
   const styles = useThemedStyles(createStyles);
   const unread = !item.readAt;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.item}>
+    <Pressable accessibilityRole="button" accessibilityHint={unread ? i18nT("Chưa đọc") : undefined} onPress={onPress} style={styles.item}>
       <View style={[styles.icon, unread && styles.iconUnread]}>
         <MaterialIcons
           name={

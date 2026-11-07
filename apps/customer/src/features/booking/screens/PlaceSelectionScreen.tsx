@@ -1,3 +1,4 @@
+import { customerType } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
@@ -55,8 +56,8 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
       >
         <View style={[s.page, extra.item1]}>
           <Text style={s.label}>
-            {i18nT("BƯỚC")} {i18nT(isPickup ? "1" : "2")}/4 ·{" "}
-            {i18nT(isPickup ? "ĐIỂM ĐÓN" : "ĐIỂM ĐẾN")}
+            {i18nT("Bước")} {i18nT(isPickup ? "1" : "2")}/4 ·{" "}
+            {i18nT(isPickup ? "Điểm đón" : "Điểm đến")}
           </Text>
           {!isPickup && h.pickup ? (
             <View style={s.row}>
@@ -88,14 +89,15 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
             {h.text ? (
               <Pressable
                 accessibilityLabel={i18nT("Xóa tìm kiếm")}
-                hitSlop={12}
+                accessibilityRole="button"
+                style={[customerType.target, extra.clear]}
                 onPress={() => { searchInput.current?.clear(); h.clearText(); }}
               >
                 <MaterialIcons name="cancel" size={20} color={colors.outline} />
               </Pressable>
             ) : null}
           </View>
-          <Pressable onPress={h.openMap} style={[s.row, extra.item2]}>
+          <Pressable onPress={h.openMap} accessibilityRole="button" style={[s.row, extra.item2, customerType.target]}>
             <MaterialIcons name="map" size={23} color={colors.primary} />
             <Text style={s.link}>{i18nT("Chọn vị trí trên bản đồ")}</Text>
             <MaterialIcons
@@ -175,7 +177,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
                     color={colors.primary}
                   />
                   <View style={s.flex}>
-                    <Text style={s.label}>{i18nT("ĐỊA ĐIỂM ĐÃ CHỌN")}</Text>
+                    <Text style={s.label}>{i18nT("Địa điểm đã chọn")}</Text>
                     <Text style={s.text}>{h.selected.address}</Text>
                   </View>
                   <MaterialIcons
@@ -187,7 +189,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
               ) : null}
               {h.recentAddresses.length ? (
                 <Text style={[s.label, extra.item5]}>
-                  {i18nT("ĐỊA ĐIỂM GẦN ĐÂY")}
+                  {i18nT("Địa điểm gần đây")}
                 </Text>
               ) : null}
               {h.recentAddresses.map((address) => (
@@ -323,6 +325,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
 const extraStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     item1: { paddingBottom: 12 },
+    clear: { alignItems: "center" },
     item2: { paddingVertical: 8 },
     item3: { backgroundColor: colors.successContainer },
     item4: { fontWeight: "600" },

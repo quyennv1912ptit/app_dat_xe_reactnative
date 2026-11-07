@@ -35,6 +35,10 @@ type Props = {
   retry?: () => unknown;
   tabs?: boolean;
   footer?: ReactNode;
+  headerContent?: ReactNode;
+  headerAction?: ReactNode;
+  intro?: ReactNode;
+  appearance?: "ride";
   backFallback?: Href;
 };
 export function DriverPage({
@@ -45,11 +49,16 @@ export function DriverPage({
   retry,
   tabs = false,
   footer,
+  headerContent,
+  headerAction,
+  intro,
+  appearance,
   backFallback = "/(tabs)/home",
 }: Props) {
   const styles = useThemedStyles(createStyles);
   const shared = useThemedStyles(rideStyles);
   const colors = useThemeColors();
+  const rideBackground = appearance === "ride" ? styles.rideBackground : undefined;
   const router = useRouter();
   const pathname = usePathname();
   const activeRide = useSessionStore((state) => state.activeRide);
@@ -61,10 +70,11 @@ export function DriverPage({
     select: (result) => result?.unread_count ?? 0,
   });
   return (
-    <ScreenWrapper>
-      <Appbar.Header mode="small" statusBarHeight={0} style={styles.header}>
+    <ScreenWrapper style={rideBackground}>
+      <Appbar.Header mode="small" statusBarHeight={0} style={[styles.header, rideBackground]}>
         {!tabs ? (
           <Appbar.BackAction
+            style={styles.action}
             accessibilityLabel="Quay lại"
             onPress={() =>
               router.canGoBack()
@@ -74,14 +84,18 @@ export function DriverPage({
           />
         ) : null}
         <Appbar.Content title={title} titleStyle={styles.title} />
+        {headerAction}
         {tabs && activeRide ? (
           <DriverChatButton ride={activeRide} compact />
         ) : null}
       </Appbar.Header>
+      {headerContent}
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={shared.page}
         keyboardShouldPersistTaps="handled"
       >
+        {intro}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? (
           <Card style={styles.errorCard}>
@@ -95,7 +109,7 @@ export function DriverPage({
         ) : null}
         {children}
       </ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, appearance === "ride" && styles.rideFooter]}>{footer}</View> : null}
       {tabs ? (
         <TonalNavigationBar
           items={tabsList.map((tab) => ({ ...tab, id: tab.route, badge: tab.route === "notifications" ? unread : undefined }))}
@@ -111,7 +125,11 @@ export function DriverPage({
 }
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    scroll: { flex: 1 },
+    action: { width: 48, height: 48, borderRadius: 24 },
     footer: { padding: 16, gap: 8, backgroundColor: colors.cardSurface },
+    rideBackground: { backgroundColor: colors.rideBackground },
+    rideFooter: { backgroundColor: colors.rideSurface },
     header: {
       flexDirection: "row",
       alignItems: "center",

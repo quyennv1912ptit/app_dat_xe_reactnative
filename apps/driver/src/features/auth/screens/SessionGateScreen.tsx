@@ -1,7 +1,7 @@
 import { ActivityIndicator } from "react-native-paper";
 import { Button, Card, ScreenWrapper, Typography, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { Redirect, useRouter } from "expo-router";
-import { View } from "react-native";
+import { Image, View } from "react-native";
 import { styles } from "../components/SessionGateScreenParts";
 import { useSessionGate } from "../hooks/useSessionGate";
 
@@ -15,6 +15,9 @@ export default function Index() {
     <ScreenWrapper>
       <View style={s.loading}>
         <Card style={s.card}>
+          <Image source={require("../../../../assets/images/brand-logo.png")}
+            accessibilityLabel="PtitGo Tài Xế" accessibilityIgnoresInvertColors
+            resizeMode="contain" style={s.logo} />
           {!error ? <ActivityIndicator accessibilityLabel="Đang khôi phục phiên" color={colors.primary} /> : null}
           <Typography style={s.status} accessibilityRole={error ? "alert" : undefined}>
             {error || (waiting ? "Đang kết nối. Việc khôi phục phiên mất nhiều thời gian hơn dự kiến." : "Đang khôi phục phiên đăng nhập…")}

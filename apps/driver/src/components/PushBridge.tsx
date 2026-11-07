@@ -1,3 +1,5 @@
+import { pendingOfferKey, usePendingOffer } from '@/lib/driverOffer';
+import { offerRemainingMs } from '@/lib/offerTiming';
 import { logError } from '@/lib/logger';
 import { resolveDriverNotification } from '@/lib/notificationDestination';
 import { pushRegistration } from '@/lib/push';
@@ -8,7 +10,7 @@ import {
   parsePushData, presentPushNotification, rememberPushOpen, requestPushPermission,
   setPushSignOutCleanup, subscribeToLocalPushOpens,
   subscribeToPushMessages, subscribeToRemotePushOpens, syncPushToken, unregisterPushToken,
-  watchPushTokenRefresh, dismissOfferNotifications, offerDeadline, positiveId, record, pushKey, type PushEnvelope,
+  watchPushTokenRefresh, dismissOfferNotifications, positiveId, record, type PushEnvelope,
 } from '@datxe/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -17,15 +19,28 @@ import { usePathname, useRootNavigationState, useRouter, useSegments, type Href 
 
 export function PushBridge() {
   const userId = useSessionStore(state => state.user?.id);
+  const online = useSessionStore(state => state.user?.status === 'ONLINE');
   const client = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const segments = useSegments();
   const nav = useRootNavigationState();
-  const latest = useRef({ router, pathname, ready: false });
+  const latest = useRef({ router, ready: false });
   const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments[1] ?? ''));
   const navigationReady = Boolean(nav?.key && userId && pathname !== '/' && !authenticationScreen);
-  useEffect(() => { latest.current = { router, pathname, ready: navigationReady }; }, [router, pathname, navigationReady]);
+  useEffect(() => { latest.current = { router, ready: navigationReady }; }, [router, navigationReady]);
+  const pendingOffer = usePendingOffer(navigationReady, online);
+  const displayedOffer = useRef<{ userId: number; offerId: string } | null>(null);
+  useEffect(() => {
+    const offer = pendingOffer.data;
+    if (!navigationReady || !userId || AppState.currentState !== 'active' || !offer ||
+        offerRemainingMs(offer, pendingOffer.dataUpdatedAt, Date.now()) <= 0) return;
+    if (displayedOffer.current?.userId === userId && displayedOffer.current.offerId === offer.offerId) return;
+    displayedOffer.current = { userId, offerId: offer.offerId };
+    const destination = { pathname: '/ride/accept' as const, params: { rideId: String(offer.rideId) } };
+    if (pathname === '/ride/accept') router.setParams(destination.params);
+    else router.navigate(destination);
+  }, [navigationReady, userId, pendingOffer.data, pendingOffer.dataUpdatedAt, pathname, router]);
   const controller = useRef<ReturnType<typeof createPushOpenCoordinator> | null>(null);
 
   useEffect(() => {
@@ -53,15 +68,19 @@ export function PushBridge() {
     let stopLocal = () => {};
     void subscribeToLocalPushOpens(opened).then(stop => { if (stopped) stop(); else stopLocal = stop; }).catch(logError);
     const receive = (event: PushEnvelope) => {
-      void client.invalidateQueries({ queryKey: ['driver'] });
       const user = useSessionStore.getState().user;
       if (!user || !isPushForAccount(event, 'DRIVER', user.id) || AppState.currentState !== 'active') return;
-      void presentPushNotification(event).catch(logError);
-      if (event.type === 'RIDE_OFFER' && offerDeadline(event) > Date.now()) coordinator.enqueue({ ...event, messageId: `foreground:${pushKey(event)}` });
-      if (['OFFER_EXPIRED', 'OFFER_CANCELLED'].includes(event.type)) {
-        void dismissOfferNotifications(positiveId(record(event.payload).rideId) ?? undefined).catch(logError);
-        if (latest.current.ready && latest.current.pathname === '/ride/accept') latest.current.router.replace('/(tabs)/home');
+      if (event.type === 'RIDE_OFFER' || event.type === 'OFFER_EXPIRED' || event.type === 'OFFER_CANCELLED') {
+        // WS and FCM can deliver the same event. Both wake the same authoritative query.
+        void client.invalidateQueries({ queryKey: pendingOfferKey }, { cancelRefetch: false });
+        if (event.type !== 'RIDE_OFFER') {
+          const rideId = positiveId(record(event.payload).rideId);
+          if (rideId) void dismissOfferNotifications(rideId).catch(logError);
+        }
+      } else {
+        void client.invalidateQueries({ queryKey: ['driver'] });
       }
+      void presentPushNotification(event).catch(logError);
     };
     const stopMessages = subscribeToPushMessages(receive);
     const stopStomp = driverRealtime.subscribe('/user/queue/trip', message => {

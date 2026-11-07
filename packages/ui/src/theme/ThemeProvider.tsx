@@ -134,6 +134,19 @@ const driverLight: Partial<ThemeColors> = {
   inversePrimary: "#7ED9AA",
 };
 const driverDark: Partial<ThemeColors> = {
+  driverHeader: "#1E1E1E",
+  background: "#121212",
+  surface: "#1E1E1E",
+  surfaceContainerLowest: "#1E1E1E",
+  surfaceContainerLow: "#1E1E1E",
+  surfaceContainer: "#1E1E1E",
+  cardSurface: "#1E1E1E",
+  inputSurface: "#242424",
+  rideBackground: "#121212",
+  rideSurface: "#1E1E1E",
+  rideInset: "#242424",
+  warningContainer: "#362818",
+  onWarningContainer: "#FFDC9B",
   primary: "#7ED9AA",
   primaryContainer: "#005233",
   onPrimary: "#003820",
@@ -160,7 +173,21 @@ const driverDark: Partial<ThemeColors> = {
 const palettes = {
   customer: {
     light: colors,
-    dark: darkColors,
+    dark: {
+      ...darkColors,
+      background: "#121212",
+      surface: "#1E1E1E",
+      surfaceContainerLowest: "#1E1E1E",
+      surfaceContainerLow: "#1E1E1E",
+      surfaceContainer: "#1E1E1E",
+      cardSurface: "#1E1E1E",
+      inputSurface: "#242424",
+      rideBackground: "#121212",
+      rideSurface: "#1E1E1E",
+      rideInset: "#242424",
+      warningContainer: "#362818",
+      onWarningContainer: "#FFDC9B",
+    },
   },
   driver: {
     light: { ...colors, ...driverLight },
@@ -168,7 +195,6 @@ const palettes = {
       ...darkColors,
       ...driverDark,
       outline70: dark.textSecondary,
-      driverHeader: dark.card,
     },
   },
 };

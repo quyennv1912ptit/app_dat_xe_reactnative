@@ -24,3 +24,8 @@ export * from './HandoverHistory';
 
 export * from "./theme/AppThemeProvider";
 export * from "./theme/materialTheme";
+
+export * from "./chat/ChatConversation";
+export { ChatImageViewer } from "./chat/ChatImageViewer";
+
+export { offerPalette } from './theme/offerPalette';

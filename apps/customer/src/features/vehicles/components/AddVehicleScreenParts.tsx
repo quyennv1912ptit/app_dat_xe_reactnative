@@ -61,6 +61,8 @@ export function Choice({
 
   return (
     <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={[themed_styles.choice, active && themed_styles.choiceActive]}
     >
@@ -84,17 +86,21 @@ export function Choice({
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
+    fill: { flex: 1 },
+    card: { gap: 12 },
+    footer: { padding: 16, backgroundColor: colors.cardSurface },
     content: { padding: spacing.margin, gap: 16, paddingBottom: 34 },
     intro: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     group: { gap: 8 },
     label: { ...typography.labelMd, color: colors.onSurface },
     input: {
-      ...typography.bodyMd,
+      ...typography.bodyLg,
+      minHeight: 48,
       color: colors.onSurface,
       borderWidth: 1,
       borderColor: colors.outlineVariant,
       borderRadius: 24,
-      backgroundColor: colors.surfaceContainerLowest,
+      backgroundColor: colors.inputSurface,
       paddingHorizontal: 13,
       paddingVertical: 12,
     },
@@ -119,8 +125,8 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceContainerLowest,
     },
     deleteImage: {
-      width: 40,
-      height: 44,
+      width: 48,
+      height: 48,
       alignItems: "center",
       justifyContent: "center",
     },

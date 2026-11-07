@@ -1,3 +1,4 @@
+import { CustomerNotice } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { HeaderIconButton, ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
@@ -22,7 +23,7 @@ export default function CustomerVehiclesScreen() {
 
   const styles = useThemedStyles(base_styles);
 
-  const { router, vehicles, loading, error, deletingId, remove } =
+  const { router, vehicles, loading, error, deletingId, remove, refresh } =
     useCustomerVehicles();
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -40,7 +41,7 @@ export default function CustomerVehiclesScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
-        {error ? <Text style={styles.error}>{i18nT(error)}</Text> : null}
+        {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
         {!loading && !error && vehicles.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons
@@ -73,6 +74,7 @@ export default function CustomerVehiclesScreen() {
                   </View>
                 )}
                 <Pressable
+                  accessibilityRole="button"
                   onPress={() =>
                     router.push({
                       pathname: "/add-vehicle",
@@ -86,16 +88,15 @@ export default function CustomerVehiclesScreen() {
                       [vehicle.brand, vehicle.model]
                         .filter(Boolean)
                         .join(" ") ||
-                        vehicle.vehicle_type ||
-                        "Phương tiện",
+                        (vehicle.vehicle_type === "MOTORCYCLE" ? "Xe máy" : vehicle.vehicle_type === "CAR" ? "Ô tô" : "Phương tiện"),
                     )}
                   </Text>
                   <Text style={styles.plate}>
                     {vehicle.plate_number || i18nT("Chưa có biển số")}
                   </Text>
                   <Text style={styles.meta}>
-                    {i18nT(vehicle.vehicle_type || "—")} ·{" "}
-                    {i18nT(vehicle.transmission_type || "—")}
+                    {i18nT(vehicle.vehicle_type === "MOTORCYCLE" ? "Xe máy" : vehicle.vehicle_type === "CAR" ? "Ô tô" : "—")} ·{" "}
+                    {i18nT(vehicle.transmission_type === "AUTO" ? "Số tự động" : vehicle.transmission_type === "MANUAL" ? "Số sàn" : "—")}
                     {i18nT(vehicle.color ? ` · ${vehicle.color}` : "")}
                     {i18nT(
                       vehicle.engine_cc ? ` · ${vehicle.engine_cc} cc` : "",
@@ -103,6 +104,7 @@ export default function CustomerVehiclesScreen() {
                   </Text>
                 </Pressable>
                 <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel={i18nT("Xóa {0}", {
                     "0": vehicle.plate_number || i18nT("xe"),
                   })}
@@ -125,6 +127,7 @@ export default function CustomerVehiclesScreen() {
           </GroupedList>
         ) : null}
         <Pressable
+          accessibilityRole="button"
           onPress={() => router.push("/add-vehicle")}
           style={styles.add}
         >

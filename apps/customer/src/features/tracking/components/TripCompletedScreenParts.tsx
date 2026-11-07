@@ -4,6 +4,7 @@ import { StyleSheet } from "react-native";
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
+    flex: { flex: 1 },
     content: { padding: spacing.margin, gap: 16, paddingBottom: 28 },
     success: { alignItems: "center", gap: 8, padding: 16 },
     heading: { ...typography.headlineSm, color: colors.onSurface },
@@ -23,7 +24,9 @@ export const styles = (colors: ThemeColors) =>
     divider: { height: 1, backgroundColor: colors.outlineVariant },
     priceRow: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
     price: { ...typography.labelLg, color: colors.primary },
-    stars: { flexDirection: "row", justifyContent: "center", gap: 8 },
+    stars: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
+    star: { alignItems: "center", borderRadius: 999 },
+    footer: { padding: 16, gap: 4, backgroundColor: colors.cardSurface },
     input: {
       minHeight: 90,
       borderWidth: 1,
@@ -47,7 +50,7 @@ export const styles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     primaryText: { ...typography.labelLg, color: colors.onPrimary },
-    skip: { alignItems: "center", padding: 12 },
+    skip: { minHeight: 48, justifyContent: "center", alignItems: "center", padding: 12 },
     skipText: { ...typography.labelLg, color: colors.primary },
     disabled: { opacity: 0.55 },
     error: { ...typography.bodyMd, color: colors.error },

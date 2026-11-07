@@ -11,7 +11,7 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
     group: { gap: 0 },
     intro: { fontSize: 14, lineHeight: 22, color: c.onSurfaceVariant },
     section: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
       letterSpacing: 0.8,
       textTransform: "uppercase",

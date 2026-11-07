@@ -523,7 +523,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       maxWidth: 720,
       alignSelf: "center",
     },
-    row: { paddingVertical: 8, paddingHorizontal: 0, borderRadius: 999 },
+    row: { minHeight: 48, paddingVertical: 8, paddingHorizontal: 0, borderRadius: 24 },
     rowTitle: { color: colors.onSurface, fontSize: 16, fontWeight: "500" },
     rowDescription: {
       color: colors.onSurfaceVariant,
@@ -541,10 +541,10 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       marginBottom: 16,
       lineHeight: 22,
     },
-    input: { backgroundColor: colors.surface },
+    input: { backgroundColor: colors.inputSurface },
     inputOutline: { borderRadius: 24 },
     actions: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-    pill: { borderRadius: 999 },
+    pill: { borderRadius: 999, minHeight: 48, justifyContent: "center" },
     loading: { marginVertical: 16 },
     error: { color: colors.error, paddingHorizontal: 16 },
   });

@@ -119,6 +119,7 @@ export function SupportCenter({
   error: loadError,
   onRefresh,
   onOpenRide,
+  onOpenSafety,
 }: {
   rides: SupportRide[];
   tickets: SupportTicket[];
@@ -132,6 +133,7 @@ export function SupportCenter({
   error?: string | null;
   onRefresh?: () => void;
   onOpenRide?: (id: number) => void;
+  onOpenSafety?: () => void;
 }) {
   const s = useThemedStyles(styles);
   const [ticketStatus, setTicketStatus] = useState("all");
@@ -189,6 +191,7 @@ export function SupportCenter({
           Yêu cầu được lưu và có mã tiếp nhận. Bộ phận hỗ trợ chưa cam kết thời
           gian phản hồi.
         </Text>
+        {onOpenSafety ? <Button variant="secondary" label="Mở trang An toàn" onPress={onOpenSafety} /> : null}
       </Card>
       {receipt ? (
         <Card style={s.form}>

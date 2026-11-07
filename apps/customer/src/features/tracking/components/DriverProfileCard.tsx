@@ -339,5 +339,5 @@ const profileStyles = (c: ThemeColors) =>
     details: { padding: 16, gap: 16 },
     detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     actions: { padding: 16, gap: 8 },
-    hint: { color: c.onSurfaceVariant, fontSize: 12, textAlign: "center" },
+    hint: { color: c.onSurfaceVariant, fontSize: 13, textAlign: "center" },
   });

@@ -7,7 +7,7 @@ const ts = require('typescript');
 function load(file, mocks = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, URLSearchParams, require: name => {
     if (name in mocks) return mocks[name];
     throw Error(name);
@@ -27,6 +27,51 @@ function fixture(overrides = {}) {
     send: async body => message(100, 'DRIVER', body), upload: async () => ({ secureUrl: 'https://images.test/chat.jpg', publicId: 'owned/chat' }),
     read: async () => {}, onRead: () => {}, ...overrides });
 }
+
+test('chat photo pinch caps zoom, drag stays within the image and double tap resets', () => {
+  const element = (type, props) => ({ type, props });
+  const states = [{ width: 300, height: 400 }, { width: 600, height: 400 }, false, 0];
+  const gestures = {};
+  let transform;
+  const { ChatImageViewer } = load('packages/ui/src/chat/ChatImageViewer.tsx', {
+    'react/jsx-runtime': { jsx: element, jsxs: element },
+    '@datxe/shared': { translate: (text) => text },
+    react: { useState: () => [states.shift(), () => {}] },
+    'react-native': { StyleSheet: { create: (styles) => styles } },
+    'react-native-gesture-handler': {
+      usePinchGesture: (config) => { gestures.pinch = config; },
+      usePanGesture: (config) => { gestures.pan = config; },
+      useTapGesture: (config) => { gestures.tap = config; },
+      useSimultaneousGestures() {},
+    },
+    'react-native-reanimated': {
+      default: { View: 'Animated.View' },
+      useAnimatedStyle: (callback) => { transform = () => callback().transform; },
+      useSharedValue: (initial) => {
+        let value = initial;
+        return { get: () => value, set: (next) => { value = next; } };
+      },
+      withTiming: (target) => target,
+    },
+    'react-native-paper': {},
+    '../components/Button': {},
+    '../components/ScreenWrapper': {},
+    '../components/Typography': {},
+    '../theme/ThemeProvider': { useThemeColors: () => ({}) },
+    '../useLanguage': { useLanguage() {} },
+  });
+  const canvas = ChatImageViewer({ uri: 'file://photo.jpg', onClose() {} }).props.children.props.children;
+  canvas.type(canvas.props);
+  const center = { focalX: 150, focalY: 200 };
+  gestures.pinch.onActivate(center);
+  gestures.pinch.onUpdate({ ...center, scale: 8 });
+  gestures.pinch.onFinalize();
+  gestures.pan.onActivate({ translationX: 0, translationY: 0 });
+  gestures.pan.onUpdate({ translationX: 3000, translationY: -3000, numberOfPointers: 1 });
+  assert.equal(JSON.stringify(transform()), '[{"translateX":600},{"translateY":-300},{"scale":5}]');
+  gestures.tap.onActivate({ x: 150, y: 200 });
+  assert.equal(JSON.stringify(transform()), '[{"translateX":0},{"translateY":0},{"scale":1}]');
+});
 
 test('chat API uses driver ride, chat cursors/read/send and signed CHAT image scope', async () => {
   const calls = [];

@@ -15,6 +15,7 @@ import { useFonts } from "expo-font";
 import { usePathname, useRouter, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BackHandler, Platform } from "react-native";
 import { PushBridge } from "./PushBridge";
 
@@ -41,12 +42,14 @@ export default function RootLayout() {
   const foregroundLaunch = usePushForegroundLaunch();
   if (!foregroundLaunch || (!loaded && !error)) return null;
   return (
-    <QueryClientProvider client={queryClient}>
-      <PushBridge />
-      <SettingsProvider>
-        <ThemedStack />
-      </SettingsProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <PushBridge />
+        <SettingsProvider>
+          <ThemedStack />
+        </SettingsProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

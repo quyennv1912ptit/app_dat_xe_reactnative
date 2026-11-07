@@ -21,8 +21,8 @@ export const bookingStyles = (colors: ThemeColors) =>
     },
     text: {
       fontFamily: fontFamily.inter,
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: 16,
+      lineHeight: 23,
       color: colors.onSurface,
     },
     muted: {
@@ -33,9 +33,9 @@ export const bookingStyles = (colors: ThemeColors) =>
     },
     label: {
       fontFamily: fontFamily.inter,
-      fontSize: 11,
+      fontSize: 13,
+      lineHeight: 19,
       fontWeight: "500",
-      letterSpacing: 0.7,
       color: colors.onSurfaceVariant,
     },
     row: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -43,6 +43,7 @@ export const bookingStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      flexWrap: "wrap",
       gap: 12,
     },
     card: {
@@ -98,7 +99,7 @@ export const bookingStyles = (colors: ThemeColors) =>
     },
     error: {
       fontFamily: fontFamily.inter,
-      color: colors.error,
+      color: colors.onErrorContainer,
       fontSize: 14,
       lineHeight: 21,
     },
@@ -138,6 +139,8 @@ export const bookingStyles = (colors: ThemeColors) =>
     },
     empty: { padding: 32, alignItems: "center", gap: 12 },
     chip: {
+      minHeight: 48,
+      justifyContent: "center",
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 999,

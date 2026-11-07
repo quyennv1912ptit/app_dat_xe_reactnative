@@ -9,8 +9,10 @@ module.exports = ({ config }) => {
     ['expo-location', { isAndroidBackgroundLocationEnabled: true, isAndroidForegroundServiceEnabled: true, isIosBackgroundLocationEnabled: true, locationAlwaysAndWhenInUsePermission: 'Cho phép chia sẻ vị trí khi bật nhận chuyến và trong chuyến, kể cả khi bạn mở ứng dụng khác.' }],
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
-    ['expo-notifications', { defaultChannel: 'datxe-updates-v1', enableBackgroundRemoteNotifications: true }],
+    '../../packages/config/plugins/with-notification-brand',
+    ['expo-notifications', { icon: './assets/images/notification-icon.png', color: '#07B378', defaultChannel: 'datxe-updates-v1', enableBackgroundRemoteNotifications: true }],
     '@react-native-google-signin/google-signin',
+    '@maplibre/maplibre-react-native',
     'expo-status-bar',
     '../../packages/config/plugins/with-short-cmake-paths',
     ['../../packages/config/plugins/with-team-dev-signing', {

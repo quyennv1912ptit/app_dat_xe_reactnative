@@ -63,6 +63,8 @@ export const colors = {
 
   transparent: "transparent",
   onScrim: "#FFFFFF",
+  mediaViewerBackground: "#0B0B0B",
+  photoCaptionScrim: "rgba(0,0,0,0.9)",
   surface20: "rgba(255, 255, 255, 0.2)",
   surface80: "rgba(255, 255, 255, 0.8)",
   surface85: "rgba(255, 255, 255, 0.85)",
@@ -115,6 +117,11 @@ export const colors = {
   hairline: "rgba(0, 0, 0, 0.02)",
   // Cards and inputs use opaque tonal surfaces.
   cardSurface: "#FFFFFF",
+  rideBackground: "#F3F4F6",
+  rideSurface: "#FFFFFF",
+  rideInset: "#F3F4F6",
+  warningContainer: "#FFF0CF",
+  onWarningContainer: "#684000",
   inputSurface: "#FFFFFF",
   fieldBorder: "#E0E2E8",
   disabledText: "#73737C",

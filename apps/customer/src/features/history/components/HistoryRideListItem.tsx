@@ -48,7 +48,7 @@ export function HistoryRideListItem({
             ride.status === "CANCELLED" && styles.statusCancelled,
           ]}
         >
-          {i18nT(labelForStatus[ride.status] ?? ride.status)}
+          {i18nT(labelForStatus[ride.status] ?? "Đang cập nhật trạng thái")}
         </Text>
       </View>
       <Text style={styles.meta}>
@@ -65,20 +65,23 @@ export function HistoryRideListItem({
       </Text>
       <View style={styles.addressRow}>
         <Text style={styles.pin}>{i18nT("Đón:")}</Text>
-        <Text style={styles.address}>
+        <Text style={styles.address} numberOfLines={2}>
           {ride.pickupAddress || i18nT("Chưa có địa chỉ")}
         </Text>
       </View>
       <View style={styles.addressRow}>
         <Text style={styles.pin}>{i18nT("Đến:")}</Text>
-        <Text style={styles.address}>
+        <Text style={styles.address} numberOfLines={2}>
           {ride.dropoffAddress || i18nT("Chưa có địa chỉ")}
         </Text>
       </View>
       <View style={styles.rideFooter}>
-        <Text style={styles.fare}>
-          {i18nT(money(ride.finalFare ?? ride.estimatedFare))}
-        </Text>
+        {ride.status !== "CANCELLED" || ride.finalFare != null ? (
+          <View style={styles.fareCopy}>
+            <Text style={styles.meta}>{i18nT(ride.finalFare == null ? "Giá dự kiến" : "Cước chuyến đi")}</Text>
+            <Text style={styles.fare}>{i18nT(money(ride.finalFare ?? ride.estimatedFare))}</Text>
+          </View>
+        ) : <View style={styles.fareCopy} />}
         <MaterialIcons
           name="chevron-right"
           size={23}

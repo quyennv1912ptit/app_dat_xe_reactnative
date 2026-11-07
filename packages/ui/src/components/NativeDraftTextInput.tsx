@@ -1,13 +1,15 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentRef } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ComponentRef, type ComponentType } from "react";
 import { Platform, TextInput, type TextInputProps } from "react-native";
 
 export type DraftTextInputProps = TextInputProps & {
   /** Mirror a draft for validation and intentional resets without controlling the native editor. */
   draftValue?: string;
+  /** Native input adapter for containers that coordinate keyboard focus. */
+  inputComponent?: ComponentType<ComponentPropsWithRef<typeof TextInput>>;
 };
 
 export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, DraftTextInputProps>(
-  function NativeDraftTextInput({ draftValue, defaultValue, onChangeText, ...props }, ref) {
+  function NativeDraftTextInput({ draftValue, defaultValue, onChangeText, inputComponent: Input = TextInput, ...props }, ref) {
     const input = useRef<ComponentRef<typeof TextInput>>(null);
     const [initial] = useState(() => draftValue ?? defaultValue);
     const nativeText = useRef(initial);
@@ -26,7 +28,7 @@ export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, D
     }, [draftValue]);
 
     return (
-      <TextInput
+      <Input
         {...props}
         ref={input}
         defaultValue={initial}

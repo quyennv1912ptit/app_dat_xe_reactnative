@@ -206,7 +206,7 @@ test("driver online session alone never becomes a ready reception indicator", ()
     foregroundGranted: true,
     servicesEnabled: true,
     lastSampleAt: now,
-    lastSentAt: now,
+    lastSentAt: null,
     backgroundGranted: false,
     backgroundRunning: false,
     retry() {},
@@ -230,11 +230,49 @@ test("driver online session alone never becomes a ready reception indicator", ()
     return DriverReceptionStatus();
   };
   assert.ok(JSON.stringify(render()).includes("Chưa đủ điều kiện"));
-  health.connected = true;
+  health.lastSentAt = now;
   assert.ok(JSON.stringify(render()).includes("GPS sẵn sàng"));
   health.lastSampleAt = now - 40000;
   assert.ok(JSON.stringify(render()).includes("Chưa đủ điều kiện"));
   assert.ok(JSON.stringify(render()).includes("Giữ app mở"));
+});
+
+test("Home shows a single operational status and prioritizes an actionable GPS blocker", () => {
+  const h = hooksFixture();
+  const now = Date.now();
+  const health = {
+    connected: false,
+    foregroundGranted: false,
+    servicesEnabled: true,
+    lastSampleAt: now,
+    lastSentAt: null,
+    retry() {},
+  };
+  const { HomeOperationalStatus } = load(
+    "apps/driver/src/features/offers/components/HomeOperationalStatus.tsx",
+    {
+      react: h.hooks,
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "@/lib/driverHealth": { useDriverHealth: () => health },
+      "@expo/vector-icons": { MaterialIcons: "Icon" },
+      "@datxe/ui": { Card: "Card", Button: "Button", Typography: "Text", useThemeColors: () => ({}) },
+      "react-native": { View: "View", StyleSheet: { create: (styles) => styles } },
+    },
+  );
+  const render = (props = {}) => {
+    h.reset();
+    return JSON.stringify(HomeOperationalStatus({ online: true, active: false, loading: false, onDiagnostics() {}, ...props }));
+  };
+  assert.match(render(), /Cần cấp quyền vị trí/);
+  assert.doesNotMatch(render(), /Sẵn sàng nhận chuyến|Đang kết nối lại/);
+  health.foregroundGranted = true;
+  assert.match(render(), /Đang kết nối lại/);
+  health.lastSentAt = now;
+  assert.match(render(), /Sẵn sàng nhận chuyến/);
+  health.connected = true;
+  health.lastSentAt = now - 31_000;
+  assert.match(render(), /Đang chờ vị trí GPS mới/);
+  assert.match(render({ blocker: { title: "Hồ sơ chưa đủ điều kiện nhận chuyến" } }), /Hồ sơ chưa đủ điều kiện nhận chuyến/);
 });
 
 test("Home data retry refetches failed sources while retaining data and never invokes GPS", async () => {
@@ -271,6 +309,7 @@ test("Home data retry refetches failed sources while retaining data and never in
       "react-native": {},
       "../api": api,
       "../components/HomeScreenParts": { getRecentDestinations: () => [] },
+      "../bookingUtils": {},
       "@tanstack/react-query": {
         useQuery: (options) => {
           const index = queries.length;

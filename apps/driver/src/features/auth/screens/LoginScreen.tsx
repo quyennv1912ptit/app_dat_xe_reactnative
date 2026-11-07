@@ -4,19 +4,15 @@ import {
   Input,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
-  fontSize,
-  useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 import { useRouter } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 import { SocialButton, styles } from "../components/LoginScreenParts";
 import { useLogin } from "../hooks/useLogin";
 export default function DriverLoginScreen() {
   const router = useRouter();
-  const colors = useThemeColors();
   const themed_styles = useThemedStyles(styles);
 
   const {
@@ -39,13 +35,9 @@ export default function DriverLoginScreen() {
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
-          <View style={themed_styles.brandIcon}>
-            <MaterialIcons
-              color={colors.onPrimary}
-              name="local-taxi"
-              size={fontSize.icon3xl}
-            />
-          </View>
+          <Image source={require("../../../../assets/images/brand-logo.png")}
+            accessibilityLabel="PtitGo Tài Xế" accessibilityIgnoresInvertColors
+            resizeMode="contain" style={themed_styles.brandIcon} />
           <Text style={themed_styles.brandName}>PtitGo Tài Xế</Text>
           <Text style={themed_styles.title}>Chào mừng đối tác</Text>
           <Text style={themed_styles.subtitle}>

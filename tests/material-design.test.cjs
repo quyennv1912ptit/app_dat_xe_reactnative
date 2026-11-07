@@ -98,7 +98,7 @@ test("both brands expose the requested screen/card tones through their app-wide 
       const paper = material.createMaterialTheme(colors, dark);
       assert.equal(paper.version, 3);
       assert.equal(paper.dark, dark);
-      assert.equal(colors.background, dark ? "#000000" : "#F3F4F6");
+      assert.equal(colors.background, dark ? "#121212" : "#F3F4F6");
       for (const token of [
         "surface",
         "surfaceContainerLowest",
@@ -107,7 +107,7 @@ test("both brands expose the requested screen/card tones through their app-wide 
       ]) {
         assert.equal(
           colors[token],
-          dark ? "#1E1E20" : "#FFFFFF",
+          dark ? "#1E1E1E" : "#FFFFFF",
           `${brand}: ${token}`,
         );
       }
@@ -123,7 +123,7 @@ test("both brands expose the requested screen/card tones through their app-wide 
 });
 
 test("decorative borders cannot return to buttons, badges, cards or their containers", () => {
-  // Input and map-symbol outlines convey focus, validation and location rather
+  // Inputs and route markers convey focus, validation and location rather
   // than framing an action or card. These are the only intentional exceptions.
   const functionalOutlines = new Map([
     [
@@ -151,7 +151,7 @@ test("decorative borders cannot return to buttons, badges, cards or their contai
       "apps/customer/src/features/booking/components/bookingStyles.ts",
       new Set(["searchBox"]),
     ],
-    ["apps/customer/src/components/map/HomeMap.native.tsx", new Set(["item1"])],
+    ["apps/driver/src/features/ride/components/RideRouteCard.tsx", new Set(["connector"])],
   ]);
   for (const file of roots
     .flatMap(walk)

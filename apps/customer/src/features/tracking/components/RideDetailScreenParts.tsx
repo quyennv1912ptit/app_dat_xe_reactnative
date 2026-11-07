@@ -1,30 +1,7 @@
 import type { CustomerRideDetail } from "@datxe/shared";
-import { translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
-import { spacing, Typography as Text, typography, useLanguage, useThemedStyles } from "@datxe/ui";
-import { StyleSheet, View } from "react-native";
-export const chatStatuses = [
-  "DRIVER_ASSIGNED",
-  "DRIVER_ARRIVING",
-  "DRIVER_ARRIVED",
-  "VEHICLE_HANDOVER",
-  "IN_PROGRESS",
-  "ARRIVED_DESTINATION",
-  "VEHICLE_RETURNED",
-];
-
-export function Row({ label, value }: { label: string; value: string }) {
-  const themed_styles = useThemedStyles(styles);
-
-  useLanguage();
-  return (
-    <View style={themed_styles.row}>
-      <Text style={themed_styles.meta}>{i18nT(label)}</Text>
-      <Text style={themed_styles.body}>{i18nT(value)}</Text>
-    </View>
-  );
-}
-
+import { spacing, typography } from "@datxe/ui";
+import { StyleSheet } from "react-native";
 export function statusLabel(status: CustomerRideDetail["status"]): string {
   const labels: Record<CustomerRideDetail["status"], string> = {
     PENDING: "Đang tiếp nhận",
@@ -57,11 +34,8 @@ export const styles = (colors: ThemeColors) =>
     },
     heading: { ...typography.headlineSm, color: colors.onSurface },
     section: { ...typography.labelLg, color: colors.onSurface },
-    label: { ...typography.labelSm, color: colors.primary },
     body: { ...typography.bodyMd, color: colors.onSurface },
     meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
-    divider: { height: 1, backgroundColor: colors.outlineVariant },
-    row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
     historyRow: { flexDirection: "row", gap: 8 },
     historyDot: {
       width: 9,
@@ -71,13 +45,6 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.primary,
     },
     historyCopy: { flex: 1, gap: 3 },
-    images: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    image: {
-      width: 92,
-      height: 92,
-      borderRadius: 24,
-      backgroundColor: colors.surfaceContainerHigh,
-    },
     primary: {
       minHeight: 50,
       alignItems: "center",

@@ -41,8 +41,8 @@ export function AuthBackButton({
 const base_styles = () =>
   StyleSheet.create({
     button: {
-      width: spacing.iconButtonMd,
-      height: spacing.iconButtonMd,
+      width: Math.max(48, spacing.iconButtonMd),
+      height: Math.max(48, spacing.iconButtonMd),
       borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",

@@ -1,73 +1,96 @@
-import { DriverPage } from "@/components/DriverPage";
-import { rideStyles } from "@/components/rideStyles";
-import { openExternalDirections } from "@/lib/navigation";
-import { vehicleTypeLabel, transmissionLabel } from "@/lib/displayLabels";
-import { formatMoney } from "@datxe/shared";
-import { Button, Card, Typography as Text, useThemedStyles } from "@datxe/ui";
-import { StyleSheet, View } from "react-native";
-import { useAccept } from "../hooks/useAccept";
+import BottomSheet from '@gorhom/bottom-sheet';
+import { Button, offerPalette as palette, Typography as Text } from '@datxe/ui';
+import { StatusBar } from 'expo-status-bar';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { OfferActions } from '../components/OfferActions';
+import { OfferDecision } from '../components/OfferDecision';
+import { OfferMap } from '../components/OfferMap';
+import { useAccept } from '../hooks/useAccept';
 
 export default function AcceptRideScreen() {
-  const s = useThemedStyles(rideStyles);
+  const { top, bottom } = useSafeAreaInsets();
+  const [height, setHeight] = useState(0);
   const h = useAccept();
-  const offer = h.offer;
-  const available = Boolean(offer && h.secondsLeft > 0);
-  const goHome = () => h.router.replace("/(tabs)/home");
+  const { offer } = h;
+  const live = Boolean(offer && h.secondsLeft > 0);
+  const sheetHeight = Math.round(height * 0.58);
+  // Reserve extra clearance above the sheet while keeping room for the route on short screens.
+  const mapClearance = Math.min(32, Math.max(0, height - top - sheetHeight - 128));
+  const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
 
   return (
-    <DriverPage
-      title="Yêu cầu chuyến đi"
-      loading={h.loading}
-      error={offer ? h.error : undefined}
-      footer={available || h.busy ? (
+    <View style={styles.screen} onLayout={event => setHeight(Math.round(event.nativeEvent.layout.height))}>
+      <StatusBar style="light" />
+      {offer && (live || h.busy) ? (
         <>
-          <Button label={`Nhận chuyến · ${h.secondsLeft}s`} disabled={!available} loading={h.busy}
-            loadingLabel="Đang xử lý…" onPress={h.accept} />
-          <Button variant="ghost" disabled={h.busy} label="Bỏ qua yêu cầu" onPress={h.reject} />
+          <OfferMap offer={offer} live={live} top={top} bottom={sheetHeight + mapClearance} />
+          {sheetHeight > 0 ? (
+            <BottomSheet
+              index={0}
+              snapPoints={snapPoints}
+              enableDynamicSizing={false}
+              enablePanDownToClose={false}
+              enableHandlePanningGesture={false}
+              enableContentPanningGesture={false}
+              enableOverDrag={false}
+              handleComponent={null}
+              backgroundStyle={styles.sheet}
+            >
+              <View style={[styles.sheetContent, { height: sheetHeight, paddingBottom: bottom + 4 }]}>
+                <ScrollView style={styles.details} contentContainerStyle={styles.detailsContent}>
+                  <OfferDecision offer={offer} />
+                </ScrollView>
+                <View style={styles.footer}>
+                  <OfferActions expiresAt={h.expiresAt} secondsLeft={h.secondsLeft}
+                    busy={h.busy} error={h.error} onAccept={h.accept} onSkip={h.reject} />
+                </View>
+              </View>
+            </BottomSheet>
+          ) : null}
         </>
-      ) : undefined}
-    >
-      {offer && (available || h.busy) ? (
-        <>
-          <Card style={s.card}>
-            <Text style={s.label}>Thu nhập dự kiến</Text>
-            <Text style={s.title}>{offer.driverEarning != null ? formatMoney(offer.driverEarning) : "Chưa có thông tin"}</Text>
-            <Text style={s.text}>Cước khách trả dự kiến · {formatMoney(offer.fareEstimate)}</Text>
-          </Card>
-          <Card style={s.card}>
-            <Text style={s.title}>Lộ trình dự kiến</Text>
-            <Text style={s.label}>Khách · {offer.customer.displayName}</Text>
-            <View style={styles.leg}>
-              <Text style={s.label}>Từ vị trí của bạn đến điểm đón</Text>
-              <Text style={s.text}>
-                {offer.distanceToPickupKm != null && offer.etaToPickupMin != null
-                  ? `Khoảng ${offer.distanceToPickupKm} km · ${offer.etaToPickupMin} phút`
-                  : "Chưa có ước tính đến điểm đón"}
+      ) : (
+        <View style={[styles.state, { paddingTop: top + 16, paddingBottom: bottom + 16 }]}>
+          {h.loading ? (
+            <>
+              <ActivityIndicator color={palette.muted} />
+              <Text style={styles.stateText}>Đang tải yêu cầu chuyến…</Text>
+            </>
+          ) : (
+            <>
+              <Text accessibilityRole="header" style={styles.stateTitle}>
+                {offer ? 'Cuốc đã hết hạn' : 'Yêu cầu chưa khả dụng'}
               </Text>
-              <Text style={s.text}>{offer.pickup.address}</Text>
-              {offer.pickupNote ? <Text style={s.label}>Ghi chú đón · {offer.pickupNote}</Text> : null}
-            </View>
-            <View style={styles.leg}>
-              <Text style={s.label}>Từ điểm đón đến điểm trả</Text>
-              <Text style={s.text}>Khoảng {offer.tripDistanceKm} km · {offer.estDurationMin} phút</Text>
-              <Text style={s.text}>{offer.dropoff.address}</Text>
-            </View>
-            <Text style={s.label}>{vehicleTypeLabel(offer.vehicle.type)} · {transmissionLabel(offer.vehicle.transmission)}</Text>
-            {offer.note ? <Text style={s.text}>{offer.note}</Text> : null}
-            <Button variant="ghost" icon="directions" iconPosition="leading" label="Mở chỉ đường tới điểm đón"
-              onPress={() => void openExternalDirections(offer.pickup)} />
-          </Card>
-        </>
-      ) : !h.loading ? (
-        <Card style={s.card}>
-          <Text style={s.title}>Yêu cầu chưa khả dụng</Text>
-          <Text style={s.text}>{h.error || (offer ? "Thời gian nhận chuyến đã hết." : "Hiện chưa có yêu cầu chuyến đi đang chờ.")}</Text>
-          {!offer && h.error ? <Button variant="secondary" label="Kiểm tra lại" onPress={() => void h.refresh()} /> : null}
-          <Button label="Về trang chủ" onPress={goHome} />
-        </Card>
-      ) : null}
-    </DriverPage>
+              <Text accessibilityRole={h.error ? 'alert' : undefined} style={styles.stateText}>
+                {h.error || (offer ? 'Về Trang chủ để chờ cuốc mới.' : 'Hiện chưa có yêu cầu chuyến đi đang chờ.')}
+              </Text>
+              {!offer && h.error ? (
+                <Button variant="secondary" label="Kiểm tra lại" style={styles.stateButton}
+                  contentColor={palette.text} onPress={() => void h.refresh()} />
+              ) : null}
+              <Button variant="ghost" label="Về trang chủ" contentColor={palette.text}
+                onPress={() => h.router.replace('/(tabs)/home')} />
+            </>
+          )}
+        </View>
+      )}
+      <View pointerEvents="none" style={[styles.statusBar, { height: top }]} />
+    </View>
   );
 }
 
-const styles = StyleSheet.create({ leg: { gap: 4, paddingVertical: 4 } });
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: palette.background },
+  statusBar: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: palette.background },
+  sheet: { backgroundColor: palette.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sheetContent: { paddingTop: 4 },
+  details: { flex: 1 },
+  detailsContent: { gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  footer: { paddingHorizontal: 16, paddingTop: 4, backgroundColor: palette.surface },
+  state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
+  stateTitle: { color: palette.text, fontSize: 24, lineHeight: 30, fontWeight: '700', textAlign: 'center' },
+  stateText: { color: palette.muted, fontSize: 16, lineHeight: 22, textAlign: 'center' },
+  stateButton: { backgroundColor: palette.badge },
+});

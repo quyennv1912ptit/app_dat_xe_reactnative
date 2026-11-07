@@ -23,9 +23,11 @@ export default function NotificationsScreen() {
   const t = useTranslation();
   const themed_s = useThemedStyles(s);
   const { query: q, mark } = useNotifications();
-  const items = q.data ?? [];
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const allItems = q.data ?? [];
+  const items = unreadOnly ? allItems.filter((item) => !item.readAt) : allItems;
   const { data: count } = useQuery({ queryKey: ["driver", "notifications", "count"], queryFn: driverApi.notificationCount });
-  const unread = count?.unread_count ?? items.filter((item) => !item.readAt).length;
+  const unread = count?.unread_count ?? allItems.filter((item) => !item.readAt).length;
   const groups = new Map<string, CustomerNotification[]>();
   for (const item of items) {
     const date = new Date(item.createdAt).toLocaleDateString(getLocale());
@@ -71,6 +73,10 @@ export default function NotificationsScreen() {
           />
         </Card>
       ) : null}
+      {allItems.length || unreadOnly ? (
+        <Button variant="secondary" label={unreadOnly ? "Xem tất cả thông báo" : "Chỉ xem chưa đọc"}
+          onPress={() => setUnreadOnly(!unreadOnly)} />
+      ) : null}
       {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert">{notice}</Text></Card> : null}
       {[...groups].map(([date, group]) => (
         <GroupedList key={date} title={date}>
@@ -83,7 +89,7 @@ export default function NotificationsScreen() {
                 description={`${text.description}\n${new Date(item.createdAt).toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}`}
                 icon={item.readAt ? "notifications-none" : "notifications"}
                 disabled={open.isPending}
-                right={item.readAt ? undefined : <View accessibilityLabel="Chưa đọc" style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
+                right={item.readAt ? undefined : <View accessibilityLabel="Chưa đọc" style={[styles.unreadDot, { backgroundColor: colors.onSurfaceVariant }]} />}
                 onPress={() => { setNotice(""); openItem(item); }}
               />
             );
@@ -92,7 +98,7 @@ export default function NotificationsScreen() {
       ))}
       {!q.isLoading && !q.error && !items.length ? (
         <Card style={themed_s.card}>
-          <Text style={themed_s.text}>Chưa có thông báo.</Text>
+          <Text style={themed_s.text}>{unreadOnly ? "Không còn thông báo chưa đọc." : "Chưa có thông báo."}</Text>
         </Card>
       ) : null}
     </DriverPage>

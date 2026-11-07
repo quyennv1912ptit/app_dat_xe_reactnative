@@ -85,6 +85,7 @@ export const styles = (colors: ThemeColors) =>
       paddingTop: spacing.spaceXl,
       paddingBottom: spacing.spaceLg,
     },
+    brandLogo: { width: 80, height: 80, marginBottom: spacing.spaceLg },
     heading: {
       ...typography.headlineXlMobile,
       color: colors.onSurface,
@@ -147,10 +148,13 @@ export const styles = (colors: ThemeColors) =>
     },
     terms: {
       ...typography.labelSm,
+      fontSize: 13,
       color: colors.onSurfaceVariant,
       textAlign: "center",
       lineHeight: 18,
     },
+    termsActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: 8 },
+    termsTarget: { minHeight: 48, minWidth: 48, paddingHorizontal: 8, justifyContent: "center" },
     termsLink: {
       color: colors.primary,
       fontWeight: "600",

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
-import { estimateRequest } from '../bookingUtils';
+import { activeRideDestination, estimateRequest } from '../bookingUtils';
 import { useBookingDraft } from '../store';
 
 function friendlyPriceError(error: unknown): string {
@@ -55,7 +55,7 @@ export function useBookingConfirmation() {
       if (!ready || !input || !estimate.data) throw new Error(i18nT("Vui lòng chờ báo giá mới nhất trước khi đặt chuyến."));
       if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) throw new Error(i18nT("Giờ hẹn đã qua. Hãy chọn lại thời gian đón."));
       const currentRide = await getActiveCustomerRide();
-      if (currentRide) { client.setQueryData(['customer', 'getActiveCustomerRide'], currentRide); router.replace({ pathname: '/ride/tracking', params: { rideId: String(currentRide.id) } }); return null; }
+      if (currentRide) { client.setQueryData(['customer', 'getActiveCustomerRide'], currentRide); router.replace(activeRideDestination(currentRide)); return null; }
       const latest = await getRideEstimate({ ...input, routeQuoteId: estimate.data.route?.id });
       client.setQueryData(keyFor(input), latest);
       if (latest.payableFare !== estimate.data.payableFare) {
@@ -73,7 +73,18 @@ export function useBookingConfirmation() {
       router.replace({ pathname: '/ride/find-driver', params: { rideId: String(ride.id) } });
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
-    onError: error => { if (error instanceof AuthApiError && error.code === 'CONFLICT') void estimate.refetch(); localizedAlert(i18nT("Chưa thể đặt chuyến"), friendlyPriceError(error) || error.message); },
+    onError: async error => {
+      if (error instanceof AuthApiError && ['ACTIVE_RIDE_EXISTS', 'CONFLICT'].includes(error.code)) {
+        const currentRide = await getActiveCustomerRide().catch(() => null);
+        if (currentRide) {
+          client.setQueryData(['customer', 'getActiveCustomerRide'], currentRide);
+          router.replace(activeRideDestination(currentRide));
+          return;
+        }
+        void estimate.refetch();
+      }
+      localizedAlert(i18nT("Chưa thể đặt chuyến"), friendlyPriceError(error) || error.message);
+    },
     onSettled: () => { submitting.current = false; },
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };

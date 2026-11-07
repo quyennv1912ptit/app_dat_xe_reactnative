@@ -96,8 +96,7 @@ export default function DriverProfileScreen() {
         {p.data ? (
           <>
             <Text style={themed_s.text}>
-              GPLX: {p.data.license_number ?? "Chưa cập nhật"} ·{" "}
-              {p.data.license_class ?? "Chưa cập nhật"}
+              Hạng GPLX · {p.data.license_class ?? "Chưa cập nhật"}
             </Text>
             <Text style={themed_s.text}>
               Kinh nghiệm:{" "}
@@ -137,6 +136,7 @@ export default function DriverProfileScreen() {
           icon="help-outline"
           onPress={() => router.push("/support")}
         />
+        <SettingsListItem title="An toàn chuyến đi" icon="health-and-safety" onPress={() => router.push("/safety")} />
       </GroupedList>
       <GroupedList title="Thu nhập">
         <SettingsListItem title="Ví thu nhập" icon="account-balance-wallet"

@@ -9,7 +9,7 @@ import {
 } from "@/lib/backgroundLocation";
 import { driverRealtime } from "@/lib/realtime";
 import { useSessionStore } from "@/lib/store";
-import type { CustomerRideDetail } from "@datxe/shared";
+import type { AuthProfile, CustomerRideDetail } from "@datxe/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { useEffect, useRef } from "react";
@@ -25,25 +25,24 @@ export function DriverRealtimeBridge() {
       request<CustomerRideDetail>("/driver/rides/active", { allowNull: true }),
     enabled: Boolean(user),
     // Keep the chat badge correct even if a foreground STOMP/FCM frame was missed.
-    refetchInterval: query => query.state.data ? 10000 : false,
+    refetchInterval: 10000,
   });
   const rideId = ride.data?.id;
   const userId = user?.id;
-  const online = user?.status === "ONLINE";
+  const session = useQuery({
+    queryKey: ["driver", "session"],
+    queryFn: () => request<AuthProfile>("/auth/me"),
+    enabled: Boolean(userId),
+  });
+  const availableOrBusy = user?.status === "ONLINE" || user?.status === "BUSY";
   const retryVersion = useDriverHealth(state => state.retryVersion);
-  const teardown = useRef<Promise<void>>(Promise.resolve());
+  const refreshLocation = useRef<(() => void) | null>(null);
+  // Profile and ride responses can update in either order when an offer is accepted.
+  const tracking = Boolean(rideId) || availableOrBusy;
   useEffect(() => {
-    let lastRetryAt = 0;
-    let leftAt = 0;
     const sub = AppState.addEventListener('change', state => {
-      if (state !== 'active') { leftAt = Date.now(); return; }
-      const now = Date.now();
-      // Permission dialogs also emit an active transition; without this debounce
-      // retry() restarted the GPS effect, which re-opened the permission dialog,
-      // which emitted active again - an endless loop that never got a GPS fix.
-      if (now - lastRetryAt < 15000 || (leftAt > 0 && now - leftAt < 2000)) return;
-      lastRetryAt = now;
-      useDriverHealth.getState().retry();
+      if (state !== 'active') return;
+      refreshLocation.current?.();
     });
     return () => sub.remove();
   }, []);
@@ -52,92 +51,106 @@ export function DriverRealtimeBridge() {
   }, [ride.data]);
   useEffect(() => {
     if (!userId) return;
-    const unsubscribe = driverRealtime.subscribe("/user/queue/trip", () => {
-      void client.invalidateQueries({ queryKey: ["driver"] });
-      // PushBridge validates/deduplicates offers from STOMP and FCM before routing.
-    });
     const reconnect = driverRealtime.onConnection((connected) => {
       useDriverHealth.getState().update({ connected });
       if (connected) void client.invalidateQueries({ queryKey: ["driver"] });
     });
     driverRealtime.connect();
     return () => {
-      unsubscribe();
       reconnect();
+      useDriverHealth.getState().update({ connected: false });
       void driverRealtime.disconnect();
     };
     // Chỉ kết nối lại khi đổi tài khoản; việc refetch session (đổi object user) không được
     // ngắt WebSocket vì sẽ làm mất heartbeat và bỏ lỡ offer.
   }, [userId, client]);
   useEffect(() => {
-    if (!userId || (!rideId && !online)) {
-      teardown.current = teardown.current.then(stopDriverBackgroundLocation).catch(() => {});
-      return;
-    }
+    if (!userId || !tracking) return;
     let cancelled = false;
+    let checking = false;
+    let foregroundPermissionAsked = false;
     let watcher: Location.LocationSubscription | undefined;
-    const previousTeardown = teardown.current;
-    const setup = (async () => {
-      await previousTeardown;
-      if (cancelled) return;
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      let foreground = await Location.getForegroundPermissionsAsync();
-      if (!foreground.granted && foreground.canAskAgain) foreground = await Location.requestForegroundPermissionsAsync();
-      if (cancelled) return;
-      useDriverHealth.getState().update({ foregroundGranted: foreground.granted, servicesEnabled, error: '' });
-      if (!foreground.granted) throw new Error("Cần quyền vị trí để nhận chuyến và chia sẻ vị trí.");
-      if (!servicesEnabled) throw new Error('Hãy bật dịch vụ vị trí/GPS của thiết bị.');
-      if (cancelled) return;
-      // Foreground GPS must work before (and independently of) the background
-      // permission prompt, which can open Android Settings or fail on web.
-      startDriverLocationHeartbeat();
-      void restoreLastLocation().catch(() => {});
-      void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
-        .then(position => { if (!cancelled) publishDriverLocation(position); })
-        .catch(() => {
-          if (!cancelled) useDriverHealth.getState().update({ error: 'Chưa lấy được GPS mới. Hãy bật vị trí chính xác và thử ở nơi thoáng.' });
+    let watcherStartedAt = 0;
+    let lastWatchFixAt = 0;
+
+    const ensureLocation = async (prompt: boolean) => {
+      if (cancelled || checking || (AppState.currentState && AppState.currentState !== 'active')) return;
+      checking = true;
+      try {
+        let foreground = await Location.getForegroundPermissionsAsync();
+        if (!foreground.granted && foreground.canAskAgain && prompt && !foregroundPermissionAsked && !cancelled) {
+          foregroundPermissionAsked = true;
+          foreground = await Location.requestForegroundPermissionsAsync();
+        }
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (cancelled) return;
+        useDriverHealth.getState().update({ foregroundGranted: foreground.granted, servicesEnabled });
+        if (!foreground.granted || !servicesEnabled) {
+          watcher?.remove();
+          watcher = undefined;
+          throw new Error(foreground.granted ? 'Hãy bật dịch vụ vị trí/GPS của thiết bị.' : 'Cần quyền vị trí để nhận chuyến và chia sẻ vị trí.');
+        }
+
+        // A native watcher can silently stop emitting after the GPS provider is toggled.
+        if (watcher && Date.now() - Math.max(watcherStartedAt, lastWatchFixAt) >= 30_000) {
+          watcher.remove();
+          watcher = undefined;
+        }
+        if (!watcher) {
+          startDriverLocationHeartbeat();
+          void restoreLastLocation().catch(() => {});
+          void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High, mayShowUserSettingsDialog: false })
+            .then(position => { if (!cancelled) void publishDriverLocation(position); })
+            .catch(() => { /* The watcher and heartbeat can still recover a fix. */ });
+          watcherStartedAt = Date.now();
+          watcher = await Location.watchPositionAsync(
+            { accuracy: Location.Accuracy.High, timeInterval: env.locationIntervalMs, distanceInterval: 0, mayShowUserSettingsDialog: false },
+            position => {
+              if (cancelled) return;
+              if (Date.now() - position.timestamp < 30_000) lastWatchFixAt = Date.now();
+              void publishDriverLocation(position);
+            },
+            error => {
+              if (!cancelled) useDriverHealth.getState().update({ error });
+            },
+          );
+          if (cancelled) { watcher.remove(); return; }
+        }
+        // Android can open a settings activity for this permission. Do not await it here.
+        void startDriverBackgroundLocation().then(async backgroundRunning => {
+          const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
+          if (!cancelled) useDriverHealth.getState().update({
+            backgroundRunning, ...(permission ? { backgroundGranted: permission.granted } : {}),
+          });
+        }).catch(() => {
+          if (!cancelled) useDriverHealth.getState().update({ backgroundRunning: false });
         });
-      watcher = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: env.locationIntervalMs,
-          distanceInterval: 0,
-        },
-        position => { if (!cancelled) publishDriverLocation(position); },
-      );
-      if (cancelled) { watcher.remove(); return; }
-      const background = await startDriverBackgroundLocation().catch(() => false);
-      if (cancelled) return;
-      useDriverHealth.getState().update({ backgroundRunning: background });
-      const backgroundPermission = await Location.getBackgroundPermissionsAsync().catch(() => null);
-      if (cancelled) return;
-      if (backgroundPermission) useDriverHealth.getState().update({ backgroundGranted: backgroundPermission.granted });
-      // A started native task is not evidence of callbacks while the app is
-      // visible. Keep the foreground watch; repeated GPS samples are deduplicated.
-    })().catch((error) => {
-      if (!cancelled) useDriverHealth.getState().update({ error: error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.' });
-    });
+      } catch (error) {
+        if (!cancelled) useDriverHealth.getState().update({ error: error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.' });
+      } finally {
+        checking = false;
+      }
+    };
+    const refresh = () => { void ensureLocation(false); };
+    refreshLocation.current = refresh;
+    void ensureLocation(true);
+    const timer = setInterval(refresh, 10_000);
     return () => {
       cancelled = true;
+      refreshLocation.current = null;
+      clearInterval(timer);
       watcher?.remove();
-      teardown.current = setup.then(stopDriverBackgroundLocation).catch(() => {});
+      void stopDriverBackgroundLocation().catch(() => {});
     };
-  }, [userId, rideId, online, retryVersion]);
+  }, [userId, tracking, retryVersion]);
   useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    const check = async () => {
-      try {
-        const [foreground, background, servicesEnabled, backgroundRunning] = await Promise.all([
-          Location.getForegroundPermissionsAsync(), Location.getBackgroundPermissionsAsync(),
-          Location.hasServicesEnabledAsync(), Location.hasStartedLocationUpdatesAsync('datxe-driver-active-ride-location'),
-        ]);
-        if (!cancelled) useDriverHealth.getState().update({ foregroundGranted: foreground.granted, backgroundGranted: background.granted, servicesEnabled, backgroundRunning });
-      } catch { /* Setup errors remain visible in the status card. */ }
-    };
-    void check();
-    const timer = setInterval(() => void check(), 15000);
-    return () => { cancelled = true; clearInterval(timer); };
-  }, [userId]);
+    if (!userId || tracking || !ride.isSuccess) return;
+    // Also cleans up a native task left behind by a previous process.
+    void stopDriverBackgroundLocation().catch(() => {});
+    useDriverHealth.getState().update({ foregroundGranted: null, servicesEnabled: null, backgroundGranted: null, error: '' });
+  }, [userId, tracking, ride.isSuccess]);
+  useEffect(() => {
+    if (session.data?.id === userId && session.data) useSessionStore.getState().setUser(session.data);
+  }, [session.data, userId]);
   return null;
 }

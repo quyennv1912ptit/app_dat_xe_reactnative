@@ -116,7 +116,7 @@ test('handover directions use the address and coordinates of the current phase',
   const { RideStopCard } = load('apps/driver/src/features/ride/components/RideStopCard.tsx', {
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@/components/rideStyles': { rideStyles: {} },
-    '@/lib/navigation': { openExternalDirections: point => directions.push(point) },
+    '@/lib/navigation': { openRideDirections: (ride, phase) => directions.push(ride[phase]) },
     '@datxe/ui': { Button: 'Button', Card: 'Card', Typography: 'Text', useThemedStyles: styles => styles },
   });
   const ride = {
@@ -136,5 +136,35 @@ test('handover directions use the address and coordinates of the current phase',
   assert.equal(dropoff[2], null);
   pickup[3].props.onPress();
   dropoff[3].props.onPress();
+  assert.deepEqual(directions, [ride.pickup, ride.dropoff]);
+});
+
+test('grouped ride route offers directions only for the current stop', () => {
+  const jsx = (type, props) => ({ type, props });
+  const directions = [];
+  const { RideRouteCard } = load('apps/driver/src/features/ride/components/RideRouteCard.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/lib/navigation': { openRideDirections: (ride, phase) => directions.push(ride[phase]) },
+    '@datxe/ui': { Card: 'Card', Typography: 'Text', useThemeColors: () => ({}) },
+    'react-native': { StyleSheet: { create: value => value }, View: 'View' },
+    'react-native-paper': { IconButton: 'IconButton' },
+  });
+  const ride = {
+    pickupAddress: 'Điểm A',
+    dropoffAddress: 'Điểm B',
+    pickup: { lat: 21, lng: 105 },
+    dropoff: { lat: 22, lng: 106 },
+  };
+  const buttons = (node) => {
+    if (Array.isArray(node)) return node.flatMap(buttons);
+    if (node?.type === 'IconButton') return [node.props];
+    return node?.props?.children ? buttons(node.props.children) : [];
+  };
+  assert.equal(buttons(RideRouteCard({ ride })).length, 0);
+  for (const stop of ['pickup', 'dropoff']) {
+    const actions = buttons(RideRouteCard({ ride, navigationStop: stop }));
+    assert.equal(actions.length, 1);
+    actions[0].onPress();
+  }
   assert.deepEqual(directions, [ride.pickup, ride.dropoff]);
 });

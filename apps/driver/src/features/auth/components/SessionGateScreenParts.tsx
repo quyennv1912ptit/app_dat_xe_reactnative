@@ -10,5 +10,6 @@ export const styles = (colors: ThemeColors) =>
       padding: 16,
     },
     card: { width: "100%", maxWidth: 480, gap: 16 },
+    logo: { width: 112, height: 112, alignSelf: "center" },
     status: { textAlign: "center" },
   });

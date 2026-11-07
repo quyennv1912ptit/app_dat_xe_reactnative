@@ -25,6 +25,7 @@ export default function HistoryScreen() {
   cutoff.setDate(cutoff.getDate() - 6);
   const loadedTrips = q.data?.pages.flatMap((page) => page?.content ?? []) ?? [];
   const trips = loadedTrips.filter((trip) => period === "all" || new Date(trip.createdAt) >= cutoff);
+  const filtered = status !== "all" || period !== "all";
   const hasMore = q.hasNextPage && (period === "all" || loadedTrips.length === trips.length);
   const open = (id: number) => router.push({ pathname: "/ride/complete", params: { rideId: String(id) } });
 
@@ -32,7 +33,7 @@ export default function HistoryScreen() {
     <DriverPage title="Lịch sử chuyến" tabs loading={q.isLoading} error={q.error?.message} retry={q.refetch}>
       <GroupedList>
         <List.Accordion title="Tìm và lọc chuyến" theme={{ colors: { background: colors.transparent } }}
-          description={status !== "all" || period !== "all" ? "Đang áp dụng bộ lọc" : undefined}>
+          style={styles.target} description={filtered ? "Đang áp dụng bộ lọc" : undefined}>
           <View style={styles.filters}>
             <Input label="Mã chuyến" defaultValue={code} onChangeText={(value) => {
               codeDraft.current = value.replace(/\D/g, "");
@@ -74,7 +75,7 @@ export default function HistoryScreen() {
                 key={trip.id}
                 onPress={() => open(trip.id)}
                 accessibilityRole="button"
-                accessibilityLabel={`Chuyến ${trip.id}, ${statusText}. ${date}. Đón tại ${pickup}. Trả tại ${dropoff}. Cước ${fare}.`}
+                accessibilityLabel={`Chuyến ${trip.id}, ${statusText}. ${date}. Đón tại ${pickup}. Trả tại ${dropoff}.${trip.status === "CANCELLED" ? "" : ` Cước ${fare}.`}`}
                 style={styles.trip}
               >
                 <View style={styles.tripContent}>
@@ -95,8 +96,8 @@ export default function HistoryScreen() {
                   <View style={styles.stop}>
                     <View style={[styles.dot, { backgroundColor: colors.error }]} />
                     <Text style={[s.text, styles.address]} numberOfLines={2} ellipsizeMode="tail">{dropoff}</Text>
-                    <Text style={[s.text, styles.fare]}>{fare}</Text>
                   </View>
+                  {trip.status !== "CANCELLED" ? <Text style={[s.amount, styles.fare]}>{fare}</Text> : null}
                 </View>
               </TouchableRipple>
             );
@@ -104,8 +105,8 @@ export default function HistoryScreen() {
         </GroupedList>
       ) : !q.isLoading && !q.error ? (
         <Card style={s.card}>
-          <Text>{hasMore ? "Chưa có chuyến phù hợp trong các trang đã tải." : "Không có chuyến đi phù hợp."}</Text>
-          {status !== "all" || period !== "all" ? (
+          <Text>{hasMore ? "Chưa có chuyến phù hợp trong các trang đã tải." : filtered ? "Không có chuyến phù hợp với bộ lọc." : "Bạn chưa có chuyến đi."}</Text>
+          {filtered ? (
             <Button variant="ghost" label="Xóa bộ lọc" onPress={() => { setStatus("all"); setPeriod("all"); }} />
           ) : <Button variant="ghost" label="Về trang chủ" onPress={() => router.navigate("/(tabs)/home")} />}
         </Card>
@@ -117,6 +118,7 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  target: { minHeight: 48 },
   filters: { gap: 8, paddingVertical: 8 },
   trip: { borderRadius: 24, overflow: "hidden" },
   tripContent: { paddingVertical: 12 },
@@ -126,7 +128,7 @@ const styles = StyleSheet.create({
   stop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   pickup: { marginTop: 8, paddingBottom: 8 },
   address: { flex: 1 },
-  fare: { alignSelf: "flex-end", maxWidth: "42%", textAlign: "right", fontWeight: "600" },
+  fare: { alignSelf: "flex-end", textAlign: "right", marginTop: 4, fontSize: 28 },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 8 },
   dashedRail: { position: "absolute", left: 3, top: 16, bottom: -8, justifyContent: "space-evenly" },
   dash: { width: 2, height: 2 },

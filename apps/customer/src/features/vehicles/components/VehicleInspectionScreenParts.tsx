@@ -18,6 +18,8 @@ export function Metric({ label, value }: { label: string; value: string }) {
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
+    flex: { flex: 1 },
+    footer: { padding: 16, gap: 8, backgroundColor: colors.cardSurface },
     content: { padding: spacing.margin, gap: 16, paddingBottom: 32 },
     subtitle: { ...typography.bodyMd, color: colors.onSurfaceVariant },
     card: {
@@ -38,7 +40,7 @@ export const styles = (colors: ThemeColors) =>
       padding: 12,
       gap: 4,
     },
-    metricValue: { ...typography.labelLg, color: colors.onSurface },
+    metricValue: { ...typography.labelLg, fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.onSurface },
     images: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     imageCard: { width: "47%", gap: 4 },
     image: {
@@ -49,7 +51,7 @@ export const styles = (colors: ThemeColors) =>
     },
     imageLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
     confirmed: { flexDirection: "row", alignItems: "center", gap: 8 },
-    confirmedText: { ...typography.labelMd, color: colors.primary },
+    confirmedText: { ...typography.labelMd, color: colors.successStrong, flexShrink: 1 },
     error: { ...typography.bodyMd, color: colors.error },
     primary: {
       minHeight: 54,

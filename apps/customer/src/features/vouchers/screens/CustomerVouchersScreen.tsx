@@ -1,3 +1,4 @@
+import { CustomerNotice } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
@@ -26,7 +27,7 @@ export default function CustomerVouchersScreen() {
 
   const styles = useThemedStyles(base_styles);
 
-  const { router, vouchers, loading, error } = useCustomerVouchers();
+  const { router, vouchers, loading, error, refresh } = useCustomerVouchers();
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
@@ -40,7 +41,7 @@ export default function CustomerVouchersScreen() {
           )}
         </Text>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
-        {error ? <Text style={styles.error}>{i18nT(error)}</Text> : null}
+        {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
         {!loading && !error && vouchers.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons
@@ -96,6 +97,7 @@ export default function CustomerVouchersScreen() {
                     </Text>
                   ) : null}
                   <Pressable
+                    accessibilityRole="button"
                     onPress={() =>
                       router.push({
                         pathname: "/ride/route-selection",
