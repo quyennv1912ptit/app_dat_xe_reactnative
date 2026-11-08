@@ -4,7 +4,7 @@ import { CustomerPaymentSummary } from "@/components/CustomerPaymentSummary";
 import { CustomerNotice, RideEndpoints } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { formatDistance, getLocale, translate as i18nT } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -63,7 +63,7 @@ export default function RideDetailScreen() {
             <Card style={styles.card}>
               <Text style={styles.section}>{i18nT("Lộ trình")}</Text>
               <RideEndpoints pickup={ride.pickupAddress} dropoff={ride.dropoffAddress} />
-              {ride.distanceKm != null ? <Text style={styles.meta}>{ride.distanceKm} km</Text> : null}
+              {ride.distanceKm != null ? <Text style={styles.meta}>{formatDistance(ride.distanceKm, getLocale())}</Text> : null}
             </Card>
             <Card style={styles.card}>
               <Text style={styles.section}>{i18nT("Trạng thái chuyến")}</Text>

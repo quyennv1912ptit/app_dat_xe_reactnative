@@ -66,6 +66,7 @@ test("customer payment summary uses the persisted amount and distinguishes unpai
       "@datxe/ui": { ...ui, Card: "Card" },
       "react-native": native,
       "react/jsx-runtime": { jsx, jsxs: jsx },
+      "./PendingPaymentMethod": { PendingPaymentMethod: "PendingPaymentMethod" },
       "./CustomerRideUI": { customerType: {}, MoneyText: "MoneyText" },
     },
   );

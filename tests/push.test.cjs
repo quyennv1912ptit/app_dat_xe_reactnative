@@ -258,3 +258,21 @@ test('driver trip notifications never open a different active trip', async () =>
   });
   assert.equal(current.pathname, '/ride/in-progress');
 });
+
+test('withdrawal result opens the exact driver request and presents its outcome', async () => {
+  const event = { type: 'WITHDRAWAL_REVIEWED', payload: { withdrawalId: 99, status: 'REJECTED', title: 'Yêu cầu rút tiền bị từ chối', body: 'Sai số tài khoản. Số tiền đã được hoàn lại vào ví.' } };
+  const destination = await contracts.resolvePushDestination(event, 'DRIVER', {});
+  assert.equal(destination.pathname, '/profile/withdraw');
+  assert.equal(destination.params.requestId, '99');
+  const presentation = contracts.pushPresentation(event);
+  assert.equal(presentation.title, event.payload.title);
+  assert.equal(presentation.body, event.payload.body);
+});
+
+test('payment change notifications open the current invoice for either account role', async () => {
+  const event = { type: 'PAYMENT_UPDATED', payload: { rideId: 42, title: 'Khách đã đổi phương thức thanh toán', body: 'Đã thanh toán bằng ví. Không thu thêm tiền mặt.' } };
+  const api = { ride: async id => ({ id, status: 'COMPLETED' }) };
+  assert.equal((await contracts.resolvePushDestination(event, 'DRIVER', api)).pathname, '/ride/complete');
+  assert.equal((await contracts.resolvePushDestination(event, 'CUSTOMER', api)).pathname, '/ride/completed');
+  assert.equal(contracts.pushPresentation(event).body, event.payload.body);
+});

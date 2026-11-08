@@ -22,7 +22,7 @@ export const labelForStatus: Record<string, string> = {
 };
 
 export const money = (value: number) =>
-  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale()).format(value) });
+  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(value) });
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({

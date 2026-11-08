@@ -1,8 +1,8 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import { List } from "react-native-paper";
+import { List, RadioButton } from "react-native-paper";
 import { customerType, MoneyText } from "@/components/CustomerRideUI";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { formatMoney, getLocale, translate as i18nT } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -160,24 +160,17 @@ export default function BookingConfirmationScreen() {
             />
           </Pressable>
           <Card style={s.card}>
-            <View style={s.row}>
-              <MaterialIcons
-                name="payments"
-                size={24}
-                color={colors.successStrong}
-              />
-              <View style={s.flex}>
-                <Text style={s.text}>{i18nT("Tiền mặt")}</Text>
-                <Text style={s.muted}>
-                  {i18nT("Thanh toán cho tài xế khi kết thúc chuyến")}
-                </Text>
-              </View>
-              <MaterialIcons
-                name="check-circle"
-                size={20}
-                color={colors.primary}
-              />
-            </View>
+            <Text style={s.label}>Phương thức thanh toán</Text>
+            <RadioButton.Group value={h.paymentMethod} onValueChange={value => { if (!h.submitting && (value === 'CASH' || value === 'WALLET')) h.setPaymentMethod(value); }}>
+              <RadioButton.Item label="Tiền mặt · Trả trực tiếp cho tài xế" value="CASH" disabled={h.submitting} />
+              <RadioButton.Item label="Ví ứng dụng" value="WALLET" disabled={h.submitting} />
+            </RadioButton.Group>
+            <Text style={s.muted}>{h.walletBalance === undefined ? 'Chưa tải được số dư ví' : `Số dư ví: ${formatMoney(h.walletBalance)}`}</Text>
+            {h.paymentError ? <Text accessibilityRole="alert" style={s.text}>{h.paymentError}</Text> : null}
+            {h.paymentMethod === 'WALLET' ? <>
+              <Button variant="secondary" label="Nạp tiền vào ví" disabled={h.submitting} onPress={() => h.router.push('/wallet/top-up')} />
+              <Button variant="ghost" label="Kiểm tra lại số dư" disabled={h.submitting} onPress={() => void h.retryWallet()} />
+            </> : null}
             <View style={s.divider} />
             <Pressable
               accessibilityLabel={i18nT("Chọn ưu đãi cho chuyến đi")}

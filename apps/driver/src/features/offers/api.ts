@@ -8,3 +8,6 @@ export const getHomeSession=()=>request<AuthProfile>('/auth/me');
 export const getHomeActiveRide=()=>request<CustomerRideDetail>('/driver/rides/active',{allowNull:true});
 export const getHomeVerification=driverApi.verification;
 export const setDriverAvailability=(body:{online:boolean;vehicle_type?:'CAR'|'MOTORCYCLE'})=>request<{status:string}>('/driver/availability',{method:'PUT',body});
+
+export type DriverDailySummary = { date: string; fullName: string | null; avatarUrl: string | null; completedTrips: number; income: number };
+export const getHomeDailySummary = () => request<DriverDailySummary>('/driver/wallet/daily-summary');

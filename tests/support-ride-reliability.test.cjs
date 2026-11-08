@@ -75,7 +75,8 @@ function supportFixture(h) {
     "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "react-native-paper": {
       Divider: "Divider",
-      List: { Item: "List.Item", Icon: "List.Icon" },
+      List: { Item: "List.Item", Icon: "List.Icon", Accordion: "List.Accordion" },
+      RadioButton: { Group: "RadioButton.Group", Item: "RadioButton.Item" },
     },
     "react-native": {
       Image: "Image",
@@ -397,8 +398,7 @@ test("cash collection comes from the persisted ride and updates query cache befo
   const paid = await mutation.mutationFn();
   await mutation.onSuccess(paid);
   assert.equal(ride.payment.status, "PAID");
-  assert.ok(invalidated.includes("driver/ride/45"));
-  assert.ok(invalidated.includes("driver/wallet"));
+  assert.ok(invalidated.includes("driver"), "cash receipt refreshes ride, wallet overview, history and daily income");
 });
 
 test("handover confirmation and revision send the version that the user reviewed", async () => {
@@ -687,4 +687,63 @@ test("support topics share one divided card and stay separate from the warning a
     .props.onPress();
   await tick();
   assert.equal(sent[0].category, "PAYMENT");
+});
+
+test('support API sends server-side filters and rejects missing success payloads', async () => {
+  const calls = [];
+  const { createSupportApi } = load('packages/shared/src/api/support.ts', {});
+  const api = createSupportApi(async (path, options) => { calls.push({ path, options }); return []; });
+  await api.list(2, 'RESOLVED');
+  assert.equal(calls[0].path, '/support/tickets?page=2&status=RESOLVED');
+  await api.list(0, 'all');
+  assert.equal(calls[1].path, '/support/tickets?page=0');
+  const missing = createSupportApi(async () => null);
+  await assert.rejects(missing.list(0), /dữ liệu hỗ trợ/);
+  await assert.rejects(missing.create({}), /dữ liệu hỗ trợ/);
+});
+
+for (const role of ['customer', 'driver']) {
+  test(`${role} support filters refetch from the server, scope caches to the owner and refresh all status lists after a reply`, async () => {
+    const h = hooksFixture();
+    const shared = load('packages/shared/src/api/support.ts', {});
+    const queries = [], invalidations = [], calls = [];
+    let user = { id: 7 };
+    const session = select => select({ user }); session.getState = () => ({ user });
+    const { useSupportRequests } = load(`apps/${role}/src/lib/useSupportRequests.ts`, {
+      react: h.hooks, '@datxe/shared': shared,
+      './store': { useSessionStore: session }, './useRefreshOnFocus': { useRefreshOnFocus() {} },
+      './api': { request: async (path, options) => { calls.push({ path, options }); return path.startsWith('/support/tickets') ? options?.method === 'POST' ? { id: 42 } : [] : { content: [], hasNext: false }; } },
+      '@tanstack/react-query': {
+        useQueryClient: () => ({ invalidateQueries: async ({ queryKey }) => invalidations.push(queryKey) }),
+        useQuery: () => ({ refetch() {} }),
+        useInfiniteQuery: options => { queries.push(options); return { refetch() {} }; },
+        useMutation: options => ({ mutateAsync: async body => { const ticket = await options.mutationFn(body); await options.onSuccess(ticket); return ticket; } }),
+      },
+    });
+    const render = () => { h.reset(); queries.length = 0; return useSupportRequests(); };
+    let support = render();
+    assert.equal(queries[0].queryKey[2], 7);
+    support.onTicketStatusChange('RESOLVED');
+    support = render();
+    assert.equal(queries[0].queryKey[3], 'RESOLVED');
+    await queries[0].queryFn({ pageParam: 0 });
+    assert.equal(calls[0].path, '/support/tickets?page=0&status=RESOLVED');
+    await support.send({ description: 'Cần kiểm tra thanh toán' });
+    assert.equal(invalidations[0].join('/'), `${role}/support`);
+    user = { id: 8 };
+    await assert.rejects(support.send({}), /Phiên đăng nhập/);
+  });
+}
+
+test('support shows load errors and keeps status filters accessible when the selected list is empty', () => {
+  const h = hooksFixture();
+  const { SupportCenter } = supportFixture(h);
+  const changed = [];
+  const tree = SupportCenter({ rides: [], tickets: [], pending: false, error: 'Không tải được danh sách',
+    send: async () => ({}), pickImage: async () => null, onOpenRide() {}, ticketStatus: 'RESOLVED', onTicketStatusChange: value => changed.push(value) });
+  assert.ok(all(tree).some(node => node.props?.accessibilityRole === 'alert' && node.props.children === 'Không tải được danh sách'));
+  const group = all(tree).find(node => node.type === 'RadioButton.Group');
+  assert.equal(group.props.value, 'RESOLVED');
+  group.props.onValueChange('all');
+  assert.deepEqual(changed, ['all']);
 });

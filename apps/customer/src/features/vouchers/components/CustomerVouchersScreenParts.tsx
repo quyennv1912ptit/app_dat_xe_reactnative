@@ -3,7 +3,7 @@ import type { ThemeColors } from "@datxe/ui";
 import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const money = (amount: number) =>
-  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale()).format(amount) });
+  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(amount) });
 
 export const date = (value: string) =>
   new Date(value).toLocaleDateString(getLocale());

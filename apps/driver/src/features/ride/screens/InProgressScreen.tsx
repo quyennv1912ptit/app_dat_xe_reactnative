@@ -11,7 +11,7 @@ import { RideCustomerCard } from "../components/RideCustomerCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RideRouteCard } from "../components/RideRouteCard";
 import { StyleSheet, View } from "react-native";
-import { formatMoney } from "@datxe/shared";
+import { formatDistance, formatMoney } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -117,7 +117,7 @@ export default function InProgressRideScreen() {
                 </View>
                 {ride.route ? (
                   <Text style={[themed_s.metric, styles.routeMetrics]}>
-                    {Math.ceil(ride.route.durationSeconds / 60)} phút · {(ride.route.distanceMeters / 1000).toFixed(2)} km
+                    {Math.ceil(ride.route.durationSeconds / 60)} phút · {formatDistance(ride.route.distanceMeters / 1000)}
                   </Text>
                 ) : null}
               </View>

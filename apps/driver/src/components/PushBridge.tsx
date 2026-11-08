@@ -1,3 +1,4 @@
+import { useDriverCredit } from '@/lib/useDriverCredit';
 import { pendingOfferKey, usePendingOffer } from '@/lib/driverOffer';
 import { offerRemainingMs } from '@/lib/offerTiming';
 import { logError } from '@/lib/logger';
@@ -29,18 +30,19 @@ export function PushBridge() {
   const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments[1] ?? ''));
   const navigationReady = Boolean(nav?.key && userId && pathname !== '/' && !authenticationScreen);
   useEffect(() => { latest.current = { router, ready: navigationReady }; }, [router, navigationReady]);
-  const pendingOffer = usePendingOffer(navigationReady, online);
+  const credit = useDriverCredit();
+  const pendingOffer = usePendingOffer(navigationReady && credit.allowed, online && credit.allowed);
   const displayedOffer = useRef<{ userId: number; offerId: string } | null>(null);
   useEffect(() => {
     const offer = pendingOffer.data;
-    if (!navigationReady || !userId || AppState.currentState !== 'active' || !offer ||
+    if (!navigationReady || !credit.allowed || !userId || AppState.currentState !== 'active' || !offer ||
         offerRemainingMs(offer, pendingOffer.dataUpdatedAt, Date.now()) <= 0) return;
     if (displayedOffer.current?.userId === userId && displayedOffer.current.offerId === offer.offerId) return;
     displayedOffer.current = { userId, offerId: offer.offerId };
     const destination = { pathname: '/ride/accept' as const, params: { rideId: String(offer.rideId) } };
     if (pathname === '/ride/accept') router.setParams(destination.params);
     else router.navigate(destination);
-  }, [navigationReady, userId, pendingOffer.data, pendingOffer.dataUpdatedAt, pathname, router]);
+  }, [navigationReady, credit.allowed, userId, pendingOffer.data, pendingOffer.dataUpdatedAt, pathname, router]);
   const controller = useRef<ReturnType<typeof createPushOpenCoordinator> | null>(null);
 
   useEffect(() => {

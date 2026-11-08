@@ -1,9 +1,11 @@
+import { HomeDriverHeader } from "../components/HomeDriverHeader";
 import { HomeOperationalStatus } from "../components/HomeOperationalStatus";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverChatButton } from "@/components/DriverChatButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { vehicleTypeLabel, transmissionLabel } from "@/lib/displayLabels";
 import { rideStyles as s } from "@/components/rideStyles";
+import { formatMoney } from "@datxe/shared";
 import type { DriverDocument } from "@datxe/shared";
 import {
   Button,
@@ -50,8 +52,12 @@ export default function DriverHomeScreen() {
   const license = currentLicense(h.documents.data ?? []);
   const licenseExpired = isExpired(license?.expires_at);
   const checking = !h.active.data && (h.availability.isPending || h.session.isLoading || h.active.isLoading
-    || h.verification.isLoading || h.skills.isLoading || h.documents.isLoading);
-  const blocker = !h.session.data || !h.verification.data || !h.skills.data || !h.documents.data
+    || h.verification.isLoading || h.skills.isLoading || h.documents.isLoading || h.credit.isFetching);
+  const blocker = !h.credit.data || h.credit.isError
+    ? { title: "Chưa kiểm tra được số dư ví tín dụng", action: "Kiểm tra lại số dư", onPress: () => void h.credit.refetch() }
+    : !h.credit.data.canReceive
+      ? { title: "Số dư ví tín dụng không đủ", action: "Nạp tiền", onPress: () => h.router.push("/profile/top-up") }
+    : !h.session.data || !h.verification.data || !h.skills.data || !h.documents.data
     || (h.active.isError && h.active.data === undefined)
     ? { title: "Chưa tải được điều kiện nhận chuyến" }
     : !approved
@@ -66,8 +72,13 @@ export default function DriverHomeScreen() {
       title="Trang chủ tài xế"
       tabs
       intro={(
+        <>
+        <HomeDriverHeader summary={h.summary.data} name={h.session.data?.fullName} loading={h.summary.isLoading} error={h.summary.isError} onRetry={() => void h.summary.refetch()} onProfile={() => h.router.navigate("/(tabs)/profile")} />
         <HomeOperationalStatus online={online} active={Boolean(h.active.data)} loading={checking}
           blocker={blocker} onDiagnostics={() => h.router.push("/settings/reception")}>
+          {!h.active.data && h.credit.data && !h.credit.data.canReceive ? (
+            <Text style={themed_s.text}>Ví tín dụng: {formatMoney(h.credit.data.creditBalance)} · Hạn mức: {formatMoney(h.credit.data.minimumCredit)}. Cần nạp thêm {formatMoney(h.credit.data.shortfall)} để nhận chuyến.</Text>
+          ) : null}
           {!h.active.data && online ? (
             <Button variant="secondary" label="Tạm ngừng nhận chuyến"
               onPress={() => h.availability.mutate({ online: false })} />
@@ -85,11 +96,12 @@ export default function DriverHomeScreen() {
                   {transmissionLabel(skill.transmission)}{skill.license_class ? ` · Hạng ${skill.license_class}` : ""}
                 </Text>
               ))}
-              <Button label="Bật nhận chuyến" disabled={!selected}
+              <Button label="Bật nhận chuyến" disabled={!selected || !h.credit.allowed}
                 onPress={() => { if (selected) h.availability.mutate({ online: true, vehicle_type: selected }); }} />
             </>
           ) : null}
         </HomeOperationalStatus>
+        </>
       )}
       loading={h.session.isLoading || h.active.isLoading}
       error={
@@ -109,10 +121,11 @@ export default function DriverHomeScreen() {
           h.offer.refetch(),
           h.skills.refetch(),
           h.documents.refetch(),
+          h.credit.refetch(),
         ])
       }
     >
-      {h.offer.data && !h.active.data ? (
+      {h.credit.allowed && h.offer.data && !h.active.data ? (
         <Card radius={20} style={themed_s.card}>
           <Text style={themed_s.title}>
             Yêu cầu chuyến #{h.offer.data.rideId}

@@ -4,6 +4,6 @@ import { profileUpdate,cashPaymentUpdate,type ProfileDraft } from '../profileFor
 export function useProfileEditor(){
  const client=useQueryClient();
  const query=useQuery({queryKey:['customer','getCustomerProfile'],queryFn:getCustomerProfile});
- const save=useMutation({mutationFn:async(draft:ProfileDraft|'CASH')=>{const latest=await getCustomerProfile();return updateCustomerProfile(draft==='CASH'?cashPaymentUpdate(latest):profileUpdate(draft,latest));},onSuccess:profile=>{client.setQueryData(['customer','getCustomerProfile'],profile);}});
+ const save=useMutation({mutationFn:async(draft:ProfileDraft|'CASH'|'WALLET')=>{const latest=await getCustomerProfile();return updateCustomerProfile(typeof draft==='string'?cashPaymentUpdate(latest,draft):profileUpdate(draft,latest));},onSuccess:profile=>{client.setQueryData(['customer','getCustomerProfile'],profile);}});
  return {query,save};
 }

@@ -39,9 +39,8 @@ const confirm = async () => {
     setSaving(true);
     try {
       await confirmCustomerHandover(rideId, phase === 'PICKUP' ? 'pickup' : 'dropoff', report.revision ?? 1);
-      await refresh();
-      // The confirmed state is rendered inline. A delayed alert action could
-      // otherwise close the completion screen after the driver finishes.
+      await client.invalidateQueries({ queryKey: ['customer'] });
+      router.dismissTo({ pathname: '/ride/tracking', params: { rideId: String(rideId) } });
 
     } catch (err) {
       localizedAlert(i18nT("Không thể xác nhận"), err instanceof Error ? err.message : i18nT("Vui lòng thử lại."));

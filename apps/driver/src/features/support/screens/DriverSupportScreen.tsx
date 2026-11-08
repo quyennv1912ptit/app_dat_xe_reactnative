@@ -2,7 +2,8 @@ import { DriverPage } from "@/components/DriverPage";
 import { useSupportRequests } from "@/lib/useSupportRequests";
 import { pickSupportImage } from "@/lib/supportImages";
 import { SupportCenter } from "@datxe/ui";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { resolveDriverNotification } from "@/lib/notificationDestination";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 
 export default function DriverSupportScreen() {
   const router = useRouter();
@@ -20,7 +21,11 @@ export default function DriverSupportScreen() {
         initialRideId={Number(rideId) || undefined}
         pickImage={pickSupportImage}
         onOpenSafety={() => router.push("/safety")}
-        onOpenRide={(id) => router.push({ pathname: "/ride/complete", params: { rideId: String(id) } })}
+        onOpenTickets={() => router.push("/tickets")}
+        onOpenRide={async (id) => {
+          const destination = await resolveDriverNotification({ type: "RIDE_UPDATED", payload: { rideId: id } });
+          router.push(destination as Href);
+        }}
         onRefresh={() => void support.retry()}
       />
     </DriverPage>

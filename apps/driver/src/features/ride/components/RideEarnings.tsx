@@ -1,25 +1,15 @@
-import { driverApi } from "@/lib/driverApi";
 import { rideStyles } from "@/components/rideStyles";
-import { formatMoney } from "@datxe/shared";
+import { formatMoney, type CustomerRideDetail } from "@datxe/shared";
 import { Typography as Text, useThemedStyles } from "@datxe/ui";
-import { useQuery } from "@tanstack/react-query";
 
-export function RideEarnings({ rideId }: { rideId: number }) {
+export function RideEarnings({ earnings }: { earnings: CustomerRideDetail['driverEarnings'] }) {
   const s = useThemedStyles(rideStyles);
-  const wallet = useQuery({ queryKey: ["driver", "wallet"], queryFn: driverApi.wallet });
-  const recorded = wallet.data?.wallet_transactions.find((item) =>
-    item.ride_id === rideId && item.type === "TRIP_EARNING" && Number.isFinite(item.amount)
-  );
-  return (
-    <>
-      <Text style={s.label}>Thu nhập tài xế</Text>
-      {recorded ? (
-        <Text style={s.amount}>{formatMoney(recorded.amount)}</Text>
-      ) : (
-        <Text style={s.text}>
-          {wallet.isLoading ? "Đang kiểm tra ví…" : wallet.isError ? "Chưa tải được thu nhập." : "Chưa có số tiền cho chuyến này trong dữ liệu ví."}
-        </Text>
-      )}
-    </>
-  );
+  return <>
+    <Text style={s.label}>Thu nhập sau chiết khấu</Text>
+    {earnings ? <>
+      <Text style={s.amount}>{formatMoney(earnings.netAmount)}</Text>
+      <Text style={s.text}>Chiết khấu: {formatMoney(earnings.commissionAmount)}</Text>
+      <Text style={s.label}>{earnings.creditedToCash ? 'Đã cộng vào ví tiền mặt.' : earnings.paid ? 'Tiền khách đã trả trực tiếp; chiết khấu đã trừ từ ví tín dụng.' : 'Chờ thu tiền khách. Chiết khấu đã trừ từ ví tín dụng.'}</Text>
+    </> : <Text style={s.text}>Chưa có dữ liệu quyết toán cho chuyến này.</Text>}
+  </>;
 }

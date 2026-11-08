@@ -9,7 +9,7 @@ export function profileUpdate(draft:ProfileDraft, latest:CustomerProfile):Custom
  if(draft.gender&&!['MALE','FEMALE','OTHER'].includes(draft.gender))throw new Error(i18nT("Giới tính không hợp lệ."));
  return {full_name:name,email:email||null,date_of_birth:date||null,gender:draft.gender||null,default_payment_method:latest.default_payment_method};
 }
-export function cashPaymentUpdate(latest:CustomerProfile):CustomerProfileUpdate {
+export function cashPaymentUpdate(latest:CustomerProfile, method: 'CASH' | 'WALLET' = 'CASH'):CustomerProfileUpdate {
  if(!latest.full_name?.trim())throw new Error(i18nT("Vui lòng cập nhật họ và tên trong thông tin cá nhân trước."));
- return {full_name:latest.full_name,email:latest.email,date_of_birth:latest.date_of_birth,gender:latest.gender,default_payment_method:'CASH'};
+ return {full_name:latest.full_name,email:latest.email,date_of_birth:latest.date_of_birth,gender:latest.gender,default_payment_method:method};
 }

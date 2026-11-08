@@ -1,11 +1,12 @@
+import { useWalletOverview } from '@/lib/useWallet';
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { CustomerNotice, customerType } from "@/components/CustomerRideUI";
 import { HeaderIconButton } from "@/components/ScreenHeader";
 import { HomeMap } from "@/components/map/HomeMap";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { translate as t } from "@datxe/shared";
+import { formatMoney, walletBalance, translate as t } from "@datxe/shared";
 import {
-  Button, Card, MotionPressable as Pressable, ScreenWrapper,
+  Button, Card, SettingsListItem, MotionPressable as Pressable, ScreenWrapper,
   Typography as Text, useLanguage, useThemeColors,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -20,6 +21,8 @@ export default function HomeScreen() {
   const colors = useThemeColors();
   const [recenterToken, setRecenterToken] = useState(0);
   const h = useHome();
+  const wallet = useWalletOverview();
+  const balance = walletBalance(wallet.data, 'CUSTOMER');
   const recenter = async () => {
     await h.refreshLocation(true);
     setRecenterToken(value => value + 1);
@@ -69,6 +72,12 @@ export default function HomeScreen() {
             </Text>
             {h.locationLoading ? <ActivityIndicator color={colors.primary} size="small" /> : null}
           </Pressable>
+        </Card>
+        <Card style={styles.card}>
+          <SettingsListItem icon="account-balance-wallet" title="Ví ứng dụng"
+            description={balance === undefined ? wallet.isError ? 'Chưa tải được số dư · Chạm để kiểm tra' : 'Đang tải số dư…' : `${formatMoney(balance)}${wallet.isError ? ' · Chưa cập nhật được' : ''}`}
+            onPress={() => h.router.push('/wallet')} />
+          <Button variant="secondary" label="Nạp tiền" icon="add" onPress={() => h.router.push('/wallet/top-up')} />
         </Card>
         {!h.activeRide && h.nearbyStatus !== "location" ? (
           <CustomerNotice onRetry={h.nearbyStatus === "error" ? () => void h.retryNearby() : undefined}>

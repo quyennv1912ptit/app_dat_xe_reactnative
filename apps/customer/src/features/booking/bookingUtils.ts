@@ -11,7 +11,7 @@ export function activeRideDestination(ride: Pick<CustomerRideDetail, 'id' | 'sta
   };
 }
 
-export const money = (value: number) => i18nT("{0} đ", {"0": new Intl.NumberFormat(getLocale()).format(value)});
+export const money = (value: number) => i18nT("{0} đ", {"0": new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(value)});
 export function isCoordinate(point: RideCoordinates): boolean {
   return Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180;
 }

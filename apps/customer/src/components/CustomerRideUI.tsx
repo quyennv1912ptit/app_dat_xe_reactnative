@@ -16,7 +16,7 @@ export const customerType = StyleSheet.create({
 
 export function MoneyText({ value, style }: { value: number; style?: StyleProp<TextStyle> }) {
   useLanguage();
-  return <Text style={[customerType.amount, style]}>{t("{0} đ", { "0": value.toLocaleString(getLocale()) })}</Text>;
+  return <Text style={[customerType.amount, style]}>{t("{0} đ", { "0": value.toLocaleString(getLocale(), { maximumFractionDigits: 0 }) })}</Text>;
 }
 
 export function RideEndpoints({ pickup, dropoff }: { pickup?: string | null; dropoff?: string | null }) {

@@ -3,7 +3,7 @@ import { DriverPage } from "@/components/DriverPage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { rideStyles as s } from "@/components/rideStyles";
 import { statusLabel } from "@/lib/displayLabels";
-import { formatMoney } from "@datxe/shared";
+import { formatDistance, formatMoney } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -77,13 +77,13 @@ export default function CompleteRideScreen() {
               ) : payment ? (
                 <>
                   <StatusBadge kind="payment" value={payment.status} contextLabel="Thanh toán" />
-                  <Text style={themed_s.label}>Khoản thanh toán</Text>
+                  <Text style={themed_s.label}>{payment.method === "WALLET" ? "Thanh toán qua ví ứng dụng" : "Khoản thanh toán"}</Text>
                   <Text style={themed_s.amount}>{formatMoney(payment.amount)}</Text>
                 </>
               ) : <Text style={themed_s.text}>Chưa tải được thông tin thanh toán. Hãy tải lại trước khi xác nhận.</Text>}
               {payment?.paidAt ? <Text style={themed_s.label}>{new Date(payment.paidAt).toLocaleString("vi-VN")}</Text> : null}
               <Divider style={{ backgroundColor: colors.outlineVariant }} />
-              <RideEarnings rideId={ride.id} />
+              <RideEarnings earnings={ride.driverEarnings} />
             </Card>
           ) : null}
           <Card style={[styles.summary, { backgroundColor: colors.rideSurface }]}>
@@ -99,7 +99,7 @@ export default function CompleteRideScreen() {
                 <Text style={styles.price}>{formatMoney(ride.finalFare ?? ride.estimatedFare)}</Text>
               </View>
               {ride.distanceKm !== null ? (
-                <Text style={[themed_s.label, styles.distance]}>{ride.distanceKm} km</Text>
+                <Text style={[themed_s.label, styles.distance]}>{formatDistance(ride.distanceKm)}</Text>
               ) : null}
             </View>
             {ride.status === "CANCELLED" ? (

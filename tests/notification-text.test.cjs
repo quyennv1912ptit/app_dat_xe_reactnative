@@ -229,3 +229,10 @@ test("a mounted notification consumer rerenders copy immediately when the langua
   assert.ok(text().includes("Chuyến đi của bạn đã kết thúc thành công."));
   listener();
 });
+
+test('withdrawal notification shows the result and rejection reason', () => {
+  const payload = { status: 'REJECTED', title: 'Yêu cầu rút tiền bị từ chối', body: 'Lý do: Sai số tài khoản. Số tiền đã được hoàn lại vào ví.' };
+  const text = getNotificationText('WITHDRAWAL_REVIEWED', payload, value => value);
+  assert.equal(text.title, payload.title);
+  assert.equal(text.description, payload.body);
+});

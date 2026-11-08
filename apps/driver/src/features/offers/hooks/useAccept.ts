@@ -1,3 +1,4 @@
+import { useDriverCredit } from '@/lib/useDriverCredit';
 import { pendingOfferKey, usePendingOffer, type DriverOffer } from '@/lib/driverOffer';
 import { offerRemainingMs } from '@/lib/offerTiming';
 import { useSessionStore } from '@/lib/store';
@@ -13,7 +14,8 @@ export function useAccept() {
   const driverId = useSessionStore(state => state.user?.id);
   const { rideId } = useLocalSearchParams<{ rideId?: string }>();
   const expectedId = rideId === undefined ? null : Number(rideId);
-  const query = usePendingOffer();
+  const credit = useDriverCredit();
+  const query = usePendingOffer(credit.allowed);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 250);
@@ -37,6 +39,8 @@ export function useAccept() {
       if (offerRemainingMs(pending, query.dataUpdatedAt, Date.now()) <= 0) {
         throw new Error('Yêu cầu đã hết hạn.');
       }
+      const balance = await credit.refetch();
+      if (balance.error || !balance.data?.canReceive) throw new Error(balance.error?.message || 'Số dư ví tín dụng không đủ để nhận chuyến.');
       await acceptDriverOffer(pending.rideId, pending.offerId);
     },
     onSuccess: (_, accepted) => {
@@ -57,7 +61,7 @@ export function useAccept() {
   });
 
   return {
-    router, offer, expiresAt, secondsLeft, loading: query.isLoading,
+    router, credit, offer, expiresAt, secondsLeft, loading: query.isLoading || credit.isLoading,
     error: query.error?.message || accept.error?.message || reject.error?.message ||
       (mismatch ? 'Yêu cầu chuyến này đã hết hạn hoặc không còn khả dụng.' : ''),
     busy: accept.isPending || reject.isPending,

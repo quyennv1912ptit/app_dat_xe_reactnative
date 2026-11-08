@@ -1,3 +1,4 @@
+import { DriverCreditGate } from "../components/DriverCreditGate";
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Button, offerPalette as palette, Typography as Text } from '@datxe/ui';
 import { StatusBar } from 'expo-status-bar';
@@ -20,6 +21,8 @@ export default function AcceptRideScreen() {
   // Reserve extra clearance above the sheet while keeping room for the route on short screens.
   const mapClearance = Math.min(32, Math.max(0, height - top - sheetHeight - 128));
   const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
+
+  if (!h.credit.allowed && !h.busy) return <DriverCreditGate credit={h.credit} />;
 
   return (
     <View style={styles.screen} onLayout={event => setHeight(Math.round(event.nativeEvent.layout.height))}>
