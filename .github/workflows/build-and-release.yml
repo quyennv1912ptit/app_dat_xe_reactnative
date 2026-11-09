@@ -1,0 +1,159 @@
+name: Build APK và IPA unsigned
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: App muốn build
+        type: choice
+        options: [customer, driver]
+        required: true
+      version:
+        description: 'Phiên bản dạng v1.0.0'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.app_name }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write # Cần để tạo tag và GitHub Release.
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: 'true'
+      CI_RELEASE: '1'
+      NODE_ENV: production
+      APP_NAME: ${{ inputs.app_name }}
+      VERSION_INPUT: ${{ inputs.version }}
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Kiểm tra đầu vào
+        run: |
+          set -euo pipefail
+          [[ "$APP_NAME" == customer || "$APP_NAME" == driver ]]
+          [[ "$VERSION_INPUT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo 'Version phải có dạng v1.0.0'; exit 1;
+          }
+          echo "APP_DIR=apps/$APP_NAME" >> "$GITHUB_ENV"
+          echo "APP_VERSION=${VERSION_INPUT#v}" >> "$GITHUB_ENV"
+          # Tag riêng giúp hai app phát hành cùng số version.
+          echo "RELEASE_TAG=$APP_NAME-$VERSION_INPUT" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Cài dependencies của monorepo tại gốc
+        run: npm ci --include=dev
+
+      - name: Kiểm tra kiến trúc, TypeScript, lint và tests
+        run: npm run check
+
+      # Chỉ chuyển secrets của app được chọn vào môi trường bước giải mã.
+      - name: Khôi phục secrets Customer
+        if: inputs.app_name == 'customer'
+        env:
+          ENV_B64: ${{ secrets.CUSTOMER_ENV }}
+          IOS_B64: ${{ secrets.CUSTOMER_IOS_GOOGLE_SERVICES }}
+          ANDROID_B64: ${{ secrets.CUSTOMER_ANDROID_GOOGLE_SERVICES }}
+          KEYSTORE_B64: ${{ secrets.CUSTOMER_KEYSTORE }}
+          STORE_PASSWORD: ${{ secrets.CUSTOMER_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CUSTOMER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.CUSTOMER_KEY_PASSWORD }}
+        run: python3 scripts/restore-ci-secrets.py
+
+      - name: Khôi phục secrets Driver
+        if: inputs.app_name == 'driver'
+        env:
+          ENV_B64: ${{ secrets.DRIVER_ENV }}
+          IOS_B64: ${{ secrets.DRIVER_IOS_GOOGLE_SERVICES }}
+          ANDROID_B64: ${{ secrets.DRIVER_ANDROID_GOOGLE_SERVICES }}
+          KEYSTORE_B64: ${{ secrets.DRIVER_KEYSTORE }}
+          STORE_PASSWORD: ${{ secrets.DRIVER_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DRIVER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.DRIVER_KEY_PASSWORD }}
+        run: python3 scripts/restore-ci-secrets.py
+
+      - name: Sinh cả hai native project và cài CocoaPods
+        working-directory: ${{ env.APP_DIR }}
+        run: npx expo prebuild -p all
+
+      - name: Build APK Release có ký
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon
+          mkdir -p "$GITHUB_WORKSPACE/release-assets"
+          cp app/build/outputs/apk/release/app-release.apk \
+            "$GITHUB_WORKSPACE/release-assets/$APP_NAME-$VERSION_INPUT.apk"
+
+      - name: Build iOS cho thiết bị và đóng gói IPA unsigned
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          # Scheme theo tên app; không chọn nhầm Pods.xcodeproj.
+          if [[ "$APP_NAME" == customer ]]; then
+            SCHEME=PtitGo
+          else
+            SCHEME=PtitGoDriver
+          fi
+          WORKSPACE="ios/$SCHEME.xcworkspace"
+          test -d "$WORKSPACE"
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/ios-build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
+          # Không dùng exportArchive: export IPA thông thường yêu cầu provisioning/signing.
+          APP="$RUNNER_TEMP/ios-build/Build/Products/Release-iphoneos/$SCHEME.app"
+          test -d "$APP"
+          mkdir -p "$RUNNER_TEMP/unsigned-ipa/Payload"
+          ditto "$APP" "$RUNNER_TEMP/unsigned-ipa/Payload/$SCHEME.app"
+          cd "$RUNNER_TEMP/unsigned-ipa"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/release-assets/$APP_NAME-$VERSION_INPUT-unsigned.ipa" Payload
+
+      - name: Tạo GitHub Release kèm APK và IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Không ghi đè release cũ. Release chỉ được tạo khi cả hai build thành công.
+          gh release create "$RELEASE_TAG" release-assets/*.apk release-assets/*.ipa \
+            --target "$GITHUB_SHA" --title "$APP_NAME $VERSION_INPUT" \
+            --notes 'APK Release có ký. IPA unsigned cần ký lại trước khi cài lên thiết bị iOS.'
+
+      - name: Dọn file secrets trên runner
+        if: always()
+        run: |
+          # Chỉ xóa các file đã giải mã trong app được chọn.
+          if [[ "$APP_NAME" == customer || "$APP_NAME" == driver ]]; then
+            rm -f "apps/$APP_NAME/.env" "apps/$APP_NAME/google-services.json" \
+              "apps/$APP_NAME/GoogleServiceCustomer-Info.plist" \
+              "apps/$APP_NAME/GoogleServiceDriver-Info.plist" \
+              "apps/$APP_NAME/team-dev-$APP_NAME.jks"
+          fi

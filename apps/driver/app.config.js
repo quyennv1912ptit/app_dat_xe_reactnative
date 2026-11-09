@@ -41,19 +41,22 @@ module.exports = ({ config }) => {
   }
 
   const googleServicesFile = path.join(__dirname, 'google-services.json');
-  const googleServiceInfoFile = path.join(__dirname, 'GoogleService-Info.plist');
+  const googleServiceInfoFile = path.join(__dirname, 'GoogleServiceDriver-Info.plist');
 
   return {
     ...config,
+    version: process.env.APP_VERSION ?? config.version,
     android: {
       ...config.android,
       ...(fs.existsSync(googleServicesFile) ? { googleServicesFile: './google-services.json' } : {}),
     },
     ios: {
       ...config.ios,
-      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleService-Info.plist' } : {}),
+      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleServiceDriver-Info.plist' } : {}),
     },
-    plugins,
+    plugins: process.env.CI_RELEASE === '1'
+      ? [...plugins, '../../packages/config/plugins/with-release-signing']
+      : plugins,
     extra: {
       ...config.extra,
       apiUrl: process.env.EXPO_PUBLIC_API_URL ?? null,

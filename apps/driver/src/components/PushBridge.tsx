@@ -24,7 +24,8 @@ export function PushBridge() {
   const client = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
-  const segments = useSegments();
+  // Route depth varies; the auth group can have a second segment.
+  const segments: readonly string[] = useSegments();
   const nav = useRootNavigationState();
   const latest = useRef({ router, ready: false });
   const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments[1] ?? ''));
