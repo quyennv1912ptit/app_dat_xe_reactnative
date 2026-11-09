@@ -30,3 +30,17 @@ test('redispatch and system failure notifications explain the actual outcome',()
   assert.equal(getNotificationText('RIDE_UPDATED',{status:'SEARCHING',redispatchCount:1}).title,'Đang tìm tài xế khác');
   assert.equal(getNotificationText('RIDE_NO_DRIVER',{status:'FAILED_SYSTEM'}).title,'Lỗi hệ thống');
 });
+
+test('the pickup label uses Vietnam time and accepts offers from older servers', () => {
+  const { formatScheduledPickup } = load('apps/driver/src/lib/scheduledPickup.ts', {
+    '@datxe/shared': {
+      getLocale: () => 'vi-VN',
+      translate: (label, params) => label.replace('{0}', params['0']),
+    },
+  });
+  assert.match(formatScheduledPickup('2026-11-09T01:00:00Z'), /08:00.*09\/11|09\/11.*08:00/);
+  assert.match(formatScheduledPickup('2026-11-09T20:30:00Z'), /03:30.*10\/11|10\/11.*03:30/);
+  for (const value of [null, undefined, 'invalid']) {
+    assert.equal(formatScheduledPickup(value), null);
+  }
+});

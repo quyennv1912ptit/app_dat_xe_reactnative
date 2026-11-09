@@ -32,7 +32,7 @@ export default function FindDriverScreen() {
                   color={ended ? c.error : c.onSurfaceVariant} />
               )}
               <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[customerType.heading, styles.title]}>
-                {t(scheduled ? "Đã đặt lịch, đang chờ đến giờ tìm tài xế" : statusText[ride.status] ?? "Đang cập nhật trạng thái")}
+                {t(scheduled ? "Đã đặt lịch. Đang chờ bắt đầu tìm tài xế" : statusText[ride.status] ?? "Đang cập nhật trạng thái")}
               </Text>
             </View>
             {ride.scheduledAt ? (

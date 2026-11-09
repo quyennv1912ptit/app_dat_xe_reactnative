@@ -1,7 +1,8 @@
 import { transmissionLabel, vehicleTypeLabel } from '@/lib/displayLabels';
 import type { DriverOffer } from '@/lib/driverOffer';
+import { formatScheduledPickup } from '@/lib/scheduledPickup';
 import { formatDistance, formatMoney } from '@datxe/shared';
-import { offerPalette as palette, Typography as Text } from '@datxe/ui';
+import { offerPalette as palette, Typography as Text, useLanguage } from '@datxe/ui';
 import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -55,6 +56,8 @@ function Stop({ kind, address, km, minutes }: {
 }
 
 export const OfferDecision = memo(function OfferDecision({ offer }: { offer: DriverOffer }) {
+  useLanguage();
+  const pickupTime = formatScheduledPickup(offer.scheduledAt);
   const totalKm = validEstimate(offer.distanceToPickupKm) && validEstimate(offer.tripDistanceKm)
     ? formatDistance(offer.distanceToPickupKm + offer.tripDistanceKm) : null;
   const totalMinutes = validEstimate(offer.etaToPickupMin) && validEstimate(offer.estDurationMin)
@@ -76,6 +79,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
           <Text style={styles.transmission}>{transmissionLabel(offer.vehicle.transmission)}</Text>
         </View>
       </View>
+      {pickupTime ? <Text style={styles.pickupTime}>{pickupTime}</Text> : null}
       <Text style={styles.summary}>{total ? `Tổng cộng: ${total}` : 'Chưa đủ dữ liệu tổng hành trình'}</Text>
       <View style={styles.timeline}>
         <Stop kind="pickup" address={offer.pickup.address} km={offer.distanceToPickupKm} minutes={offer.etaToPickupMin} />
@@ -94,6 +98,7 @@ const styles = StyleSheet.create({
   vehicle: { color: palette.text, fontSize: 16, lineHeight: 20, fontWeight: '700', textAlign: 'center' },
   transmission: { color: palette.text, fontSize: 13, lineHeight: 17, textAlign: 'center' },
   summary: { color: palette.muted, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
+  pickupTime: { color: palette.text, fontSize: 16, lineHeight: 22, fontWeight: '700' },
   timeline: { gap: 2 },
   stop: { flexDirection: 'row', gap: 12 },
   rail: { width: 12, alignItems: 'center', paddingTop: 6 },
