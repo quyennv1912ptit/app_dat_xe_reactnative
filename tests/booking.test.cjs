@@ -27,6 +27,39 @@ test('quote request rejects missing places, identical points and invalid coordin
   assert.equal(input.voucher_code, 'PROMO');
 });
 
+test('a duplicate schedule error lets the customer open ride history', async () => {
+  let mutation;
+  let alert;
+  const routes = [];
+  class AuthApiError extends Error {
+    code = 'SCHEDULED_RIDE_EXISTS';
+  }
+  const { useBookingConfirmation } = load('hooks/useBookingConfirmation.ts', {
+    '@/lib/useWallet': { useWalletOverview: () => ({}) },
+    '@/lib/walletApi': { walletApi: {} },
+    '@/lib/customerApi': { customerApi: {} },
+    '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
+    '@datxe/shared': { walletBalance: () => undefined, translate: text => text, AuthApiError },
+    '@datxe/ui': { localizedAlert: (...args) => { alert = args; } },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({}),
+      useQuery: () => ({}),
+      useMutation: options => { mutation = options; return {}; },
+    },
+    'expo-router': { useRouter: () => ({ replace: route => routes.push(route) }) },
+    react: { useState: value => [value, () => {}], useRef: value => ({ current: value }) },
+    '../api': {},
+    '../bookingUtils': utils,
+    '../store': { useBookingDraft: () => ({}) },
+  });
+  useBookingConfirmation();
+  await mutation.onError(new AuthApiError());
+  assert.match(alert[0], /đã có lịch hẹn/i);
+  assert.deepEqual(routes, []);
+  alert[2].find(button => button.text === 'Mở Lịch sử').onPress();
+  assert.deepEqual(routes, ['/(tabs)/history']);
+});
+
 test('voucher eligibility considers dates, exhausted usage and backend minimum amount', () => {
   const voucher = { validFrom: '2026-01-01', validTo: '2027-01-01', usageLimit: 10, usageCount: 0, minimumOrderAmount: 50000 };
   const now = Date.parse('2026-10-28');

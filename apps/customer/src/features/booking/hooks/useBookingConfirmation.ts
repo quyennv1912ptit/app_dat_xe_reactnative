@@ -89,6 +89,13 @@ export function useBookingConfirmation() {
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
     onError: async error => {
+      if (error instanceof AuthApiError && error.code === 'SCHEDULED_RIDE_EXISTS') {
+        localizedAlert('Bạn đã có lịch hẹn đang chờ', 'Mở Lịch sử để xem hoặc hủy lịch hiện tại trước khi đặt lịch khác.', [
+          { text: 'Đóng', style: 'cancel' },
+          { text: 'Mở Lịch sử', onPress: () => router.replace('/(tabs)/history') },
+        ]);
+        return;
+      }
       if (error instanceof AuthApiError && ['ACTIVE_RIDE_EXISTS', 'CONFLICT'].includes(error.code)) {
         const currentRide = await getActiveCustomerRide().catch(() => null);
         if (currentRide) {

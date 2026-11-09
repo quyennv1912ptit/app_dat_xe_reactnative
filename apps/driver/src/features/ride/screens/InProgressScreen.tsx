@@ -2,6 +2,7 @@ import { Appbar, Divider, ProgressBar } from "react-native-paper";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
 import { useSessionStore } from "@/lib/store";
+import { formatScheduledPickup } from "@/lib/scheduledPickup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CustomerRideDetail } from "@datxe/shared";
@@ -17,6 +18,7 @@ import {
   Card,
   PaperTextInput as TextInput,
   Typography as Text,
+  useLanguage,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
@@ -32,6 +34,7 @@ const phases: Partial<Record<CustomerRideDetail["status"], [number, string]>> = 
 };
 
 export default function InProgressRideScreen() {
+  useLanguage();
   const themed_s = useThemedStyles(s);
   const colors = useThemeColors();
 
@@ -44,6 +47,7 @@ export default function InProgressRideScreen() {
     isDropoff,
     waitingForCustomer,
   } = useInProgress();
+  const pickupTime = formatScheduledPickup(ride?.scheduledAt);
   const client = useQueryClient();
   const [confirmation, setConfirmation] = useState<{ rideId: number; userId: number } | null>(null);
   const [reason, setReason] = useState("");
@@ -108,6 +112,7 @@ export default function InProgressRideScreen() {
               <Text style={themed_s.label}>Chuyến #{ride.id}</Text>
               <StatusBadge kind="ride" value={ride.status} contextLabel="Trạng thái chuyến" />
             </View>
+            {pickupTime ? <Text style={themed_s.text}>{pickupTime}</Text> : null}
             <RideRouteCard ride={ride} navigationStop={isDropoff ? "dropoff" : "pickup"}>
               <Divider style={{ backgroundColor: colors.outlineVariant }} />
               <View style={styles.routeSummary}>
