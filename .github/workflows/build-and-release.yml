@@ -66,6 +66,11 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@v3
+        with:
+          # Ghi đè mặc định "tools platform-tools" của v3:
+          # SDK Manager hiện không tìm thấy gói legacy "tools".
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Cài dependencies của monorepo tại gốc
         run: npm ci --include=dev
