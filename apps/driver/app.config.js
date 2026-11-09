@@ -23,7 +23,8 @@ module.exports = ({ config }) => {
       'expo-build-properties',
       {
         android: { kotlinVersion: '2.4.0' },
-        ios: { useFrameworks: 'static' },
+        // Firebase qua SPM yêu cầu dynamic linkage để tránh trùng symbol.
+        ios: { useFrameworks: 'dynamic' },
       },
     ],
   ];

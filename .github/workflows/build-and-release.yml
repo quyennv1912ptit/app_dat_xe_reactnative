@@ -36,6 +36,7 @@ jobs:
       APP_NAME: ${{ inputs.app_name }}
       VERSION_INPUT: ${{ inputs.version }}
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      USE_FRAMEWORKS: dynamic # RNFirebase SPM không hỗ trợ static linkage.
 
     steps:
       - uses: actions/checkout@v4
@@ -103,16 +104,34 @@ jobs:
           KEY_PASSWORD: ${{ secrets.DRIVER_KEY_PASSWORD }}
         run: python3 scripts/restore-ci-secrets.py
 
-      - name: Sinh cả hai native project và cài CocoaPods
+      - name: Xác minh Firebase và private key trước khi build
+        run: python3 scripts/validate-ci-native.py
+
+      - name: Ghi nhận toolchain của runner
+        run: |
+          node --version
+          java -version
+          xcodebuild -version
+          pod --version
+          mkdir -p "$GITHUB_WORKSPACE/build-logs"
+
+      - name: Sinh cả hai native project
         working-directory: ${{ env.APP_DIR }}
-        run: npx expo prebuild -p all
+        run: npx expo prebuild -p all --no-install
+
+      - name: Cài CocoaPods và xác minh dynamic linkage
+        working-directory: ${{ env.APP_DIR }}/ios
+        run: |
+          node -e 'const p=require("./Podfile.properties.json"); if(p["ios.useFrameworks"]!=="dynamic") throw Error("Firebase SPM requires dynamic frameworks")'
+          pod install --repo-update 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/pods.log"
 
       - name: Build APK Release có ký
         working-directory: ${{ env.APP_DIR }}/android
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/android.log"
+          test -s app/build/outputs/apk/release/app-release.apk
           mkdir -p "$GITHUB_WORKSPACE/release-assets"
           cp app/build/outputs/apk/release/app-release.apk \
             "$GITHUB_WORKSPACE/release-assets/$APP_NAME-$VERSION_INPUT.apk"
@@ -132,14 +151,34 @@ jobs:
           xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
             -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/ios-build" \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build \
+            2>&1 | tee "$GITHUB_WORKSPACE/build-logs/ios.log"
           # Không dùng exportArchive: export IPA thông thường yêu cầu provisioning/signing.
           APP="$RUNNER_TEMP/ios-build/Build/Products/Release-iphoneos/$SCHEME.app"
           test -d "$APP"
+          test -s "$APP/main.jsbundle"
           mkdir -p "$RUNNER_TEMP/unsigned-ipa/Payload"
           ditto "$APP" "$RUNNER_TEMP/unsigned-ipa/Payload/$SCHEME.app"
           cd "$RUNNER_TEMP/unsigned-ipa"
           /usr/bin/zip -qry "$GITHUB_WORKSPACE/release-assets/$APP_NAME-$VERSION_INPUT-unsigned.ipa" Payload
+
+      - name: Lưu APK hoặc IPA đã build được
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ inputs.app_name }}-${{ inputs.version }}
+          path: release-assets/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Lưu log build để chẩn đoán
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ inputs.app_name }}
+          path: build-logs/
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Tạo GitHub Release kèm APK và IPA
         env:
