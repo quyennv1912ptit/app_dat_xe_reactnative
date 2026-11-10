@@ -5,17 +5,120 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '../apps/customer/src/features/booking');
-function load(file, mocks = {}) {
+function load(file, mocks = {}, globals = {}) {
   const exports = {};
   const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? (name === '@datxe/shared' ? require('./i18n-loader.cjs') : require(name)) });
+  vm.runInNewContext(source, { exports, URLSearchParams, ...globals, require: name => mocks[name] ?? (name === '@datxe/shared' ? require('./i18n-loader.cjs') : require(name)) });
   return exports;
 }
 const utils = load('bookingUtils.ts');
 const pickup = { id: 'a', name: 'A', address: 'Điểm A', coordinate: { lat: 10.77, lng: 106.7 } };
 const dropoff = { id: 'b', name: 'B', address: 'Điểm B', coordinate: { lat: 10.78, lng: 106.71 } };
+
+test('pickup slots retain the 15 minute lead and 48 half-hour options', () => {
+  const slots = utils.createScheduleSlots(Date.parse('2026-11-10T07:09:00Z'));
+  assert.equal(slots.length, 48);
+  assert.equal(slots[0], '2026-11-10T07:30:00.000Z');
+  assert.equal(slots.at(-1), '2026-11-11T07:00:00.000Z');
+  assert.ok(slots.slice(1).every((slot, index) => Date.parse(slot) - Date.parse(slots[index]) === 30 * 60_000));
+  assert.equal(utils.createScheduleSlots(Date.parse('2026-11-10T07:15:00Z'))[0], slots[0]);
+  assert.equal(utils.createScheduleSlots(Date.parse('2026-11-10T07:15:01Z'))[0], slots[1]);
+});
+
+test('pickup day labels and summary use Vietnam time across midnight', () => {
+  const now = Date.parse('2026-11-10T16:58:00Z');
+  const slots = utils.createScheduleSlots(now);
+  const days = utils.groupScheduleSlots(slots, now);
+  assert.equal(days.length, 2);
+  assert.equal(days[0].label, 'Ngày mai');
+  assert.equal(days[0].slots.length, 47);
+  assert.match(days[1].label, /12\/11/);
+  assert.equal(days[1].slots[0], '2026-11-11T17:00:00.000Z');
+  assert.equal(utils.formatScheduleTime(days[1].slots[0]), '00:00');
+  assert.equal(utils.formatScheduledPickup(slots[0]), '00:30 · 11/11');
+});
+
+test('pickup selection refreshes an expired picker and updates the quote and booking only when applied', async () => {
+  let now = Date.parse('2026-11-10T07:09:00Z');
+  const clock = class extends Date { static now() { return now; } };
+  const states = [];
+  const refs = [];
+  let stateIndex, refIndex, quote, mutation, requestedQuote, booked;
+  const price = { payableFare: 80_000 };
+  const { useBookingConfirmation } = load('hooks/useBookingConfirmation.ts', {
+    '@/lib/useWallet': { useWalletOverview: () => ({}) },
+    '@/lib/walletApi': { walletApi: {} },
+    '@/lib/customerApi': { customerApi: {} },
+    '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
+    '@datxe/shared': { walletBalance: () => undefined, translate: text => text, AuthApiError: class extends Error {} },
+    '@datxe/ui': { localizedAlert: () => {} },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({ setQueryData: () => {} }),
+      useQuery: options => {
+        const name = options.queryKey[1];
+        if (name === 'bookingEstimate') quote = options;
+        return { data: name === 'getCustomerVehicles' ? [{ id: 7 }] : name === 'bookingEstimate' ? price : null, isSuccess: true };
+      },
+      useMutation: options => { mutation = options; return {}; },
+    },
+    'expo-router': { useRouter: () => ({}) },
+    react: {
+      useState: initial => {
+        const index = stateIndex++;
+        if (!(index in states)) states[index] = initial;
+        return [states[index], value => { states[index] = value; }];
+      },
+      useRef: initial => refs[refIndex++] ??= { current: initial },
+    },
+    '../api': {
+      getActiveCustomerRide: async () => null,
+      getRideEstimate: async request => { requestedQuote = request; return price; },
+      createCustomerRide: async request => { booked = request; return { id: 42 }; },
+    },
+    '../bookingUtils': utils,
+    '../store': { useBookingDraft: () => ({ pickup, dropoff, vehicleId: 7, pickupNote: '' }) },
+  }, { Date: clock });
+  const render = () => { stateIndex = refIndex = 0; return useBookingConfirmation(); };
+
+  render().openSchedule();
+  let hook = render();
+  const first = utils.createScheduleSlots(hook.schedulePicker.referenceTime)[0];
+  now = Date.parse(first);
+  hook.selectSchedule(first);
+  hook = render();
+  assert.equal(hook.scheduleVisible, true);
+  assert.equal(hook.schedulePicker.expired, true);
+  assert.equal(hook.schedulePicker.referenceTime, now);
+  assert.equal(hook.scheduledAt, null);
+  assert.equal(quote.queryKey[2].scheduledAt, null);
+
+  const chosen = utils.createScheduleSlots(now)[0];
+  hook.selectSchedule(chosen);
+  hook = render();
+  assert.equal(hook.scheduleVisible, false);
+  assert.equal(quote.queryKey[2].scheduledAt, chosen);
+  await quote.queryFn();
+  assert.equal(requestedQuote.scheduledAt, chosen);
+  await mutation.mutationFn();
+  assert.equal(booked.scheduledAt, chosen);
+  assert.equal(booked.type, 'SCHEDULED');
+
+  hook.openSchedule();
+  hook = render();
+  assert.equal(hook.scheduledAt, chosen);
+  assert.equal(hook.schedulePicker.expired, false);
+  hook.closeSchedule();
+  assert.equal(render().scheduledAt, chosen);
+  render().openSchedule();
+  render().selectSchedule(null);
+  assert.equal(render().scheduledAt, null);
+  assert.equal(quote.queryKey[2].scheduledAt, null);
+  await mutation.mutationFn();
+  assert.equal(booked.type, 'INSTANT');
+  assert.equal(booked.scheduledAt, null);
+});
 
 test('quote request rejects missing places, identical points and invalid coordinates', () => {
   assert.throws(() => utils.estimateRequest(null, dropoff, 1, null), /chọn đủ/);

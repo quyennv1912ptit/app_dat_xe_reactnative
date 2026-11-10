@@ -2,7 +2,7 @@ import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { List, RadioButton } from "react-native-paper";
 import { customerType, MoneyText } from "@/components/CustomerRideUI";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { formatMoney, getLocale, translate as i18nT } from "@datxe/shared";
+import { formatMoney, translate as i18nT } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -19,7 +19,7 @@ import type { ComponentProps } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { BookingMap } from "@/components/map/BookingMap";
-import { activeRideDestination, DEFAULT_MAP_CENTER } from "../bookingUtils";
+import { activeRideDestination, DEFAULT_MAP_CENTER, formatScheduledPickup } from "../bookingUtils";
 import { bookingStyles as base_s } from "../components/bookingStyles";
 import { FareDetails } from "../components/FareDetails";
 import { RouteSummary } from "../components/RouteSummary";
@@ -40,6 +40,7 @@ export default function BookingConfirmationScreen() {
   const s = useThemedStyles(base_s);
 
   const h = useBookingConfirmation();
+  const pickupTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : i18nT("Đi ngay");
   return (
     <>
       <MapSheetLayout
@@ -83,15 +84,18 @@ export default function BookingConfirmationScreen() {
             <Text style={s.label}>
               {i18nT("Bước 4/4 · Kiểm tra chuyến đi")}
             </Text>
-            <Pressable accessibilityRole="button" onPress={h.openSchedule} style={[s.row, s.chip]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={i18nT("Chọn giờ đón") + ", " + pickupTime}
+              onPress={h.openSchedule}
+              style={[s.row, s.chip]}
+            >
               <MaterialIcons
                 name={h.scheduledAt ? "event" : "schedule"}
                 size={17}
                 color={colors.primary}
               />
-              <Text style={s.link}>
-                {i18nT(h.scheduledAt ? "Đặt lịch" : "Đi ngay")}
-              </Text>
+              <Text style={s.link}>{pickupTime}</Text>
               <MaterialIcons
                 name="expand-more"
                 size={18}
@@ -99,12 +103,6 @@ export default function BookingConfirmationScreen() {
               />
             </Pressable>
           </View>
-          {h.scheduledAt ? (
-            <Text style={s.text}>
-              {i18nT("Đón lúc")}{" "}
-              {i18nT(new Date(h.scheduledAt).toLocaleString(getLocale()))}
-            </Text>
-          ) : null}
           <RouteSummary
             pickup={h.draft.pickup}
             dropoff={h.draft.dropoff}
@@ -284,13 +282,10 @@ export default function BookingConfirmationScreen() {
       />
       <SchedulePickerModal
         visible={h.scheduleVisible}
-        close={() => h.setScheduleVisible(false)}
+        close={h.closeSchedule}
         selected={h.scheduledAt}
-        slots={h.slots}
-        onSelect={(slot) => {
-          h.setScheduledAt(slot);
-          h.setScheduleVisible(false);
-        }}
+        session={h.schedulePicker}
+        onSelect={h.selectSchedule}
       />
     </>
   );
