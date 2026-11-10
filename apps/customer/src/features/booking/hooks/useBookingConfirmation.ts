@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
-import { activeRideDestination, estimateRequest } from '../bookingUtils';
+import { activeRideDestination, estimateRequest, type SchedulePickerSession } from '../bookingUtils';
 import { useBookingDraft } from '../store';
 
 function friendlyPriceError(error: unknown): string {
@@ -31,7 +31,7 @@ export function useBookingConfirmation() {
   const [voucherError, setVoucherError] = useState('');
   const [applyingCode, setApplyingCode] = useState<string | null>(null);
   const [scheduleVisible, setScheduleVisible] = useState(false);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [schedulePicker, setSchedulePicker] = useState<SchedulePickerSession | null>(null);
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const submitting = useRef(false);
   const vehicles = useQuery({ queryKey: ['customer', 'getCustomerVehicles'], queryFn: getCustomerVehicles });
@@ -111,9 +111,18 @@ export function useBookingConfirmation() {
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };
   const openSchedule = () => {
-    const first = Math.ceil((Date.now() + 15 * 60000) / (30 * 60000)) * 30 * 60000;
-    setSlots(Array.from({ length: 48 }, (_, index) => new Date(first + index * 30 * 60000).toISOString()));
+    setSchedulePicker({ referenceTime: Date.now(), expired: false });
     setScheduleVisible(true);
   };
-  return { router, paymentMethod, setPaymentMethod, walletBalance: balance, paymentError, retryWallet: wallet.refetch, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, setScheduledAt, scheduleVisible, setScheduleVisible, slots, openSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
+  const closeSchedule = () => setScheduleVisible(false);
+  const selectSchedule = (slot: string | null) => {
+    const now = Date.now();
+    if (slot !== null && Date.parse(slot) <= now) {
+      setSchedulePicker({ referenceTime: now, expired: true });
+      return;
+    }
+    setScheduledAt(slot);
+    closeSchedule();
+  };
+  return { router, paymentMethod, setPaymentMethod, walletBalance: balance, paymentError, retryWallet: wallet.refetch, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, scheduleVisible, schedulePicker, openSchedule, closeSchedule, selectSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
 }
