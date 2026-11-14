@@ -6,21 +6,22 @@ type Draft = {
   vehicleId: number | null;
   destinationHint: string;
   voucherCode: string;
+  voucherId: number | null;
   pickupNote: string;
   setPickupNote: (note: string) => void;
-  begin: (destinationHint?: string, voucherCode?: string, pickup?: BookingPlace | null) => void;
+  begin: (destinationHint?: string, voucherCode?: string, pickup?: BookingPlace | null, voucherId?: number | null) => void;
   setPlace: (kind: PlaceKind, place: BookingPlace) => void;
   setVehicle: (id: number) => void;
-  setVoucher: (code: string) => void;
+  setVoucher: (code: string, id?: number | null) => void;
   clear: () => void;
 };
-const empty = { pickup: null, dropoff: null, vehicleId: null, destinationHint: '', voucherCode: '', pickupNote: '' };
+const empty = { pickup: null, dropoff: null, vehicleId: null, destinationHint: '', voucherCode: '', voucherId: null, pickupNote: '' };
 export const useBookingDraft = create<Draft>(set => ({
   ...empty,
   setPickupNote: pickupNote => set({ pickupNote }),
-  begin: (destinationHint = '', voucherCode = '', pickup = null) => set({ ...empty, destinationHint, voucherCode, pickup }),
+  begin: (destinationHint = '', voucherCode = '', pickup = null, voucherId = null) => set({ ...empty, destinationHint, voucherCode, pickup, voucherId }),
   setPlace: (kind, place) => set({ [kind]: place }),
   setVehicle: vehicleId => set({ vehicleId }),
-  setVoucher: voucherCode => set({ voucherCode }),
+  setVoucher: (voucherCode, voucherId = null) => set({ voucherCode, voucherId }),
   clear: () => set(empty),
 }));

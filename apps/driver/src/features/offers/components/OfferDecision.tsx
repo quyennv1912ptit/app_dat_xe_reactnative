@@ -71,7 +71,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
         <View style={styles.earnings}>
           <Text style={styles.caption}>Thu nhập dự kiến</Text>
           {validEstimate(earning) ? (
-            <Text accessibilityRole="header" style={styles.amount}>{roundedEarning !== earning ? '≈ ' : ''}{formatMoney(roundedEarning)}</Text>
+            <Text accessibilityRole="header" style={styles.amount}>{formatMoney(earning)}</Text>
           ) : <Text style={styles.summary}>Chưa có thông tin</Text>}
         </View>
         <View style={styles.badge}>
@@ -81,6 +81,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
       </View>
       {pickupTime ? <Text style={styles.pickupTime}>{pickupTime}</Text> : null}
       <Text style={styles.summary}>{total ? `Tổng cộng: ${total}` : 'Chưa đủ dữ liệu tổng hành trình'}</Text>
+      <Text style={styles.summary}>Khách hàng: {offer.customer.displayName} · {offer.customer.rating == null ? 'Chưa có đánh giá' : `${offer.customer.rating.toFixed(1)}/5`}</Text>
       <View style={styles.timeline}>
         <Stop kind="pickup" address={offer.pickup.address} km={offer.distanceToPickupKm} minutes={offer.etaToPickupMin} />
         <Stop kind="dropoff" address={offer.dropoff.address} km={offer.tripDistanceKm} minutes={offer.estDurationMin} />

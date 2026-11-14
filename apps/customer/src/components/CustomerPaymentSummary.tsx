@@ -20,7 +20,7 @@ export function CustomerPaymentSummary({ ride }: { ride: CustomerRideDetail }) {
   const cash = payment?.method === "CASH";
   const pendingCash = cash && payment.status === "PENDING" && ride.status === "COMPLETED";
   const paidCash = cash && payment.status === "PAID";
-  const amount = payment?.amount ?? ride.finalFare ?? ride.estimatedFare;
+  const amount = payment?.amount ?? ride.finalFare ?? ride.payableFare ?? ride.estimatedFare;
   const label = pendingCash ? "Tiền mặt cần trả" : paidCash ? "Tiền mặt đã thanh toán"
     : payment ? "Khoản thanh toán" : ride.finalFare != null ? "Cước chuyến đi" : "Giá dự kiến";
   const tone = payment?.status === "PAID" ? { backgroundColor: c.successContainer, color: c.onSuccessContainer }

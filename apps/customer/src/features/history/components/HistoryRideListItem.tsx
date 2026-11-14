@@ -12,6 +12,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { View } from "react-native";
+import { Button } from "@datxe/ui";
 import {
   styles as createStyles,
   labelForStatus,
@@ -21,15 +22,18 @@ import {
 export function HistoryRideListItem({
   ride,
   onPress,
+  onRate,
 }: {
   ride: CustomerRideSummary;
   onPress: () => void;
+  onRate: () => void;
 }) {
   useLanguage();
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
   return (
+    <>
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.ride}>
       <View style={styles.rideHeader}>
         <View style={styles.rideTitleRow}>
@@ -79,7 +83,7 @@ export function HistoryRideListItem({
         {ride.status !== "CANCELLED" || ride.finalFare != null ? (
           <View style={styles.fareCopy}>
             <Text style={styles.meta}>{i18nT(ride.finalFare == null ? "Giá dự kiến" : "Cước chuyến đi")}</Text>
-            <Text style={styles.fare}>{i18nT(money(ride.finalFare ?? ride.estimatedFare))}</Text>
+            <Text style={styles.fare}>{i18nT(money(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare))}</Text>
           </View>
         ) : <View style={styles.fareCopy} />}
         <MaterialIcons
@@ -89,5 +93,9 @@ export function HistoryRideListItem({
         />
       </View>
     </Pressable>
+    {ride.status === "COMPLETED" ? (
+      <Button label={i18nT("Đánh giá chuyến đi")} icon="star" variant="secondary" onPress={onRate} />
+    ) : null}
+    </>
   );
 }

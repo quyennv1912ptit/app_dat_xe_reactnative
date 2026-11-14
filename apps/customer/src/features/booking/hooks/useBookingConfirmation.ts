@@ -40,23 +40,23 @@ export function useBookingConfirmation() {
   const vehicle = vehicles.data?.find(item => item.id === draft.vehicleId);
   let requestError = '';
   let input: ReturnType<typeof estimateRequest> | null = null;
-  try { input = estimateRequest(draft.pickup, draft.dropoff, draft.vehicleId, scheduledAt, draft.voucherCode); }
+  try { input = estimateRequest(draft.pickup, draft.dropoff, draft.vehicleId, scheduledAt, draft.voucherCode, draft.voucherId); }
   catch (error) { requestError = error instanceof Error ? error.message : i18nT("Thiếu thông tin chuyến."); }
   const keyFor = (request: ReturnType<typeof estimateRequest>) => ['customer', 'bookingEstimate', request] as const;
   const estimate = useQuery({ queryKey: input ? keyFor(input) : ['customer', 'bookingEstimate', 'incomplete'], queryFn: () => getRideEstimate(input!), enabled: Boolean(input && vehicle && !active.data), staleTime: 15000, retry: false });
   const vouchers = useQuery({ queryKey: ['customer', 'getCustomerVouchers'], queryFn: getCustomerVouchers, enabled: voucherVisible || Boolean(draft.voucherCode) });
-  const selectedVoucher = vouchers.data?.find(item => item.code === draft.voucherCode);
+  const selectedVoucher = vouchers.data?.find(item => draft.voucherId ? item.id === draft.voucherId : item.code === draft.voucherCode);
   const error = requestError || friendlyPriceError(estimate.error) || vehicles.error?.message || active.error?.message || '';
   const walletReady = paymentMethod === 'CASH' || Boolean(wallet.isSuccess && !wallet.isError && !wallet.isFetching && balance !== undefined && estimate.data && balance >= estimate.data.payableFare);
   const paymentError = paymentMethod !== 'WALLET' ? '' : wallet.isLoading || wallet.isFetching ? 'Đang kiểm tra số dư ví…' : wallet.isError || balance === undefined ? 'Chưa kiểm tra được số dư ví. Hãy thử lại hoặc chọn tiền mặt.' : estimate.data && balance < estimate.data.payableFare ? 'Số dư ví không đủ. Vui lòng nạp thêm hoặc chọn tiền mặt.' : '';
   const ready = walletReady && Boolean(input && vehicle && estimate.data && !estimate.isError && !estimate.isFetching && active.isSuccess && !active.isFetching && !active.data);
-  const applyVoucher = async (code: string) => {
+  const applyVoucher = async (code: string, voucherId: number | null = null) => {
     if (!input || applyingCode !== null) return;
-    setApplyingCode(code); setVoucherError('');
+    setApplyingCode(code || String(voucherId ?? '')); setVoucherError('');
     try {
-      const nextInput = { ...input, voucher_code: code || null };
+      const nextInput = { ...input, voucher_code: code || null, voucher_id: voucherId };
       await client.fetchQuery({ queryKey: keyFor(nextInput), queryFn: () => getRideEstimate({ ...nextInput, routeQuoteId: estimate.data?.route?.id }), staleTime: 0 });
-      draft.setVoucher(code); setVoucherVisible(false);
+      draft.setVoucher(code, voucherId); setVoucherVisible(false);
     } catch (cause) { setVoucherError(friendlyPriceError(cause) || 'Ưu đãi chưa thể áp dụng cho chuyến này.'); }
     finally { setApplyingCode(null); }
   };

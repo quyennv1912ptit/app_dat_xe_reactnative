@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
-    "@datxe/shared": "*",
-    "@datxe/ui": "*",
+    "@datxe/shared": "workspace:*",
+    "@datxe/ui": "workspace:*",
     "@expo/ui": "~58.0.22",
     "@expo/vector-icons": "^15.1.1",
     "@gorhom/bottom-sheet": "^5.2.14",

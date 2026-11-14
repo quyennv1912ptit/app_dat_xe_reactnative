@@ -100,6 +100,8 @@ const messages: Readonly<Record<string, NotificationText>> = {
     title: "Tin nhắn đã được đọc",
     description: "Tin nhắn của bạn đã được người nhận đọc.",
   },
+  VOUCHER_CAMPAIGN: { title: "Ưu đãi mới dành cho bạn", description: "Có chiến dịch voucher mới. Mở mục Voucher để xem và nhận ưu đãi." },
+  VOUCHER_GRANTED: { title: "Bạn vừa nhận được voucher", description: "Voucher đã được thêm vào Ưu đãi của tôi." },
   DEFAULT: {
     title: "Thông báo mới",
     description: "Bạn có thông báo mới từ hệ thống.",
@@ -160,6 +162,10 @@ export function getNotificationText(
   if (code === 'PAYMENT_UPDATED') return {
     title: t(typeof payload.title === 'string' ? payload.title : 'Cập nhật thanh toán'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Phương thức hoặc trạng thái thanh toán đã thay đổi. Vui lòng kiểm tra hóa đơn.'),
+  };
+  if (code === 'VOUCHER_CAMPAIGN') return {
+    title: t(typeof payload.title === 'string' ? payload.title : 'Ưu đãi mới dành cho bạn'),
+    description: t(typeof payload.body === 'string' ? payload.body : 'Mở mục Voucher để xem và nhận ưu đãi.'),
   };
   if (code === 'WITHDRAWAL_REVIEWED') return {
     title: t(typeof payload.title === 'string' ? payload.title : status === 'SUCCESS' ? 'Rút tiền thành công' : 'Yêu cầu rút tiền bị từ chối'),

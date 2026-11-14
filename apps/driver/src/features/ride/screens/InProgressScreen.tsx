@@ -117,8 +117,9 @@ export default function InProgressRideScreen() {
               <Divider style={{ backgroundColor: colors.outlineVariant }} />
               <View style={styles.routeSummary}>
                 <View style={styles.fare}>
-                  <Text style={themed_s.label}>Cước dự kiến</Text>
-                  <Text style={styles.fareAmount}>{formatMoney(ride.estimatedFare)}</Text>
+                  <Text style={themed_s.label}>Thu nhập thực nhận</Text>
+<Text style={styles.fareAmount}>{formatMoney(ride.driverEarnings?.netAmount ?? ride.driverExpectedEarning ?? Math.floor(ride.estimatedFare * 0.8))}</Text>
+<Text style={themed_s.label}>Khách thanh toán: {formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare)}</Text>
                 </View>
                 {ride.route ? (
                   <Text style={[themed_s.metric, styles.routeMetrics]}>

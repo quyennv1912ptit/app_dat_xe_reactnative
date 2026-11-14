@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ComponentRef, type ComponentType } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ComponentType } from "react";
 import { Platform, TextInput, type TextInputProps } from "react-native";
 
 export type DraftTextInputProps = TextInputProps & {
@@ -8,9 +8,9 @@ export type DraftTextInputProps = TextInputProps & {
   inputComponent?: ComponentType<ComponentPropsWithRef<typeof TextInput>>;
 };
 
-export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, DraftTextInputProps>(
+export const NativeDraftTextInput = forwardRef<any, DraftTextInputProps>(
   function NativeDraftTextInput({ draftValue, defaultValue, onChangeText, inputComponent: Input = TextInput, ...props }, ref) {
-    const input = useRef<ComponentRef<typeof TextInput>>(null);
+    const input = useRef<any>(null);
     const [initial] = useState(() => draftValue ?? defaultValue);
     const nativeText = useRef(initial);
     useImperativeHandle(ref, () => input.current!, []);
@@ -30,7 +30,7 @@ export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, D
     return (
       <Input
         {...props}
-        ref={input}
+        ref={input as any}
         defaultValue={initial}
         onChangeText={(text) => {
           nativeText.current = text;

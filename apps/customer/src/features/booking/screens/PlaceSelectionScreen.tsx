@@ -13,7 +13,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
-import { useRef, useState, type ComponentRef } from "react";
+import { useState } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   KeyboardAvoidingView,
@@ -29,7 +29,6 @@ import type { PlaceKind } from "../types";
 
 export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
   const extra = useThemedStyles(extraStyles);
-  const searchInput = useRef<ComponentRef<typeof TextInput>>(null);
 
   useLanguage();
 
@@ -77,7 +76,6 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
               accessibilityLabel={i18nT(
                 isPickup ? "Tìm điểm đón" : "Tìm điểm đến",
               )}
-              ref={searchInput}
               key={searchPreset.revision}
               defaultValue={searchPreset.text}
               onChangeText={h.onChangeText}
@@ -91,7 +89,7 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
                 accessibilityLabel={i18nT("Xóa tìm kiếm")}
                 accessibilityRole="button"
                 style={[customerType.target, extra.clear]}
-                onPress={() => { searchInput.current?.clear(); h.clearText(); }}
+                onPress={h.clearText}
               >
                 <MaterialIcons name="cancel" size={20} color={colors.outline} />
               </Pressable>

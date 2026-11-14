@@ -44,6 +44,10 @@ const markAll = async () => {
 const openNotification = async (item: CustomerNotification) => {
     await markRead(item);
     const payload = item.payload && typeof item.payload === 'object' ? item.payload as Record<string, unknown> : {};
+    if (item.type.toUpperCase() === 'VOUCHER_CAMPAIGN' || item.type.toUpperCase() === 'VOUCHER_GRANTED') {
+      router.push('/vouchers');
+      return;
+    }
     const rawRideId = payload.rideId ?? payload.ride_id;
     const rideId = typeof rawRideId === 'number' ? rawRideId : typeof rawRideId === 'string' ? Number(rawRideId) : NaN;
     if (Number.isSafeInteger(rideId) && rideId > 0) {

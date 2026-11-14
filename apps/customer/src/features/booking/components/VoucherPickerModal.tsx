@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import { money, voucherUnavailable } from "../bookingUtils";
+import { getVoucherPresentation } from "../../vouchers/components/CustomerVouchersScreenParts";
 import { bookingStyles as base_s } from "./bookingStyles";
 type Props = {
   visible: boolean;
@@ -23,9 +24,10 @@ type Props = {
   error?: string;
   applyError: string;
   selectedCode: string;
+  selectedVoucherId?: number | null;
   applyingCode: string | null;
   subtotal?: number;
-  onApply: (code: string) => void;
+  onApply: (code: string, voucherId?: number | null) => void;
   onRetry: () => void;
 };
 export function VoucherPickerModal(p: Props) {
@@ -129,15 +131,15 @@ export function VoucherPickerModal(p: Props) {
                 <Pressable
                   key={voucher.id}
                   disabled={Boolean(reason) || p.applyingCode !== null}
-                  onPress={() => p.onApply(voucher.code)}
+              onPress={() => p.onApply(voucher.code ?? "", voucher.code ? null : voucher.id)}
                   accessibilityRole="radio"
                   accessibilityState={{
-                    selected: p.selectedCode === voucher.code,
+                    selected: voucher.code ? p.selectedCode === voucher.code : p.selectedVoucherId === voucher.id,
                     disabled: Boolean(reason),
                   }}
                   style={[
                     s.card,
-                    p.selectedCode === voucher.code && s.selected,
+                    (voucher.code ? p.selectedCode === voucher.code : p.selectedVoucherId === voucher.id) && s.selected,
                     reason ? extra.item5 : null,
                   ]}
                 >
@@ -158,7 +160,7 @@ export function VoucherPickerModal(p: Props) {
                         )}
                       </Text>
                       <Text style={s.muted}>
-                        {i18nT(voucher.code)}
+                        {(() => { const info = getVoucherPresentation(voucher); return `${info.title} (${info.badge})`; })()}
                         {i18nT(
                           voucher.maxDiscount !== null
                             ? i18nT(" · Tối đa {0}", {
@@ -168,12 +170,12 @@ export function VoucherPickerModal(p: Props) {
                         )}
                       </Text>
                     </View>
-                    {p.applyingCode === voucher.code ? (
+                    {p.applyingCode === (voucher.code ?? String(voucher.id)) ? (
                       <ActivityIndicator />
                     ) : (
                       <MaterialIcons
                         name={
-                          p.selectedCode === voucher.code
+                          (voucher.code ? p.selectedCode === voucher.code : p.selectedVoucherId === voucher.id)
                             ? "radio-button-checked"
                             : "radio-button-unchecked"
                         }

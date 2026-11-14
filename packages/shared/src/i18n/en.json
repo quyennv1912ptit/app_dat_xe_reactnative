@@ -987,6 +987,8 @@
   "Đang xử lý…": "Processing…",
   "Nhận chuyến": "Accept ride",
   "Chưa xác định được địa chỉ. Vui lòng thử lại.": "Address unavailable. Please try again.",
+  "Vị trí đã ghim": "Pinned location",
+  "Tọa độ": "Coordinates",
   "Tọa độ không hợp lệ. Vui lòng chọn lại vị trí.": "Invalid coordinates. Please choose the location again.",
   "Đang lấy vị trí…": "Getting location…",
   "{0} giây": "{0} seconds",
@@ -1034,5 +1036,6 @@
   "Thử tải lại": "Retry loading",
   "Không tìm thấy chuyến đi.": "Trip not found.",
   "Quãng đường và thời gian dự kiến": "Estimated distance and duration",
-  "Bằng việc tiếp tục, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật.": "By continuing, you agree to the Terms of Service and Privacy Policy."
+  "Bằng việc tiếp tục, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật.": "By continuing, you agree to the Terms of Service and Privacy Policy.",
+  "Voucher cá nhân": "Personal offer"
 }

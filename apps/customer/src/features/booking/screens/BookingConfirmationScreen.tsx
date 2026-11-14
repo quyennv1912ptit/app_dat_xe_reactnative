@@ -275,9 +275,10 @@ export default function BookingConfirmationScreen() {
         error={h.vouchersError}
         applyError={h.voucherError}
         selectedCode={h.draft.voucherCode}
+        selectedVoucherId={h.draft.voucherId}
         applyingCode={h.applyingCode}
         subtotal={h.estimate?.estimatedFare}
-        onApply={(code) => void h.applyVoucher(code)}
+        onApply={(code, voucherId) => void h.applyVoucher(code, voucherId)}
         onRetry={() => void h.retryVouchers()}
       />
       <SchedulePickerModal

@@ -96,7 +96,7 @@ export default function CompleteRideScreen() {
                 <Text style={themed_s.label}>
                   {ride.finalFare === null ? "Cước khách trả dự kiến" : "Cước chuyến đi"}
                 </Text>
-                <Text style={styles.price}>{formatMoney(ride.finalFare ?? ride.estimatedFare)}</Text>
+                <Text style={styles.price}>{formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare)}</Text>
               </View>
               {ride.distanceKm !== null ? (
                 <Text style={[themed_s.label, styles.distance]}>{formatDistance(ride.distanceKm)}</Text>

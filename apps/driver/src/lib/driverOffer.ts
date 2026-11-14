@@ -21,7 +21,7 @@ export type DriverOffer = {
   estDurationMin: number;
   fareEstimate: number;
   driverEarning: number;
-  customer: { displayName: string };
+  customer: { displayName: string; rating?: number | null };
   vehicle: { type: string; transmission: string };
 };
 
