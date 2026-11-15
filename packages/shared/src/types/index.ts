@@ -97,6 +97,9 @@ export type CustomerRideDetail = {
     actorId: number | null;
     note: string | null;
     createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
     actorRole: RideActorRole | null;
   }>;
   handoverReports: Array<{
@@ -114,10 +117,19 @@ export type CustomerRideDetail = {
       angle: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT' | 'DASHBOARD';
       fileUrl: string;
       createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
     }>;
     createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   }>;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   updatedAt: string;
   acceptedAt: string | null;
   startedAt: string | null;
@@ -149,6 +161,9 @@ export type CustomerRideSummary = {
   driverExpectedEarning?: number;
   scheduledAt: string | null;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
 };
 
 export type RideCoordinates = { lat: number; lng: number };
@@ -202,6 +217,9 @@ export type CreateCustomerRideResponse = {
   discountAmount: number;
   payableFare: number;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
 };
 export type CustomerNotification = {
   id: number;
@@ -209,6 +227,9 @@ export type CustomerNotification = {
   type: string;
   payload: unknown;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   readAt: string | null;
 };
 
@@ -277,6 +298,9 @@ export type CustomerChatMessage = {
   content: string | null;
   attachmentUrl: string | null;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   readAt: string | null;
 };
 

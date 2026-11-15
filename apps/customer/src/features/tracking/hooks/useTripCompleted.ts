@@ -1,41 +1,95 @@
 import { localizedAlert } from '@datxe/ui';
 import { AuthApiError, translate as i18nT } from '@datxe/shared';
-import { useLocalSearchParams,useRouter } from 'expo-router';
-import { useState } from 'react';
-import { rateCustomerRide } from '../api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { getMyCustomerRideRating, rateCustomerRide } from '../api';
 import { useRideQuery } from './useRideQuery';
+
 export function useTripCompleted() {
-const router = useRouter();
-const params = useLocalSearchParams<{ rideId?: string }>();
-const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
-const query = useRideQuery(rideId);
-const ride = query.data;
-const [stars, setStars] = useState(5);
-const [comment, setComment] = useState('');
-const [saving, setSaving] = useState(false);
-const valid = Number.isSafeInteger(rideId) && rideId > 0;
-const refresh = query.refetch;
-const error = !valid ? i18nT("Không có mã chuyến để tải hóa đơn và gửi đánh giá.") : query.error?.message ?? (query.isSuccess && !ride ? i18nT("Không tìm thấy chuyến đi.") : '');
-const finish = async (skipRating = false) => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ rideId?: string }>();
+  const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
+  const query = useRideQuery(rideId);
+  const ride = query.data;
+  const valid = Number.isSafeInteger(rideId) && rideId > 0;
+
+  const existingRatingQuery = useQuery({
+    queryKey: ['customer', 'ride', rideId, 'my-rating'],
+    queryFn: () => getMyCustomerRideRating(rideId),
+    enabled: valid,
+    retry: false,
+  });
+
+  const existingRating = existingRatingQuery.data;
+  const alreadyRated = Boolean(existingRating || ride?.hasRated);
+
+  const [stars, setStars] = useState(5);
+  const [comment, setComment] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (existingRating) {
+      setStars(existingRating.stars);
+      setComment(existingRating.comment ?? '');
+    } else if (ride?.hasRated && ride.myRatingStars) {
+      setStars(ride.myRatingStars);
+      setComment(ride.myRatingComment ?? '');
+    }
+  }, [existingRating, ride?.hasRated, ride?.myRatingStars, ride?.myRatingComment]);
+
+  const refresh = async () => {
+    await Promise.all([query.refetch(), existingRatingQuery.refetch()]);
+  };
+
+  const error = !valid
+    ? i18nT("Không có mã chuyến để tải hóa đơn và gửi đánh giá.")
+    : query.error?.message ?? (query.isSuccess && !ride ? i18nT("Không tìm thấy chuyến đi.") : '');
+
+  const finish = async (skipRating = false) => {
     if (saving) return;
-    if (!rideId) {
-      if (skipRating) router.replace('/(tabs)/home');
+    if (!rideId || skipRating || alreadyRated) {
+      router.replace('/(tabs)/home');
       return;
     }
     setSaving(true);
     try {
-      if (!skipRating) await rateCustomerRide(rideId, { stars, comment: comment.trim() || null, tags: null, tip: 0 });
+      await rateCustomerRide(rideId, { stars, comment: comment.trim() || null, tags: null, tip: 0 });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['customer', 'ride', rideId] }),
+        queryClient.invalidateQueries({ queryKey: ['customer', 'ride', rideId, 'my-rating'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer', 'rides'] }),
+      ]);
+      localizedAlert(i18nT("Cảm ơn bạn!"), i18nT("Đánh giá ẩn danh của bạn đã được ghi nhận."));
       router.replace('/(tabs)/home');
     } catch (err) {
       if (err instanceof AuthApiError && err.code === 'RATING_ALREADY_EXISTS') {
-        localizedAlert(i18nT("Đánh giá chuyến đi"), err.message);
-        router.replace('/(tabs)/home');
+        await existingRatingQuery.refetch();
+        localizedAlert(i18nT("Đánh giá chuyến đi"), i18nT("Bạn đã đánh giá chuyến đi này rồi."));
         return;
       }
-      localizedAlert(i18nT("Chưa gửi được đánh giá"), err instanceof Error ? err.message : i18nT("Vui lòng thử lại."));
+      localizedAlert(
+        i18nT("Chưa gửi được đánh giá"),
+        err instanceof Error ? err.message : i18nT("Vui lòng thử lại."),
+      );
     } finally {
       setSaving(false);
     }
   };
-return { router, ride, stars, setStars, comment, setComment, saving, error, refresh, finish };
+
+  return {
+    router,
+    ride,
+    stars,
+    setStars,
+    comment,
+    setComment,
+    saving,
+    alreadyRated,
+    checkingRating: existingRatingQuery.isLoading,
+    error,
+    refresh,
+    finish,
+  };
 }
