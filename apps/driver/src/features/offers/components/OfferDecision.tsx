@@ -71,7 +71,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
         <View style={styles.earnings}>
           <Text style={styles.caption}>Thu nhập dự kiến</Text>
           {validEstimate(earning) ? (
-            <Text accessibilityRole="header" style={styles.amount}>{formatMoney(earning)}</Text>
+            <Text accessibilityRole="header" style={styles.amount}>{formatMoney(roundedEarning)}</Text>
           ) : <Text style={styles.summary}>Chưa có thông tin</Text>}
         </View>
         <View style={styles.badge}>
