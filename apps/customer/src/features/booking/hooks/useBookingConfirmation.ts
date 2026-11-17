@@ -10,6 +10,7 @@ import { useRef, useState } from 'react';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
 import { activeRideDestination, estimateRequest, type SchedulePickerSession } from '../bookingUtils';
 import { useBookingDraft } from '../store';
+import { getVoucherPresentation } from "@/lib/voucherPresentation";
 
 function friendlyPriceError(error: unknown): string {
   if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return i18nT("Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.");
@@ -45,6 +46,19 @@ export function useBookingConfirmation() {
   const keyFor = (request: ReturnType<typeof estimateRequest>) => ['customer', 'bookingEstimate', request] as const;
   const estimate = useQuery({ queryKey: input ? keyFor(input) : ['customer', 'bookingEstimate', 'incomplete'], queryFn: () => getRideEstimate(input!), enabled: Boolean(input && vehicle && !active.data), staleTime: 15000, retry: false });
   const vouchers = useQuery({ queryKey: ['customer', 'getCustomerVouchers'], queryFn: getCustomerVouchers, enabled: voucherVisible || Boolean(draft.voucherCode || draft.voucherId) });
+  const campaigns = useQuery({ queryKey: ['customer', 'voucherCampaigns'], queryFn: customerApi.getVoucherCampaigns, enabled: voucherVisible });
+  const claim = useMutation({
+    mutationFn: customerApi.claimVoucherCampaign,
+    onSuccess: async (claimed) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
+        client.invalidateQueries({ queryKey: ['customer', 'voucherCampaigns'] }),
+      ]);
+      const info = getVoucherPresentation(claimed);
+      localizedAlert(i18nT('Đã nhận voucher {0}', { '0': info.title }), i18nT('{0} · Đã thêm vào danh sách ưu đãi của bạn.', { '0': info.badge }));
+    },
+    onError: (err) => localizedAlert(i18nT('Không nhận được voucher'), err instanceof Error ? err.message : i18nT('Ưu đãi có thể đã hết lượt hoặc ngân sách.')),
+  });
   const selectedVoucher = vouchers.data?.find(item => draft.voucherId ? item.id === draft.voucherId : item.code === draft.voucherCode);
   const error = requestError || friendlyPriceError(estimate.error) || vehicles.error?.message || active.error?.message || '';
   const walletReady = paymentMethod === 'CASH' || Boolean(wallet.isSuccess && !wallet.isError && !wallet.isFetching && balance !== undefined && estimate.data && balance >= estimate.data.payableFare);
@@ -124,5 +138,5 @@ export function useBookingConfirmation() {
     setScheduledAt(slot);
     closeSchedule();
   };
-  return { router, paymentMethod, setPaymentMethod, walletBalance: balance, paymentError, retryWallet: wallet.refetch, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, scheduleVisible, schedulePicker, openSchedule, closeSchedule, selectSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
+  return { router, paymentMethod, setPaymentMethod, walletBalance: balance, paymentError, retryWallet: wallet.refetch, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, note, setNote, scheduledAt, scheduleVisible, schedulePicker, openSchedule, closeSchedule, selectSchedule, voucherVisible, setVoucherVisible, voucherError, applyingCode, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending, campaigns: campaigns.data ?? [], campaignsLoading: campaigns.isLoading, campaignsError: campaigns.error?.message, retryCampaigns: campaigns.refetch, claimVoucher: claim.mutate, claimingCampaignId: claim.isPending ? (claim.variables ?? null) : null };
 }

@@ -83,7 +83,7 @@ export function HistoryRideListItem({
         {ride.status !== "CANCELLED" || ride.finalFare != null ? (
           <View style={styles.fareCopy}>
             <Text style={styles.meta}>{i18nT(ride.finalFare == null ? "Giá dự kiến" : "Cước chuyến đi")}</Text>
-            <Text style={styles.fare}>{i18nT(money(ride.finalFare ?? ride.estimatedFare))}</Text>
+            <Text style={styles.fare}>{i18nT(money(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare))}</Text>
           </View>
         ) : <View style={styles.fareCopy} />}
         <MaterialIcons

@@ -10,6 +10,7 @@ export type DriverOffer = {
   expiresAt: number;
   serverTime: number;
   clientExpiresAt: number;
+  scheduledAt?: string | null;
   pickup: OfferStop;
   dropoff: OfferStop;
   pickupNote?: string | null;

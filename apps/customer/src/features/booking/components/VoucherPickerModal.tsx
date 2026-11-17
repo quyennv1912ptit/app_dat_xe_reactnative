@@ -1,5 +1,5 @@
 import { ActivityIndicator } from "react-native-paper";
-import type { CustomerVoucher } from "@datxe/shared";
+import type { CustomerVoucher, CustomerVoucherCampaign } from "@datxe/shared";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
@@ -13,7 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
-import { money, voucherUnavailable } from "../bookingUtils";
+import { campaignClaimBlocked, money, voucherUnavailable } from "../bookingUtils";
 import { getVoucherPresentation } from "@/lib/voucherPresentation";
 import { bookingStyles as base_s } from "./bookingStyles";
 type Props = {
@@ -29,6 +29,12 @@ type Props = {
   subtotal?: number;
   onApply: (code: string, voucherId?: number | null) => void;
   onRetry: () => void;
+  campaigns: CustomerVoucherCampaign[];
+  campaignsLoading: boolean;
+  campaignsError?: string;
+  retryCampaigns: () => void;
+  claimVoucher: (campaignId: number) => void;
+  claimingCampaignId: number | null;
 };
 export function VoucherPickerModal(p: Props) {
   const extra = useThemedStyles(extraStyles);
@@ -38,6 +44,13 @@ export function VoucherPickerModal(p: Props) {
   const colors = useThemeColors();
 
   const s = useThemedStyles(base_s);
+
+  const claimedCodes = new Set(
+    p.vouchers.map((voucher) => voucher.campaignCode).filter(Boolean) as string[],
+  );
+  const claimable = p.campaigns.filter(
+    (campaign) => !claimedCodes.has(campaign.code) && campaignClaimBlocked(campaign) === null,
+  );
 
   return (
     <Modal
@@ -101,6 +114,68 @@ export function VoucherPickerModal(p: Props) {
               <Text style={[s.text, s.flex]}>{i18nT("Không dùng ưu đãi")}</Text>
               {p.applyingCode === "" ? <ActivityIndicator /> : null}
             </Pressable>
+            {p.campaignsLoading ? <ActivityIndicator color={colors.primary} /> : null}
+            {p.campaignsError ? (
+              <View style={s.errorBox}>
+                <Text style={s.error}>{i18nT(p.campaignsError)}</Text>
+                <Pressable onPress={p.retryCampaigns}>
+                  <Text style={s.link}>{i18nT("Tải lại ưu đãi")}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            {claimable.length ? (
+              <Text style={s.section}>{i18nT("Ưu đãi đang mở")}</Text>
+            ) : null}
+            {claimable.map((campaign) => {
+              const claiming = p.claimingCampaignId === campaign.id;
+              return (
+                <View key={campaign.id} style={s.card}>
+                  <View style={s.row}>
+                    <View style={[s.icon, extra.item6]}>
+                      <MaterialIcons
+                        name="campaign"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={s.flex}>
+                      <Text style={s.section}>
+                        {campaign.campaignTitle?.trim() || campaign.code}
+                      </Text>
+                      <Text style={s.muted}>
+                        {campaign.discountType === "PERCENT"
+                          ? i18nT("Giảm {0}%", { "0": campaign.value })
+                          : i18nT("Giảm {0}", { "0": money(campaign.value) })}
+                        {campaign.maxDiscount !== null
+                          ? i18nT(" · Tối đa {0}", {
+                              "0": money(campaign.maxDiscount),
+                            })
+                          : ""}
+                      </Text>
+                      <Text style={s.muted}>
+                        {i18nT("Chuyến từ")} {money(campaign.minimumOrderAmount)}{" "}
+                        {i18nT("· Hết hạn")}{" "}
+                        {new Date(campaign.validTo).toLocaleDateString(getLocale())}
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={i18nT("Nhận")}
+                      disabled={claiming}
+                      onPress={() => p.claimVoucher(campaign.id)}
+                      hitSlop={8}
+                      style={extra.claimButton}
+                    >
+                      {claiming ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Text style={s.link}>{i18nT("Nhận")}</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
             {p.loading ? <ActivityIndicator color={colors.primary} /> : null}
             {p.error ? (
               <View style={s.errorBox}>
@@ -110,7 +185,7 @@ export function VoucherPickerModal(p: Props) {
                 </Pressable>
               </View>
             ) : null}
-            {!p.loading && !p.error && !p.vouchers.length ? (
+            {!p.loading && !p.error && !p.campaignsLoading && !p.campaignsError && !p.vouchers.length && !claimable.length ? (
               <View style={s.empty}>
                 <MaterialIcons
                   name="local-offer"
@@ -219,4 +294,10 @@ const extraStyles = (colors: ThemeColors) =>
     item4: { gap: 12, paddingBottom: 12 },
     item5: { opacity: 0.5 },
     item6: { backgroundColor: colors.primarySoft },
+    claimButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.primarySoft,
+    },
   });

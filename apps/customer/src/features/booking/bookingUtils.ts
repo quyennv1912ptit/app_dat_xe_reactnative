@@ -1,5 +1,5 @@
 import { translate as i18nT,getLocale } from '@datxe/shared';
-import type { CustomerRideDetail, CustomerVoucher, RideCoordinates, RideEstimate, RideEstimateRequest } from '@datxe/shared';
+import type { CustomerRideDetail, CustomerVoucher, CustomerVoucherCampaign, RideCoordinates, RideEstimate, RideEstimateRequest } from '@datxe/shared';
 import type { BookingPlace } from './types';
 
 export const DEFAULT_MAP_CENTER: RideCoordinates = { lat: 21.0285, lng: 105.8542 };
@@ -77,6 +77,12 @@ export function voucherUnavailable(voucher: CustomerVoucher, subtotal: number | 
   if (Date.parse(voucher.validTo) <= now) return i18nT("Ưu đãi đã hết hạn");
   if (voucher.usageLimit !== null && voucher.usageCount >= voucher.usageLimit) return i18nT("Đã hết lượt sử dụng");
   if (subtotal !== undefined && subtotal < voucher.minimumOrderAmount) return i18nT("Áp dụng từ {0}", {"0": money(voucher.minimumOrderAmount)});
+  return null;
+}
+export function campaignClaimBlocked(campaign: CustomerVoucherCampaign, now = Date.now()): string | null {
+  if (Date.parse(campaign.validTo) <= now) return i18nT("Ưu đãi đã hết hạn");
+  if (campaign.claimedCount >= campaign.claimLimit) return i18nT("Đã hết lượt nhận");
+  if (campaign.budgetRemaining <= 0) return i18nT("Đã hết ngân sách ưu đãi");
   return null;
 }
 export function minimumFareAdjustment(quote: RideEstimate): number {

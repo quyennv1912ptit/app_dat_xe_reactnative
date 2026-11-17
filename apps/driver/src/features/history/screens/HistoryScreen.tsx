@@ -66,7 +66,7 @@ export default function HistoryScreen() {
           {trips.map((trip) => {
             const pickup = trip.pickupAddress ?? "Chưa có địa chỉ";
             const dropoff = trip.dropoffAddress ?? "Chưa có địa chỉ";
-            const fare = formatMoney(trip.finalFare ?? trip.estimatedFare);
+            const fare = formatMoney(trip.finalFare ?? trip.payableFare ?? trip.estimatedFare);
             const date = new Date(trip.createdAt).toLocaleString("vi-VN");
             const statusText = statusLabel("ride", trip.status).label;
 

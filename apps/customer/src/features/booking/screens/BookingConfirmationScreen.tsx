@@ -288,6 +288,12 @@ export default function BookingConfirmationScreen() {
         subtotal={h.estimate?.estimatedFare}
         onApply={(code, voucherId) => void h.applyVoucher(code, voucherId)}
         onRetry={() => void h.retryVouchers()}
+        campaigns={h.campaigns}
+        campaignsLoading={h.campaignsLoading}
+        campaignsError={h.campaignsError}
+        retryCampaigns={() => void h.retryCampaigns()}
+        claimVoucher={(id) => void h.claimVoucher(id)}
+        claimingCampaignId={h.claimingCampaignId}
       />
       <SchedulePickerModal
         visible={h.scheduleVisible}

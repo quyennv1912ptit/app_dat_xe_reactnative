@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   collection: { alignItems: "center", gap: 2 },
   summary: { padding: 20, gap: 16 },
   summaryHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  price: { fontSize: 40, lineHeight: 49, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  price: { fontSize: 40, lineHeight: 53, fontWeight: "800", fontVariant: ["tabular-nums"] },
   primaryAction: { minHeight: 52, justifyContent: "center" },
   fareRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 16 },
   fareAmount: { flex: 1, gap: 4 },

@@ -1,3 +1,4 @@
+import { PendingPaymentMethod } from "./PendingPaymentMethod";
 import { getLocale, translate as t, type CustomerRideDetail } from "@datxe/shared";
 import { Card, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
 import { StyleSheet, View } from "react-native";
@@ -14,11 +15,12 @@ export function CustomerPaymentSummary({ ride }: { ride: CustomerRideDetail }) {
   useLanguage();
   const c = useThemeColors();
   const payment = ride.payment;
+  const method = payment?.method ?? ride.paymentMethod;
   const discount = ride.discountAmount ?? 0;
   const cash = payment?.method === "CASH";
   const pendingCash = cash && payment.status === "PENDING" && ride.status === "COMPLETED";
   const paidCash = cash && payment.status === "PAID";
-  const amount = payment?.amount ?? ride.finalFare ?? ride.estimatedFare;
+  const amount = payment?.amount ?? ride.finalFare ?? ride.payableFare ?? ride.estimatedFare;
   const label = pendingCash ? "Tiền mặt cần trả" : paidCash ? "Tiền mặt đã thanh toán"
     : payment ? "Khoản thanh toán" : ride.finalFare != null ? "Cước chuyến đi" : "Giá dự kiến";
   const tone = payment?.status === "PAID" ? { backgroundColor: c.successContainer, color: c.onSuccessContainer }
@@ -32,13 +34,15 @@ export function CustomerPaymentSummary({ ride }: { ride: CustomerRideDetail }) {
         {payment ? <Text style={[customerType.meta, styles.badge, tone]}>{t(paymentLabels[payment.status] ?? "Đang cập nhật trạng thái")}</Text> : null}
       </View>
       <MoneyText value={amount} />
+      {method ? <Text style={customerType.meta}>{t(method === "WALLET" ? "Ví ứng dụng" : method === "CASH" ? "Tiền mặt" : "Phương thức thanh toán khác")}</Text> : null}
       {pendingCash ? <Text style={customerType.address}>{t("Thanh toán cho tài xế khi kết thúc chuyến")}</Text> : null}
       {payment?.paidAt ? (
         <Text style={[customerType.meta, { color: c.onSurfaceVariant }]}>{new Date(payment.paidAt).toLocaleString(getLocale())}</Text>
       ) : null}
+      <PendingPaymentMethod ride={ride} />
       {discount > 0 ? (
         <Text style={[customerType.meta, customerType.numbers, { color: c.onSurfaceVariant }]}>
-          {t("Giảm giá")} · {t("{0} đ", { "0": discount.toLocaleString(getLocale()) })}
+          {t("Giảm giá")} · {t("{0} đ", { "0": discount.toLocaleString(getLocale(), { maximumFractionDigits: 0 }) })}
         </Text>
       ) : null}
     </Card>

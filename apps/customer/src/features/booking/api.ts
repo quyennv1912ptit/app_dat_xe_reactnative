@@ -23,9 +23,22 @@ export async function resolveBookingPlace(suggestion: PlaceSuggestion, signal?: 
 
 export async function reverseBookingPlace(point: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace> {
   const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
-  const place = (await request<BookingPlace>(`/location/places/reverse?${query.toString()}`, { signal }))!;
-  // Preserve the exact pin, not the geocoder's snapped feature center.
-  return { ...place, id: `pin:${point.lng},${point.lat}`, coordinate: point };
+  try {
+    const place = (await request<BookingPlace>(`/location/places/reverse?${query.toString()}`, { signal }))!;
+    // Preserve the exact pin, not the geocoder's snapped feature center.
+    return { ...place, id: `pin:${point.lng},${point.lat}`, coordinate: point };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    // Reverse geocoding is optional for a dropped pin; coordinates still identify the test location.
+    const coordinates = `${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`;
+    return {
+      id: `pin:${point.lng},${point.lat}`,
+      name: i18nT('Vị trí đã ghim'),
+      address: `${i18nT('Tọa độ')}: ${coordinates}`,
+      provider: 'goong',
+      coordinate: point,
+    };
+  }
 }
 
 export { getBookingRoute } from '@/lib/directions';
