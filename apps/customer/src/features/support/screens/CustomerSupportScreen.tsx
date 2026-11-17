@@ -31,7 +31,6 @@ function CustomerHelp() {
             pickImage={pickSupportImage}
             onRefresh={() => void support.retry()}
             onOpenSafety={() => router.push({ pathname: "/support", params: { topic: "safety", rideId } })}
-            onOpenTickets={() => router.push("/tickets")}
             onOpenRide={(id) => router.push({ pathname: "/ride/[id]", params: { id: String(id), returnTo: "home" } })}
           />
           <Button variant="secondary" label="Mở lịch sử chuyến đi" onPress={() => router.push("/(tabs)/history")} />

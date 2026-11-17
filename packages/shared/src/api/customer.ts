@@ -1,4 +1,4 @@
-import type { CustomerProfile,CustomerProfileUpdate,CustomerRideDetail,CustomerRidePage,CustomerVehicle,CustomerVoucher,RideStatusResponse } from '../types';
+import type { CustomerProfile,CustomerProfileUpdate,CustomerRideDetail,CustomerRidePage,CustomerVehicle,CustomerVoucher,CustomerVoucherCampaign,RideStatusResponse } from '../types';
 import type { createApiClient } from './client';
 export function createCustomerApi(request: ReturnType<typeof createApiClient>) {
 async function getCustomerProfile(): Promise<CustomerProfile> {
@@ -16,6 +16,14 @@ async function updateCustomerProfile(
 
 async function getCustomerVouchers(): Promise<CustomerVoucher[]> {
   return (await request<CustomerVoucher[]>('/customer/vouchers')) as CustomerVoucher[];
+}
+
+async function getVoucherCampaigns(): Promise<CustomerVoucherCampaign[]> {
+  return (await request<CustomerVoucherCampaign[]>('/customer/vouchers/campaigns')) as CustomerVoucherCampaign[];
+}
+
+async function claimVoucherCampaign(id: number): Promise<CustomerVoucher> {
+  return (await request<CustomerVoucher>(`/customer/vouchers/campaigns/${id}/claim`, { method: 'POST' })) as CustomerVoucher;
 }
 
 async function cancelCustomerRide(id: number, reason?: string): Promise<RideStatusResponse> {
@@ -49,5 +57,5 @@ async function getUnreadNotificationCount(): Promise<number> {
 async function getCustomerVehicles(): Promise<CustomerVehicle[]> {
   return (await request<CustomerVehicle[]>('/customer/vehicles')) as CustomerVehicle[];
 }
-return {getCustomerProfile, updateCustomerProfile, getCustomerVouchers, cancelCustomerRide, getCustomerRide, getActiveCustomerRide, getCustomerRides, getUnreadNotificationCount, getCustomerVehicles};
+return {getCustomerProfile, updateCustomerProfile, getCustomerVouchers, getVoucherCampaigns, claimVoucherCampaign, cancelCustomerRide, getCustomerRide, getActiveCustomerRide, getCustomerRides, getUnreadNotificationCount, getCustomerVehicles};
 }

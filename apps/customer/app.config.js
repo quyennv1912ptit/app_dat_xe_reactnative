@@ -22,8 +22,7 @@ module.exports = ({ config }) => {
       'expo-build-properties',
       {
         android: { kotlinVersion: '2.4.0' },
-        // Firebase qua SPM yêu cầu dynamic linkage để tránh trùng symbol.
-        ios: { useFrameworks: 'dynamic' },
+        ios: { useFrameworks: process.env.USE_FRAMEWORKS ?? 'dynamic' },
       },
     ],
   ];
@@ -45,7 +44,7 @@ module.exports = ({ config }) => {
   }
 
   const googleServicesFile = path.join(__dirname, 'google-services.json');
-  const googleServiceInfoFile = path.join(__dirname, 'GoogleServiceCustomer-Info.plist');
+  const googleServiceInfoFile = path.join(__dirname, 'GoogleService-Info.plist');
 
   return {
     ...config,
@@ -56,7 +55,7 @@ module.exports = ({ config }) => {
     },
     ios: {
       ...config.ios,
-      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleServiceCustomer-Info.plist' } : {}),
+      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleService-Info.plist' } : {}),
     },
     plugins: process.env.CI_RELEASE === '1'
       ? [...plugins, '../../packages/config/plugins/with-release-signing']

@@ -100,6 +100,9 @@ const messages: Readonly<Record<string, NotificationText>> = {
     title: "Tin nhắn đã được đọc",
     description: "Tin nhắn của bạn đã được người nhận đọc.",
   },
+  VOUCHER_CAMPAIGN: { title: "Ưu đãi mới dành cho bạn", description: "Có chiến dịch voucher mới. Mở mục Voucher để xem và nhận ưu đãi." },
+  VOUCHER_GRANTED: { title: "Bạn vừa nhận được voucher", description: "Voucher đã được thêm vào Ưu đãi của tôi." },
+  RATING_RECEIVED: { title: "Bạn nhận được đánh giá mới", description: "Chạm để xem số sao và nhận xét ẩn danh." },
   DEFAULT: {
     title: "Thông báo mới",
     description: "Bạn có thông báo mới từ hệ thống.",
@@ -157,9 +160,28 @@ export function getNotificationText(
       : {};
   const code = identifier(type);
   const status = identifier(payload.status);
+    if (code === 'RATING_RECEIVED') {
+    const starsVal = typeof payload.stars === 'number' ? payload.stars : Number(payload.stars);
+    const starsLabel = Number.isFinite(starsVal) && starsVal > 0 ? ` (${starsVal}/5 sao)` : '';
+    const commentText = typeof payload.comment === 'string' && payload.comment.trim() ? payload.comment.trim() : '';
+    return {
+      title: t(typeof payload.title === 'string' ? payload.title : `Bạn nhận được đánh giá mới${starsLabel}`),
+      description: t(
+        typeof payload.body === 'string'
+          ? payload.body
+          : commentText
+            ? `Đánh giá ẩn danh${starsLabel}: "${commentText}"`
+            : `Chạm để xem chi tiết số sao và chú thích ẩn danh.`
+      ),
+    };
+  }
   if (code === 'PAYMENT_UPDATED') return {
     title: t(typeof payload.title === 'string' ? payload.title : 'Cập nhật thanh toán'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Phương thức hoặc trạng thái thanh toán đã thay đổi. Vui lòng kiểm tra hóa đơn.'),
+  };
+  if (code === 'VOUCHER_CAMPAIGN') return {
+    title: t(typeof payload.title === 'string' ? payload.title : 'Ưu đãi mới dành cho bạn'),
+    description: t(typeof payload.body === 'string' ? payload.body : 'Mở mục Voucher để xem và nhận ưu đãi.'),
   };
   if (code === 'WITHDRAWAL_REVIEWED') return {
     title: t(typeof payload.title === 'string' ? payload.title : status === 'SUCCESS' ? 'Rút tiền thành công' : 'Yêu cầu rút tiền bị từ chối'),

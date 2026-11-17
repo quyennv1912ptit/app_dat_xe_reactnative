@@ -9,10 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.datxe.customer",
+      "googleServicesFile": "./GoogleServiceCustomer-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleServiceCustomer-Info.plist"
+      }
     },
     "android": {
       "package": "com.datxe.customer",
@@ -23,8 +23,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#FF4752",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "googleServicesFile": "./google-services.json"
+      }
     },
     "web": {
       "output": "single",
@@ -51,6 +50,14 @@
         {
           "locationWhenInUsePermission": "Cho phép PtitGo dùng vị trí để chọn điểm đón và theo dõi chuyến đi."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
       ]
     ],
     "experiments": {
@@ -67,8 +74,9 @@
         }
       },
       "eas": {
-        "projectId": "e2bbaed7-3b76-4729-80ff-4791800a925d"
+        "projectId": "08bea57c-6510-4a87-8643-d5a1e96a52bd"
       }
-    }
+    },
+    "owner": "haidoan1s-team"
   }
 }

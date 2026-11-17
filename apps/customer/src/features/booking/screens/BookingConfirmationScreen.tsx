@@ -26,6 +26,7 @@ import { RouteSummary } from "../components/RouteSummary";
 import { SchedulePickerModal } from "../components/SchedulePickerModal";
 import { VoucherPickerModal } from "../components/VoucherPickerModal";
 import { useBookingConfirmation } from "../hooks/useBookingConfirmation";
+import { getVoucherPresentation } from "@/lib/voucherPresentation";
 // The sheet uses Gesture Handler's native TextInput. Its adapter forwards the
 // same editor used by the uncontrolled draft component, with an optional ref value.
 const SheetDraftInput = BottomSheetTextInput as unknown as NonNullable<ComponentProps<typeof TextInput>["inputComponent"]>;
@@ -41,6 +42,11 @@ export default function BookingConfirmationScreen() {
 
   const h = useBookingConfirmation();
   const pickupTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : i18nT("Đi ngay");
+  const hasVoucher = Boolean(h.draft.voucherCode || h.draft.voucherId != null);
+  const voucherTitle = h.selectedVoucher
+    ? getVoucherPresentation(h.selectedVoucher).title
+    : h.draft.voucherCode;
+  const discount = h.estimate?.discountAmount ?? 0;
   return (
     <>
       <MapSheetLayout
@@ -182,19 +188,21 @@ export default function BookingConfirmationScreen() {
               />
               <View style={s.flex}>
                 <Text style={[s.text, extra.item5]}>
-                  {i18nT(
-                    h.draft.voucherCode
-                      ? (h.selectedVoucher?.code ?? h.draft.voucherCode)
-                      : "Chọn ưu đãi",
-                  )}
+                  {i18nT(hasVoucher ? (voucherTitle || "Ưu đãi đã chọn") : "Chọn ưu đãi")}
                 </Text>
-                <Text style={s.muted}>
-                  {i18nT(
-                    h.draft.voucherCode
-                      ? "Nhấn để đổi hoặc bỏ ưu đãi"
-                      : "Xem ưu đãi dành cho chuyến đi này",
-                  )}
-                </Text>
+                {hasVoucher && discount > 0 ? (
+                  <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                    {i18nT("Giảm {0}", { "0": formatMoney(discount) })}
+                  </Text>
+                ) : (
+                  <Text style={s.muted}>
+                    {i18nT(
+                      hasVoucher
+                        ? "Nhấn để đổi hoặc bỏ ưu đãi"
+                        : "Xem ưu đãi dành cho chuyến đi này",
+                    )}
+                  </Text>
+                )}
               </View>
               <MaterialIcons
                 name="chevron-right"
@@ -275,9 +283,10 @@ export default function BookingConfirmationScreen() {
         error={h.vouchersError}
         applyError={h.voucherError}
         selectedCode={h.draft.voucherCode}
+        selectedVoucherId={h.draft.voucherId}
         applyingCode={h.applyingCode}
         subtotal={h.estimate?.estimatedFare}
-        onApply={(code) => void h.applyVoucher(code)}
+        onApply={(code, voucherId) => void h.applyVoucher(code, voucherId)}
         onRetry={() => void h.retryVouchers()}
       />
       <SchedulePickerModal

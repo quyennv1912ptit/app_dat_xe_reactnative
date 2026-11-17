@@ -85,6 +85,11 @@ export type CustomerRideDetail = {
   distanceKm: number | null;
   estimatedFare: number;
   finalFare: number | null;
+  payableFare?: number;
+  driverExpectedEarning?: number;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   status: RideStatus;
   cancelReason: string | null;
   cancelledBy: number | null;
@@ -143,8 +148,12 @@ export type CustomerRideSummary = {
   status: RideStatus;
   estimatedFare: number;
   finalFare: number | null;
+  discountAmount?: number;
+  payableFare?: number;
   scheduledAt: string | null;
   createdAt: string;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
 };
 
 export type RideCoordinates = { lat: number; lng: number };
@@ -168,6 +177,8 @@ export type RideEstimateRequest = {
   dropoffLng: number;
   scheduledAt?: string | null;
   voucher_code?: string | null;
+  voucher_id?: number | null;
+  paymentMethod?: PaymentMethod;
 };
 export type RideEstimate = {
   route?: SavedRideRoute | null;
@@ -231,7 +242,13 @@ export type CustomerVehicle = {
 
 export type CustomerVoucher = {
   id: number;
-  code: string;
+  code: string | null;
+  campaignCode?: string | null;
+  campaignTitle?: string | null;
+  description?: string | null;
+  milestone?: number;
+  claimSequence?: number | null;
+  campaignClaimLimit?: number | null;
   discountType: string;
   value: number;
   maxDiscount: number | null;
@@ -240,6 +257,24 @@ export type CustomerVoucher = {
   usageLimit: number | null;
   validFrom: string;
   validTo: string;
+  source?: string;
+};
+
+export type CustomerVoucherCampaign = {
+  id: number;
+  code: string;
+  campaignTitle?: string | null;
+  description: string;
+  discountType: string;
+  value: number;
+  maxDiscount: number | null;
+  minimumOrderAmount: number;
+  claimedCount: number;
+  claimLimit: number;
+  validFrom: string;
+  validTo: string;
+  budgetLimit: number;
+  budgetRemaining: number;
 };
 
 export type CustomerChatMessage = {

@@ -1,4 +1,3 @@
-import { useWalletOverview } from '@/lib/useWallet';
 import { ActivityIndicator, Divider, IconButton } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import {
@@ -11,7 +10,7 @@ import {
   getCustomerInitials,
 } from "@/lib/customerName";
 import { useTranslation } from "@/lib/settings/i18n";
-import { formatMoney, walletBalance, translate as i18nT, signOutFirebase } from "@datxe/shared";
+import { translate as i18nT, signOutFirebase } from "@datxe/shared";
 import type { ProfileScreenMenuItem } from "@datxe/ui";
 import {
   Card,
@@ -38,7 +37,6 @@ import {
 import { useProfile } from "../hooks/useProfile";
 export default function ProfileScreen() {
   useLanguage();
-  const wallet = useWalletOverview();
 
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
@@ -132,11 +130,6 @@ export default function ProfileScreen() {
           </Pressable>
         ) : null}
 
-        <GroupedList>
-          <SettingsListItem icon="account-balance-wallet" title="Ví của tôi"
-            description={walletBalance(wallet.data, 'CUSTOMER') === undefined ? wallet.isError ? 'Chưa tải được số dư · Chạm để kiểm tra' : 'Đang tải số dư…' : `Số dư ${formatMoney(walletBalance(wallet.data, 'CUSTOMER')!)}${wallet.isError ? ' · Chưa cập nhật được' : ''}`}
-            onPress={() => router.push('/wallet')} />
-        </GroupedList>
         <Card style={styles.identityCard}>
           <View style={styles.identityRow}>
             <Pressable

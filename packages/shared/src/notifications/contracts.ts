@@ -105,6 +105,18 @@ export async function resolvePushDestination(event: PushEnvelope, role: PushRole
       ? { pathname: '/tickets/[id]', params: { id: String(ticketId) } }
       : { pathname: '/(tabs)/notifications' };
   }
+    if (event.type === 'RATING_RECEIVED') {
+    const p = record(event.payload);
+    const id = positiveId(p.rideId ?? p.ride_id);
+    if (id) {
+      await api.ride(id);
+      const params: Record<string, string> = { rideId: String(id) };
+      if (p.stars != null) params.ratingStars = String(p.stars);
+      if (typeof p.comment === 'string' && p.comment.trim()) params.ratingComment = p.comment.trim();
+      if (Array.isArray(p.tags) && p.tags.length) params.ratingTags = p.tags.map(String).join(',');
+      return { pathname: role === 'DRIVER' ? '/ride/complete' : '/ride/completed', params };
+    }
+  }
   if (event.type === 'PAYMENT_UPDATED') {
     const id = positiveId(record(event.payload).rideId);
     if (id) {

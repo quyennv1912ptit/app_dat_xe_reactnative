@@ -4,6 +4,7 @@ import {
   type CustomerRideSummary,
 } from "@datxe/shared";
 import {
+  Button,
   MotionPressable as Pressable,
   Typography as Text,
   useLanguage,
@@ -21,15 +22,18 @@ import {
 export function HistoryRideListItem({
   ride,
   onPress,
+  onRate,
 }: {
   ride: CustomerRideSummary;
   onPress: () => void;
+  onRate: () => void;
 }) {
   useLanguage();
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
   return (
+    <>
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.ride}>
       <View style={styles.rideHeader}>
         <View style={styles.rideTitleRow}>
@@ -89,5 +93,22 @@ export function HistoryRideListItem({
         />
       </View>
     </Pressable>
+    {ride.status === "COMPLETED" ? (
+      ride.hasRated ? (
+        <Button
+          label={
+            ride.myRatingStars
+              ? `Đã đánh giá (${ride.myRatingStars}/5 sao)`
+              : "Đã đánh giá chuyến đi"
+          }
+          icon="check-circle"
+          variant="ghost"
+          onPress={onRate}
+        />
+      ) : (
+        <Button label="Đánh giá chuyến đi" icon="star" variant="secondary" onPress={onRate} />
+      )
+    ) : null}
+    </>
   );
 }

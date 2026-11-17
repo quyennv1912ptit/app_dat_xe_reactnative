@@ -54,6 +54,7 @@ export function WalletHistorySection({ items, loading, error, hasMore, loadingMo
   </View>;
 }
 
+const formatAmountInput = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 export function WalletMoneyForm({ mode, maxAmount, available, onSubmit, onDone }: {
   mode: 'topup' | 'withdraw'; maxAmount: number; available?: number;
   onSubmit: (amount: number, key: string) => Promise<unknown>; onDone: () => void;
@@ -85,7 +86,7 @@ export function WalletMoneyForm({ mode, maxAmount, available, onSubmit, onDone }
   return <Card style={s.card}>
     <Text style={typography.titleLg}>{mode === 'topup' ? 'Nạp tiền giả lập' : 'Tạo yêu cầu rút tiền'}</Text>
     <Text style={{ color: c.onSurfaceVariant }}>{mode === 'topup' ? 'Chế độ thử nghiệm, không thu tiền thật.' : 'Chỉ rút từ ví tiền mặt. Số tiền sẽ được giữ ngay khi gửi yêu cầu và chờ quản trị viên duyệt.'}</Text>
-    <PaperTextInput label="Số tiền (đ)" draftValue={amount} onChangeText={setAmount} keyboardType="number-pad" maxLength={15} disabled={busy} error={Boolean(amount && (value === null || exceeds))} />
+    <PaperTextInput label="Số tiền (đ)" draftValue={formatAmountInput(amount)} onChangeText={(text) => setAmount(text.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={15} disabled={busy} error={Boolean(amount && (value === null || exceeds))} />
     <View style={s.chips}>{[50000,100000,200000].filter(x => x <= maxAmount && (mode !== 'withdraw' || (available !== undefined && x <= available))).map(x => <Chip style={{ minHeight: 48, justifyContent: 'center' }} key={x} selected={value === x} disabled={busy} onPress={() => setAmount(String(x))}>{formatMoney(x)}</Chip>)}</View>
     <Text style={{ color: exceeds || (amount && value === null) ? c.error : c.onSurfaceVariant }}>{exceeds ? 'Số dư ví tiền mặt không đủ.' : mode === 'withdraw' ? `Số dư có thể rút: ${available === undefined ? 'Chưa xác định' : formatMoney(available)}. Nhập số nguyên đồng.` : `Nhập số nguyên từ 1 đến ${formatMoney(maxAmount)}.`}</Text>
     <Button label="Tiếp tục" disabled={value === null || exceeds || busy} onPress={() => { setError(''); setReview(true); }} />

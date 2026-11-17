@@ -63,7 +63,11 @@ export default function DriverProfileScreen() {
     >
       <Card style={themed_s.card}>
         <View style={layout.identity}>
-          <Avatar.Text size={48} label={initials} color={colors.onPrimaryContainer} style={{ backgroundColor: colors.primaryContainer }} />
+          {p.data?.avatar_url ? (
+            <Avatar.Image size={48} source={{ uri: p.data.avatar_url }} />
+          ) : (
+            <Avatar.Text size={48} label={initials} color={colors.onPrimaryContainer} style={{ backgroundColor: colors.primaryContainer }} />
+          )}
           <Text style={[themed_s.title, layout.name]}>{user?.fullName ?? "Tài xế"}</Text>
           <IconButton
             icon="pencil"

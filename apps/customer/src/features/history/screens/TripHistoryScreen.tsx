@@ -145,6 +145,7 @@ export default function TripHistoryScreen() {
               <HistoryRideListItem
                 key={ride.id}
                 ride={ride}
+                onRate={() => router.push({ pathname: "/ride/completed", params: { rideId: String(ride.id) } })}
                 onPress={() =>
                   router.push({
                     pathname: "/ride/[id]",

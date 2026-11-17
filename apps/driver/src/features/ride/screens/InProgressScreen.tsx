@@ -2,7 +2,6 @@ import { Appbar, Divider, ProgressBar } from "react-native-paper";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
 import { useSessionStore } from "@/lib/store";
-import { formatScheduledPickup } from "@/lib/scheduledPickup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CustomerRideDetail } from "@datxe/shared";
@@ -18,7 +17,6 @@ import {
   Card,
   PaperTextInput as TextInput,
   Typography as Text,
-  useLanguage,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
@@ -34,7 +32,6 @@ const phases: Partial<Record<CustomerRideDetail["status"], [number, string]>> = 
 };
 
 export default function InProgressRideScreen() {
-  useLanguage();
   const themed_s = useThemedStyles(s);
   const colors = useThemeColors();
 
@@ -47,7 +44,6 @@ export default function InProgressRideScreen() {
     isDropoff,
     waitingForCustomer,
   } = useInProgress();
-  const pickupTime = formatScheduledPickup(ride?.scheduledAt);
   const client = useQueryClient();
   const [confirmation, setConfirmation] = useState<{ rideId: number; userId: number } | null>(null);
   const [reason, setReason] = useState("");
@@ -112,13 +108,13 @@ export default function InProgressRideScreen() {
               <Text style={themed_s.label}>Chuyến #{ride.id}</Text>
               <StatusBadge kind="ride" value={ride.status} contextLabel="Trạng thái chuyến" />
             </View>
-            {pickupTime ? <Text style={themed_s.text}>{pickupTime}</Text> : null}
             <RideRouteCard ride={ride} navigationStop={isDropoff ? "dropoff" : "pickup"}>
               <Divider style={{ backgroundColor: colors.outlineVariant }} />
               <View style={styles.routeSummary}>
                 <View style={styles.fare}>
-                  <Text style={themed_s.label}>Cước dự kiến</Text>
-                  <Text style={styles.fareAmount}>{formatMoney(ride.estimatedFare)}</Text>
+                  <Text style={themed_s.label}>Thu nhập thực nhận</Text>
+<Text style={styles.fareAmount}>{formatMoney(ride.driverEarnings?.netAmount ?? ride.driverExpectedEarning ?? Math.floor(ride.estimatedFare * 0.8))}</Text>
+<Text style={themed_s.label}>Khách thanh toán: {formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare)}</Text>
                 </View>
                 {ride.route ? (
                   <Text style={[themed_s.metric, styles.routeMetrics]}>
@@ -180,7 +176,7 @@ const styles = StyleSheet.create({
   tripHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   routeSummary: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   fare: { gap: 2 },
-  fareAmount: { fontSize: 28, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  fareAmount: { fontSize: 28, lineHeight: 35, fontWeight: "700", fontVariant: ["tabular-nums"] },
   routeMetrics: { flexShrink: 1 },
   primaryAction: { minHeight: 52, justifyContent: "center" },
 });

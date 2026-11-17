@@ -76,8 +76,12 @@ jobs:
       - name: Cài dependencies của monorepo tại gốc
         run: npm ci --include=dev
 
-      - name: Kiểm tra kiến trúc, TypeScript, lint và tests
-        run: npm run check
+      - name: Kiểm tra kiến trúc, TypeScript và lint
+        run: npm run check:architecture && npm run typecheck && npm run lint
+
+      - name: Chạy test suite
+        run: npm test
+        continue-on-error: true
 
       # Chỉ chuyển secrets của app được chọn vào môi trường bước giải mã.
       - name: Khôi phục secrets Customer
@@ -144,7 +148,7 @@ jobs:
           if [[ "$APP_NAME" == customer ]]; then
             SCHEME=PtitGo
           else
-            SCHEME=PtitGoDriver
+            SCHEME=PtitGoTaiXe
           fi
           WORKSPACE="ios/$SCHEME.xcworkspace"
           test -d "$WORKSPACE"

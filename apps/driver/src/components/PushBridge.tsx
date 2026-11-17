@@ -24,11 +24,10 @@ export function PushBridge() {
   const client = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
-  // Route depth varies; the auth group can have a second segment.
-  const segments: readonly string[] = useSegments();
+  const segments = useSegments() as unknown as string[];
   const nav = useRootNavigationState();
   const latest = useRef({ router, ready: false });
-  const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments[1] ?? ''));
+  const authenticationScreen = segments[0] === '(auth)' && ['login', 'register', 'otp-verify'].includes(String(segments.at(1) ?? ''));
   const navigationReady = Boolean(nav?.key && userId && pathname !== '/' && !authenticationScreen);
   useEffect(() => { latest.current = { router, ready: navigationReady }; }, [router, navigationReady]);
   const credit = useDriverCredit();

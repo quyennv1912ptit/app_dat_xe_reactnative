@@ -17,7 +17,7 @@ const fallbackCenter = { lat: 21.0285, lng: 105.8542 };
 export default function DriverTrackingScreen() {
   useLanguage();
   const colors = useThemeColors();
-  const { router, ride, vehicle, error, cancellation, refresh, pendingPickup, pendingDropoff, live } = useDriverTracking();
+  const { router, ride, vehicle, error, cancellation, refresh, pendingPickup, pendingDropoff, live, route } = useDriverTracking();
   const driver = ride ? assignedDriver(ride) : null;
   const pendingPhase = pendingDropoff && ride?.status === "VEHICLE_RETURNED" ? "dropoff"
     : pendingPickup && ride?.status === "VEHICLE_HANDOVER" ? "pickup" : null;
@@ -42,7 +42,7 @@ export default function DriverTrackingScreen() {
           onPress={() => router.push({ pathname: "/support", params: { topic: "safety", rideId: ride ? String(ride.id) : undefined } })} />}
         renderMap={viewport => (
           <BookingMap center={pickup?.coordinate ?? dropoff?.coordinate ?? fallbackCenter}
-            pickup={pickup} dropoff={dropoff} route={ride?.route?.coordinates}
+            pickup={pickup} dropoff={dropoff} route={route.length > 1 ? route : ride?.route?.coordinates}
             driver={ended ? null : live.sample?.location} viewport={viewport} />
         )}
         footer={(
@@ -84,10 +84,6 @@ export default function DriverTrackingScreen() {
                 {ride.driverId ? <Button variant="secondary" label="Tải lại hồ sơ tài xế" onPress={() => void refresh()} /> : null}
               </Card>
             )}
-            {canChat ? <Button variant="secondary" icon="chat" iconPosition="leading"
-              label={ride.unreadChatCount > 0
-                ? t("Nhắn tin với tài xế · {0} tin chưa đọc", { "0": ride.unreadChatCount })
-                : "Nhắn tin với tài xế"} onPress={message} /> : null}
             <Card style={styles.card}>
               <Text accessibilityRole="header" style={customerType.heading}>{t("Lộ trình")}</Text>
               <RideEndpoints pickup={ride.pickupAddress} dropoff={ride.dropoffAddress} />

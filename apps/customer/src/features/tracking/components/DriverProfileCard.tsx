@@ -95,6 +95,42 @@ export function DriverProfileCard({
         <Text style={s.meta}>{experienceText}</Text>
       </View>
       {!large ? (
+        <View style={s.contactActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Nhắn tin với tài xế")}
+            disabled={!contactEnabled}
+            hitSlop={8}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (contactEnabled) onMessage();
+            }}
+          >
+            <MaterialIcons
+              name="chat"
+              size={21}
+              color={contactEnabled ? colors.primary : colors.outline}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Gọi điện cho tài xế")}
+            disabled={!contactEnabled || !phoneUrl}
+            hitSlop={8}
+            onPress={(event) => {
+              event.stopPropagation();
+              void call();
+            }}
+          >
+            <MaterialIcons
+              name="phone"
+              size={21}
+              color={contactEnabled && phoneUrl ? colors.primary : colors.outline}
+            />
+          </Pressable>
+        </View>
+      ) : null}
+      {!large ? (
         <MaterialIcons
           name="chevron-right"
           size={24}
@@ -304,6 +340,7 @@ const profileStyles = (c: ThemeColors) =>
     body: { color: c.onSurface, fontSize: 16, lineHeight: 23, flexShrink: 1 },
     meta: { color: c.onSurfaceVariant, fontSize: 14, lineHeight: 21 },
     link: { color: c.primary, fontSize: 14, fontWeight: "600" },
+    contactActions: { flexDirection: "row", alignItems: "center", gap: 14 },
     overlay: {
       flex: 1,
       justifyContent: "flex-end",

@@ -10,7 +10,6 @@ export type DriverOffer = {
   expiresAt: number;
   serverTime: number;
   clientExpiresAt: number;
-  scheduledAt?: string | null;
   pickup: OfferStop;
   dropoff: OfferStop;
   pickupNote?: string | null;
@@ -21,7 +20,7 @@ export type DriverOffer = {
   estDurationMin: number;
   fareEstimate: number;
   driverEarning: number;
-  customer: { displayName: string };
+  customer: { displayName: string; rating?: number | null };
   vehicle: { type: string; transmission: string };
 };
 
