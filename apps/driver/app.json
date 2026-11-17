@@ -59,7 +59,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "dynamic"
+            "useFrameworks": "dynamic",
+            "usePrecompiledModules": false
           }
         }
       ]
