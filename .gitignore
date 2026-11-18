@@ -12,6 +12,7 @@ dist/
 .migration-backup/
 .expo-export/
 .native-build/
+/screenshots_ekyc/
 *.jks
 *.keystore
 signing.properties

@@ -41,6 +41,14 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp giấy tờ và ảnh chân dung xác minh.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp xe và giấy tờ.",
