@@ -1,14 +1,34 @@
 import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from "react-native-paper";
+import { typography } from "./colors";
 import type { ThemeColors } from "./ThemeProvider";
 
-/** Shared semantic roles keep Paper and existing app styles on the same palette. */
+/** Shared semantic roles align Paper widgets with the PtitGo typography system. */
 export function createMaterialTheme(
   colors: ThemeColors,
   dark: boolean,
 ): MD3Theme {
   const base = dark ? MD3DarkTheme : MD3LightTheme;
+  const fonts = {
+    ...base.fonts,
+    displayLarge: { ...base.fonts.displayLarge, ...typography.display },
+    displayMedium: { ...base.fonts.displayMedium, ...typography.display },
+    displaySmall: { ...base.fonts.displaySmall, ...typography.moneyDisplay },
+    headlineLarge: { ...base.fonts.headlineLarge, ...typography.display },
+    headlineMedium: { ...base.fonts.headlineMedium, ...typography.screenTitle },
+    headlineSmall: { ...base.fonts.headlineSmall, ...typography.screenTitle },
+    titleLarge: { ...base.fonts.titleLarge, ...typography.sectionTitle },
+    titleMedium: { ...base.fonts.titleMedium, ...typography.cardTitle },
+    titleSmall: { ...base.fonts.titleSmall, ...typography.label },
+    bodyLarge: { ...base.fonts.bodyLarge, ...typography.body },
+    bodyMedium: { ...base.fonts.bodyMedium, ...typography.bodySecondary },
+    bodySmall: { ...base.fonts.bodySmall, ...typography.caption },
+    labelLarge: { ...base.fonts.labelLarge, ...typography.button },
+    labelMedium: { ...base.fonts.labelMedium, ...typography.label },
+    labelSmall: { ...base.fonts.labelSmall, ...typography.badge },
+  };
   return {
     ...base,
+    fonts,
     roundness: 6,
     colors: {
       ...base.colors,

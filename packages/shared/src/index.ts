@@ -1,5 +1,6 @@
 export * from "./api/client";
 export * from "./api/customer";
+export * from "./api/vehicleCatalog";
 export * from "./constants";
 export * from "./firebase/authService";
 export * from "./firebase/config";
@@ -8,6 +9,7 @@ export * from "./notifications/push";
 export * from "./types";
 export * from "./types/ticket";
 export * from "./utils";
+export * from "./utils/avatar";
 export * from "./ws";
 
 export * from "./i18n";

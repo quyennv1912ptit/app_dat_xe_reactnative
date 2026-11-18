@@ -14,6 +14,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 import { Button } from "../components/Button";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { Typography } from "../components/Typography";
+import { typography } from "../theme/colors";
 import { useThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   action: { width: 48, height: 48, borderRadius: 999 },
   toolbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8 },
-  title: { fontSize: 18, fontWeight: "600" },
+  title: { ...typography.sectionTitle },
   canvas: { flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   image: { width: "100%", height: "100%" },
   loading: { position: "absolute" },

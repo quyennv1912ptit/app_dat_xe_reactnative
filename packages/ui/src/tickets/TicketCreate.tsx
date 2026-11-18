@@ -8,6 +8,7 @@ import { Card } from '../components/Card';
 import { MotionPressable as Pressable } from '../components/MotionPressable';
 import { ThemedTextInput } from '../components/ThemedTextInput';
 import { Typography as Text } from '../components/Typography';
+import { borderRadius, spacing, typography } from '../theme/colors';
 import { useThemedStyles, type ThemeColors } from '../theme/ThemeProvider';
 import { useLanguage } from '../useLanguage';
 
@@ -104,14 +105,14 @@ export function TicketCreate({ pending, error, onSubmit }: Props) {
 }
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
-  stack: { gap: 16 },
-  card: { padding: 16, gap: 8 },
-  label: { fontWeight: '700', marginTop: 4 },
-  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 14, borderRadius: 14, backgroundColor: c.surfaceContainerHigh },
-  selectText: { fontSize: 15, color: c.onSurface },
+  stack: { gap: spacing.spaceMd },
+  card: { padding: spacing.spaceMd, gap: spacing.spaceSm },
+  label: { ...typography.label, marginTop: spacing.spaceXs },
+  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: spacing.px3, borderRadius: borderRadius.default, backgroundColor: c.surfaceContainerHigh },
+  selectText: { ...typography.body, color: c.onSurface },
   icon: { color: c.onSurfaceVariant },
-  input: { borderRadius: 14, backgroundColor: c.surfaceContainerHigh, paddingHorizontal: 14 },
-  textarea: { minHeight: 120, borderRadius: 14, backgroundColor: c.surfaceContainerHigh, padding: 12, textAlignVertical: 'top' },
-  counter: { color: c.onSurfaceVariant, fontSize: 12, alignSelf: 'flex-end' },
-  error: { color: c.error },
+  input: { borderRadius: borderRadius.default, backgroundColor: c.surfaceContainerHigh, paddingHorizontal: spacing.px3 },
+  textarea: { minHeight: 120, borderRadius: borderRadius.default, backgroundColor: c.surfaceContainerHigh, padding: spacing.px3, textAlignVertical: 'top' },
+  counter: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end' },
+  error: { ...typography.bodySecondary, color: c.error },
 });

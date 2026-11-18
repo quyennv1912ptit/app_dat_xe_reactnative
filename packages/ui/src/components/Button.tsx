@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { ActivityIndicator, Text, TouchableRipple } from "react-native-paper";
-import { fontSize } from "../theme/colors";
+import { fontSize, typography } from "../theme/colors";
 import { useThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 
@@ -67,9 +67,9 @@ export function Button({
   useLanguage();
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
-  const requestedHeight = StyleSheet.flatten(style)?.height;
-  const fixedHeight =
-    typeof requestedHeight === "number" ? requestedHeight : undefined;
+  const requestedMinHeight = StyleSheet.flatten(style)?.minHeight ?? StyleSheet.flatten(style)?.height;
+  const minContentHeight =
+    typeof requestedMinHeight === "number" ? Math.max(48, requestedMinHeight) : undefined;
   const contentColor =
     customContentColor ??
     (isDisabled && dimWhenDisabled
@@ -107,16 +107,15 @@ export function Button({
         { backgroundColor: buttonColor },
         isDisabled && !dimWhenDisabled && { opacity: 0.5 },
         style,
+        minContentHeight !== undefined ? { height: undefined, minHeight: minContentHeight } : null,
         styles.shape,
       ]}
     >
       <View
         style={[
           styles.content,
-          fixedHeight !== undefined && {
-            height: fixedHeight,
-            minHeight: fixedHeight,
-            paddingVertical: 0,
+          minContentHeight !== undefined && {
+            minHeight: minContentHeight,
           },
           {
             flexDirection:
@@ -137,6 +136,7 @@ export function Button({
         <Text
           variant="labelLarge"
           numberOfLines={numberOfLines}
+          textBreakStrategy="simple"
           style={[styles.label, { color: contentColor }, textStyle]}
         >
           {i18nT(loading && loadingLabel ? loadingLabel : label)}
@@ -165,9 +165,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "500",
-    letterSpacing: 0.1,
+    ...typography.button,
     flexShrink: 1,
     textAlign: "center",
   },

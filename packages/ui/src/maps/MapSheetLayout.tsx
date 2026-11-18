@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { translate as t } from '@datxe/shared';
 import { Button } from '../components/Button';
 import { Typography as Text } from '../components/Typography';
+import { typography } from '../theme/colors';
 import { useThemeColors } from '../theme/ThemeProvider';
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -17,6 +18,8 @@ type Props = {
   onBack?: () => void;
   backAccessibilityLabel?: string;
   topActions?: ReactNode;
+  /** Thay toàn bộ thanh tiêu đề mặc định bằng nội dung tuỳ biến (ví dụ thanh địa chỉ nổi). */
+  topContent?: ReactNode;
   footer: ReactNode;
   renderMap: (viewport: MapViewportInsets) => ReactNode;
   children: ReactNode;
@@ -73,7 +76,7 @@ function SheetBody({ children, footer, contentStyle, bottomInset, backgroundColo
 }
 
 export function MapSheetLayout({
-  title, onBack, backAccessibilityLabel = 'Quay lại', topActions, footer, renderMap,
+  title, onBack, backAccessibilityLabel = 'Quay lại', topActions, topContent, footer, renderMap,
   children, contentStyle, initialSnap = 1, insetBottom = true, snapPoints: configuredSnapPoints,
 }: Props) {
   const colors = useThemeColors();
@@ -82,7 +85,8 @@ export function MapSheetLayout({
   const [height, setHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(76);
   const [index, setIndex] = useState<number>(initialSnap);
-  const topInset = safe.top + 68;
+  const hasTopContent = Boolean(topContent);
+  const topInset = safe.top + (hasTopContent ? 150 : 68);
   const bottomInset = insetBottom ? safe.bottom : 0;
   const expanded = Math.max(3, height - topInset);
   const collapsed = Math.min(expanded - 2, HANDLE_HEIGHT + footerHeight);
@@ -127,20 +131,26 @@ export function MapSheetLayout({
       {safe.top > 0 ? (
         <View pointerEvents="none" style={[styles.statusBarSurface, { height: safe.top, backgroundColor: colors.background }]} />
       ) : null}
-      <View pointerEvents="box-none" style={[styles.topBar, { top: safe.top + 8 }]}>
-        {onBack ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t(backAccessibilityLabel)} onPress={onBack}
-            style={[styles.back, { backgroundColor: colors.surfaceContainerLow }]}>
-            <MaterialIcons name="arrow-back" size={22} color={colors.onSurface} />
-          </Pressable>
-        ) : null}
-        {title ? (
-          <Text accessibilityRole="header" numberOfLines={2}
-            style={[styles.title, { color: colors.onSurface, backgroundColor: colors.surfaceContainerLow }]}
-          >{title}</Text>
-        ) : <View pointerEvents="none" style={styles.spacer} />}
-        {topActions}
-      </View>
+      {topContent ? (
+        <View pointerEvents="box-none" style={[styles.topContent, { top: safe.top + 8 }]}>
+          {topContent}
+        </View>
+      ) : (
+        <View pointerEvents="box-none" style={[styles.topBar, { top: safe.top + 8 }]}>
+          {onBack ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={t(backAccessibilityLabel)} onPress={onBack}
+              style={[styles.back, { backgroundColor: colors.surfaceContainerLow }]}>
+              <MaterialIcons name="arrow-back" size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : null}
+          {title ? (
+            <Text accessibilityRole="header" numberOfLines={2}
+              style={[styles.title, { color: colors.onSurface, backgroundColor: colors.surfaceContainerLow }]}
+            >{title}</Text>
+          ) : <View pointerEvents="none" style={styles.spacer} />}
+          {topActions}
+        </View>
+      )}
       {height > topInset + 3 ? (
         <BottomSheet
           ref={ref}
@@ -183,9 +193,11 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 12, right: 12, zIndex: 2,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
+  topContent: { position: 'absolute', left: 12, right: 12, zIndex: 2 },
   title: {
+    ...typography.cardTitle,
     flexShrink: 1, marginRight: 'auto', borderRadius: 24, paddingHorizontal: 16,
-    paddingVertical: 10, fontSize: 16, lineHeight: 21, fontWeight: '600',
+    paddingVertical: 10,
   },
   spacer: { flex: 1 },
   back: { width: 48, height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },

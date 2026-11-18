@@ -246,8 +246,7 @@ function normalizeSearch(value: string): string {
 const base_styles = (colors: ThemeColors) =>
   StyleSheet.create({
     label: {
-      ...typography.labelLg,
-      fontSize: 13,
+      ...typography.label,
       color: colors.onSurface,
       marginBottom: spacing.gap1_5,
     },
@@ -283,8 +282,7 @@ const base_styles = (colors: ThemeColors) =>
       marginHorizontal: spacing.spaceXs,
     },
     phoneInput: {
-      ...typography.bodyLg,
-      fontSize: 15,
+      ...typography.body,
       color: colors.onSurface,
       flex: 1,
       minWidth: 0,

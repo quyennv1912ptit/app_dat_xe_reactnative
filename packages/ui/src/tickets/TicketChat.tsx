@@ -1,12 +1,13 @@
 import { translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Image, KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Appbar, Avatar, IconButton } from 'react-native-paper';
 import { Button } from '../components/Button';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { ThemedTextInput } from '../components/ThemedTextInput';
 import { Typography as Text } from '../components/Typography';
+import { typography } from '../theme/colors';
 import { useThemedStyles, type ThemeColors } from '../theme/ThemeProvider';
 import { useLanguage } from '../useLanguage';
 
@@ -84,7 +85,7 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
           <Appbar.Action style={s.action} icon="refresh" accessibilityLabel={t('Tải lại tin nhắn')} onPress={onRefresh} />
         ) : null}
       </Appbar.Header>
-      <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={s.fill} behavior="padding">
         {error ? (
           <View style={s.notice}>
             <Text accessibilityRole="alert" style={s.error}>{error}</Text>
@@ -167,6 +168,8 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
 
 function MessageRow({ message, mine, onImage }: { message: TicketMessage; mine: boolean; onImage: (url: string) => void }) {
   const s = useThemedStyles(makeStyles);
+  const [imageState, setImageState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [imageAttempt, setImageAttempt] = useState(0);
   const time = new Date(message.createdAt);
   const label = Number.isFinite(time.getTime()) ? time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
   if (message.senderRole === 'SYSTEM') {
@@ -179,8 +182,17 @@ function MessageRow({ message, mine, onImage }: { message: TicketMessage; mine: 
       ) : null}
       <View style={[s.bubble, mine ? s.mine : s.theirs]}>
         {message.imageUrl ? (
-          <Pressable accessibilityRole="imagebutton" accessibilityLabel={t('Xem ảnh đính kèm')} onPress={() => onImage(message.imageUrl!)}>
-            <Image source={{ uri: message.imageUrl }} style={s.image} resizeMode="cover" />
+          <Pressable accessibilityRole="imagebutton" accessibilityLabel={t(imageState === 'error' ? 'Thử tải lại ảnh' : 'Xem ảnh đính kèm')} disabled={imageState === 'loading'} onPress={() => {
+            if (imageState === 'error') {
+              setImageState('loading');
+              setImageAttempt(value => value + 1);
+            } else if (message.imageUrl) onImage(message.imageUrl);
+          }}>
+            {imageState !== 'error' ? <Image key={imageAttempt} source={{ uri: message.imageUrl }}
+              style={imageState === 'ready' ? s.image : s.pendingImage}
+              resizeMode="cover" onLoad={() => setImageState('ready')} onError={() => setImageState('error')} /> : null}
+            {imageState === 'loading' ? <Text style={[s.message, mine && s.mineText]}>{t('Đang tải ảnh…')}</Text> : null}
+            {imageState === 'error' ? <Text style={[s.message, mine && s.mineText]}>{t('Không tải được ảnh. Nhấn để thử lại.')}</Text> : null}
           </Pressable>
         ) : null}
         {message.body.trim() ? <Text selectable style={[s.message, mine && s.mineText]}>{message.body}</Text> : null}
@@ -195,8 +207,8 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   header: { backgroundColor: c.surface },
   action: { margin: 0 },
   identity: { flex: 1, gap: 2 },
-  title: { fontWeight: '700' },
-  subtitle: { color: c.onSurfaceVariant, fontSize: 12 },
+  title: { ...typography.cardTitle },
+  subtitle: { ...typography.caption, color: c.onSurfaceVariant },
   list: { padding: 12, gap: 8 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2, maxWidth: '100%' },
   rowMine: { justifyContent: 'flex-end' },
@@ -206,15 +218,15 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9, gap: 3 },
   mine: { backgroundColor: c.primary, borderBottomRightRadius: 4 },
   theirs: { backgroundColor: c.surfaceContainerHigh, borderBottomLeftRadius: 4 },
-  message: { color: c.onSurface, fontSize: 15, lineHeight: 21 },
+  message: { ...typography.body, color: c.onSurface },
   mineText: { color: c.onPrimary },
-  meta: { color: c.onSurfaceVariant, fontSize: 10, alignSelf: 'flex-end' },
+  meta: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end' },
   mineMeta: { color: c.onPrimary, opacity: 0.8 },
-  system: { alignSelf: 'center', color: c.onSurfaceVariant, fontSize: 12, paddingVertical: 6 },
+  system: { ...typography.caption, alignSelf: 'center', color: c.onSurfaceVariant, paddingVertical: 6 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
   emptyIcon: { color: c.onSurfaceVariant },
-  emptyTitle: { fontWeight: '700', fontSize: 16 },
-  emptyHint: { color: c.onSurfaceVariant, textAlign: 'center' },
+  emptyTitle: { ...typography.cardTitle },
+  emptyHint: { ...typography.bodySecondary, color: c.onSurfaceVariant, textAlign: 'center' },
   notice: { padding: 12, gap: 8 },
   error: { color: c.error },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, padding: 8, backgroundColor: c.surface },
@@ -222,7 +234,8 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   sending: { margin: 12 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8 },
   preview: { width: 56, height: 56, borderRadius: 10 },
-  image: { width: 210, height: 160, borderRadius: 12, marginBottom: 2 },
+  pendingImage: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+  image: { width: 210, maxWidth: '100%', height: 160, borderRadius: 12, marginBottom: 2 },
   lightbox: { flex: 1, backgroundColor: c.mediaViewerBackground, alignItems: 'center', justifyContent: 'center', padding: 16 },
   lightboxImage: { width: '100%', height: '90%' },
 });

@@ -3,6 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Divider, List } from "react-native-paper";
 import { translate } from "@datxe/shared";
 import { MaterialIcons } from "@expo/vector-icons";
+import { fontWeight, typography } from "../theme/colors";
 import { useTheme, useThemeColors } from "../theme/ThemeProvider";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
@@ -12,16 +13,20 @@ export function GroupedList({
   title,
   children,
   style,
+  cardStyle,
+  variant = "surface",
 }: {
   title?: string;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  cardStyle?: StyleProp<ViewStyle>;
+  variant?: "surface" | "raised" | "muted";
 }) {
   const colors = useThemeColors();
   return (
     <View style={[styles.group, style]}>
       {title ? <SectionHeading title={title} /> : null}
-      <Card>
+      <Card variant={variant} style={cardStyle}>
         {Children.toArray(children).map((child, index) => (
           <Fragment key={index}>
             {index > 0 ? (
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 0,
   },
-  rowTitle: { fontWeight: "500", fontSize: 16 },
+  rowTitle: { ...typography.body, fontWeight: fontWeight.medium },
   icon: { justifyContent: "center", paddingHorizontal: 8 },
   trailing: { alignSelf: "center", justifyContent: "center" },
 });

@@ -29,6 +29,7 @@ export type AuthProfile = {
   phoneNumber: string | null;
   status: string;
   verificationStatus?: string | null;
+  onlineVehicleType?: 'CAR' | 'MOTORCYCLE' | null;
 };
 
 type ApiResponse<T> = {

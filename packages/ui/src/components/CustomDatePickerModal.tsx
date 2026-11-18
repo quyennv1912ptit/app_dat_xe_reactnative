@@ -286,19 +286,18 @@ const base_styles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     headerTitle: {
-      ...typography.titleMd,
+      ...typography.cardTitle,
       flex: 1,
       textAlign: "center",
       color: colors.onSurface,
     },
     cancelText: {
-      ...typography.bodyLgMedium,
+      ...typography.button,
       color: colors.onSurfaceVariant,
     },
     confirmText: {
-      ...typography.bodyLgMedium,
+      ...typography.button,
       color: colors.primary,
-      fontWeight: "700",
       textAlign: "right",
     },
     body: { paddingTop: spacing.px3, paddingBottom: spacing.px3 },
@@ -325,7 +324,7 @@ const base_styles = (colors: ThemeColors) =>
     },
     column: { flex: 1, height: WHEEL_HEIGHT },
     caption: {
-      ...typography.labelSm,
+      ...typography.caption,
       flex: 1,
       color: colors.onSurfaceVariant,
       textAlign: "center",
@@ -338,11 +337,11 @@ const base_styles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     wheelText: {
-      ...typography.headlineSm,
+      ...typography.sectionTitle,
       color: colors.onSurfaceVariant,
     },
     wheelTextSelected: {
+      ...typography.screenTitle,
       color: colors.onSurface,
-      fontWeight: "700",
     },
   });

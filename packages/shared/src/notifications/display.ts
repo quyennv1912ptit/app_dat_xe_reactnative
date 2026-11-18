@@ -100,6 +100,18 @@ const messages: Readonly<Record<string, NotificationText>> = {
     title: "Tin nhắn đã được đọc",
     description: "Tin nhắn của bạn đã được người nhận đọc.",
   },
+  VOUCHER_GRANTED: {
+    title: "Bạn vừa nhận được ưu đãi",
+    description: "Ưu đãi mới đã được thêm vào mục Ưu đãi của tôi.",
+  },
+  VOUCHER_CAMPAIGN: {
+    title: "Chương trình ưu đãi mới",
+    description: "Có chương trình ưu đãi mới dành cho bạn.",
+  },
+  RATING_RECEIVED: {
+    title: "Bạn nhận được đánh giá mới",
+    description: "Chuyến đi của bạn vừa nhận được một đánh giá mới.",
+  },
   DEFAULT: {
     title: "Thông báo mới",
     description: "Bạn có thông báo mới từ hệ thống.",
@@ -165,6 +177,13 @@ export function getNotificationText(
     title: t(typeof payload.title === 'string' ? payload.title : status === 'SUCCESS' ? 'Rút tiền thành công' : 'Yêu cầu rút tiền bị từ chối'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Mở yêu cầu rút tiền để xem kết quả xử lý.'),
   };
+  if (code === 'VOUCHER_GRANTED' || code === 'VOUCHER_CAMPAIGN' || code === 'RATING_RECEIVED') {
+    const fallback = messages[code];
+    return {
+      title: typeof payload.title === 'string' && payload.title.trim() ? t(payload.title) : t(fallback.title),
+      description: typeof payload.body === 'string' && payload.body.trim() ? t(payload.body) : t(fallback.description),
+    };
+  }
   const mapped =
     (code === "RIDE_UPDATED" && status === "SEARCHING" && typeof payload.redispatchCount === "number" && payload.redispatchCount > 0 ? messages.RIDE_REDISPATCHED : undefined) ??
     (["RIDE_UPDATED", "RIDE_NO_DRIVER"].includes(code) && rideStatuses.has(status)
