@@ -40,7 +40,7 @@ export const styles = (colors: ThemeColors) =>
       padding: 12,
       gap: 4,
     },
-    metricValue: { ...typography.labelLg, fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.onSurface },
+    metricValue: { ...typography.screenTitle, fontVariant: ["tabular-nums"], color: colors.onSurface },
     images: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     imageCard: { width: "47%", gap: 4 },
     image: {

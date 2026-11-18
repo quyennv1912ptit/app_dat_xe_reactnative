@@ -1,33 +1,48 @@
 import { localizedAlert } from '@datxe/ui';
 import { AuthApiError, translate as i18nT } from '@datxe/shared';
-import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { rateCustomerRide } from '../api';
 import { useRideQuery } from './useRideQuery';
+
 export function useTripCompleted() {
-const router = useRouter();
-const params = useLocalSearchParams<{ rideId?: string }>();
-const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
-const query = useRideQuery(rideId);
-const ride = query.data;
-const [stars, setStars] = useState(5);
-const [comment, setComment] = useState('');
-const [saving, setSaving] = useState(false);
-const valid = Number.isSafeInteger(rideId) && rideId > 0;
-const refresh = query.refetch;
-const error = !valid ? i18nT("Không có mã chuyến để tải hóa đơn và gửi đánh giá.") : query.error?.message ?? (query.isSuccess && !ride ? i18nT("Không tìm thấy chuyến đi.") : '');
-const finish = async (skipRating = false) => {
+  const router = useRouter();
+  const client = useQueryClient();
+  const params = useLocalSearchParams<{ rideId?: string }>();
+  const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
+  const query = useRideQuery(rideId);
+  const ride = query.data;
+  const [stars, setStars] = useState(5);
+  const [comment, setComment] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [submittedRating, setSubmittedRating] = useState(false);
+  const alreadyRated = Boolean(ride?.customerHasRatedDriver === true || submittedRating);
+  const valid = Number.isSafeInteger(rideId) && rideId > 0;
+  const refresh = query.refetch;
+  const error = !valid ? i18nT("Không có mã chuyến để tải hóa đơn và gửi đánh giá.") : query.error?.message ?? (query.isSuccess && !ride ? i18nT("Không tìm thấy chuyến đi.") : '');
+  const finish = async (skipRating = false) => {
     if (saving) return;
     if (!rideId) {
       if (skipRating) router.replace('/(tabs)/home');
       return;
     }
+    if (!skipRating && alreadyRated) {
+      router.replace('/(tabs)/home');
+      return;
+    }
     setSaving(true);
     try {
-      if (!skipRating) await rateCustomerRide(rideId, { stars, comment: comment.trim() || null, tags: null, tip: 0 });
+      if (!skipRating) {
+        await rateCustomerRide(rideId, { stars, comment: comment.trim() || null, tags: null, tip: 0 });
+        setSubmittedRating(true);
+        await client.invalidateQueries({ queryKey: ['customer'] });
+      }
       router.replace('/(tabs)/home');
     } catch (err) {
       if (err instanceof AuthApiError && err.code === 'RATING_ALREADY_EXISTS') {
+        setSubmittedRating(true);
+        await client.invalidateQueries({ queryKey: ['customer'] });
         localizedAlert(i18nT("Đánh giá chuyến đi"), err.message);
         router.replace('/(tabs)/home');
         return;
@@ -37,5 +52,5 @@ const finish = async (skipRating = false) => {
       setSaving(false);
     }
   };
-return { router, ride, stars, setStars, comment, setComment, saving, error, refresh, finish };
+  return { router, ride, stars, setStars, comment, setComment, saving, alreadyRated, error, refresh, finish };
 }

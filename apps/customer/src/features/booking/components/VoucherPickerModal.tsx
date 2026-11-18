@@ -13,7 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
-import { money, voucherUnavailable } from "../bookingUtils";
+import { isVoucherSelected, money, voucherDisplayName, voucherUnavailable } from "../bookingUtils";
 import { bookingStyles as base_s } from "./bookingStyles";
 type Props = {
   visible: boolean;
@@ -23,9 +23,10 @@ type Props = {
   error?: string;
   applyError: string;
   selectedCode: string;
-  applyingCode: string | null;
+  selectedId?: number | null;
+  applyingKey: string | null;
   subtotal?: number;
-  onApply: (code: string) => void;
+  onApply: (selection: { id: number | null; code: string }) => void;
   onRetry: () => void;
 };
 export function VoucherPickerModal(p: Props) {
@@ -60,6 +61,7 @@ export function VoucherPickerModal(p: Props) {
               </Text>
             </View>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={i18nT("Đóng")}
               onPress={p.close}
               hitSlop={12}
@@ -83,13 +85,19 @@ export function VoucherPickerModal(p: Props) {
               </View>
             ) : null}
             <Pressable
-              disabled={p.applyingCode !== null}
-              onPress={() => p.onApply("")}
-              style={[s.card, s.row, !p.selectedCode && s.selected]}
+              disabled={p.applyingKey !== null}
+              onPress={() => p.onApply({ id: null, code: "" })}
+              accessibilityRole="radio"
+              accessibilityLabel={i18nT("Không dùng ưu đãi")}
+              accessibilityState={{
+                selected: !p.selectedCode && p.selectedId == null,
+                disabled: p.applyingKey !== null,
+              }}
+              style={[s.card, s.row, !p.selectedCode && p.selectedId == null && s.selected]}
             >
               <MaterialIcons
                 name={
-                  !p.selectedCode
+                  !p.selectedCode && p.selectedId == null
                     ? "radio-button-checked"
                     : "radio-button-unchecked"
                 }
@@ -97,7 +105,7 @@ export function VoucherPickerModal(p: Props) {
                 color={colors.primary}
               />
               <Text style={[s.text, s.flex]}>{i18nT("Không dùng ưu đãi")}</Text>
-              {p.applyingCode === "" ? <ActivityIndicator /> : null}
+              {p.applyingKey === "NONE" ? <ActivityIndicator /> : null}
             </Pressable>
             {p.loading ? <ActivityIndicator color={colors.primary} /> : null}
             {p.error ? (
@@ -125,19 +133,23 @@ export function VoucherPickerModal(p: Props) {
             ) : null}
             {p.vouchers.map((voucher) => {
               const reason = voucherUnavailable(voucher, p.subtotal);
+              const selected = isVoucherSelected(voucher, p.selectedCode, p.selectedId);
+              const applying = p.applyingKey === String(voucher.id);
+              const label = voucherDisplayName(voucher);
               return (
                 <Pressable
                   key={voucher.id}
-                  disabled={Boolean(reason) || p.applyingCode !== null}
-                  onPress={() => p.onApply(voucher.code)}
+                  disabled={Boolean(reason) || p.applyingKey !== null}
+                  onPress={() => p.onApply({ id: voucher.id, code: voucher.code ?? "" })}
                   accessibilityRole="radio"
+                  accessibilityLabel={label}
                   accessibilityState={{
-                    selected: p.selectedCode === voucher.code,
-                    disabled: Boolean(reason),
+                    selected,
+                    disabled: Boolean(reason) || p.applyingKey !== null,
                   }}
                   style={[
                     s.card,
-                    p.selectedCode === voucher.code && s.selected,
+                    selected && s.selected,
                     reason ? extra.item5 : null,
                   ]}
                 >
@@ -151,29 +163,28 @@ export function VoucherPickerModal(p: Props) {
                     </View>
                     <View style={s.flex}>
                       <Text style={s.section}>
-                        {i18nT(
-                          voucher.discountType === "PERCENT"
-                            ? i18nT("Giảm {0}%", { "0": voucher.value })
-                            : i18nT("Giảm {0}", { "0": money(voucher.value) }),
-                        )}
+                        {voucher.discountType === "PERCENT"
+                          ? i18nT("Giảm {0}%", { "0": voucher.value })
+                          : i18nT("Giảm {0}", { "0": money(voucher.value) })}
                       </Text>
                       <Text style={s.muted}>
-                        {i18nT(voucher.code)}
-                        {i18nT(
-                          voucher.maxDiscount !== null
-                            ? i18nT(" · Tối đa {0}", {
-                                "0": money(voucher.maxDiscount),
-                              })
-                            : "",
-                        )}
+                        {label}
+                        {voucher.maxDiscount !== null
+                          ? i18nT(" · Tối đa {0}", {
+                              "0": money(voucher.maxDiscount),
+                            })
+                          : ""}
                       </Text>
+                      {voucher.description && voucher.description.trim() !== label ? (
+                        <Text style={s.muted}>{voucher.description.trim()}</Text>
+                      ) : null}
                     </View>
-                    {p.applyingCode === voucher.code ? (
+                    {applying ? (
                       <ActivityIndicator />
                     ) : (
                       <MaterialIcons
                         name={
-                          p.selectedCode === voucher.code
+                          selected
                             ? "radio-button-checked"
                             : "radio-button-unchecked"
                         }
@@ -184,11 +195,9 @@ export function VoucherPickerModal(p: Props) {
                   </View>
                   <Text style={s.muted}>
                     {i18nT("Chuyến từ")}{" "}
-                    {i18nT(money(voucher.minimumOrderAmount))}{" "}
+                    {money(voucher.minimumOrderAmount)}{" "}
                     {i18nT("· Hết hạn")}{" "}
-                    {i18nT(
-                      new Date(voucher.validTo).toLocaleDateString(getLocale()),
-                    )}
+                    {new Date(voucher.validTo).toLocaleDateString(getLocale())}
                   </Text>
                   {reason ? (
                     <Text style={s.error}>{i18nT(reason)}</Text>

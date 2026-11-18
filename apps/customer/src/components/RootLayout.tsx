@@ -8,15 +8,18 @@ import {
   useScreenMotion,
   useTheme,
   usePushForegroundLaunch,
+  useStartupLocationPermission,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
+import * as Location from "expo-location";
 import { usePathname, useRouter, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BackHandler, Platform } from "react-native";
+import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 import { PushBridge } from "./PushBridge";
 
 export default function RootLayout() {
@@ -40,23 +43,28 @@ export default function RootLayout() {
   validateEnv();
   const [loaded, error] = useFonts(MaterialIcons.font);
   const foregroundLaunch = usePushForegroundLaunch();
+  useStartupLocationPermission(foregroundLaunch && Boolean(loaded || error), Location);
   if (!foregroundLaunch || (!loaded && !error)) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <PushBridge />
-        <SettingsProvider>
-          <ThemedStack />
-        </SettingsProvider>
-      </QueryClientProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <QueryClientProvider client={queryClient}>
+          <PushBridge />
+          <SettingsProvider>
+            <ThemedStack />
+          </SettingsProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 const HOME_PATHS = new Set(["/", "/home", "/(tabs)/home"]);
+const ACTIVE_RIDE_ROOT_PATHS = new Set(["/ride/find-driver", "/ride/tracking", "/ride/completed"]);
 
 /**
  * Nút back cứng của Android:
+ * - Ở màn tìm/theo dõi/hoàn tất chuyến -> luôn về Trang chủ, không quay lại luồng đặt chuyến cũ.
  * - Có lịch sử  -> pop màn hiện tại.
  * - Hết lịch sử -> về Trang chủ thay vì thoát app.
  * - Đang ở Trang chủ -> trả false để Android thoát app như bình thường.
@@ -74,6 +82,11 @@ function useHardwareBack() {
       "hardwareBackPress",
       () => {
         const { router: current, pathname: path } = latest.current;
+        if (ACTIVE_RIDE_ROOT_PATHS.has(path)) {
+          if (current.canDismiss()) current.dismissAll();
+          current.replace("/(tabs)/home");
+          return true;
+        }
         if (current.canGoBack()) {
           current.back();
           return true;

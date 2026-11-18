@@ -3,7 +3,7 @@ import { useCreateTicket } from '@/lib/useTickets';
 import { ScreenWrapper, TicketCreate } from '@datxe/ui';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 import { Snackbar } from 'react-native-paper';
 
 export default function CreateTicketScreen() {
@@ -14,7 +14,7 @@ export default function CreateTicketScreen() {
   return (
     <ScreenWrapper>
       <ScreenHeader title="Tạo yêu cầu hỗ trợ" onBack={() => router.back()} />
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           <TicketCreate pending={create.isPending} error={create.error?.message} onSubmit={draft => create.mutateAsync(draft, { onSuccess: () => { setToast(true); setTimeout(() => router.back(), 900); } })} />
         </ScrollView>

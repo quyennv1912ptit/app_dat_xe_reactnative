@@ -1,4 +1,4 @@
-import { fontFamily, spacing } from "@datxe/ui";
+import { spacing, typography } from "@datxe/ui";
 import type { ThemeColors } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 
@@ -9,6 +9,7 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
       alignItems: "center",
       justifyContent: "center",
+      padding: spacing.margin,
     },
     glow: {
       position: "absolute",
@@ -18,22 +19,24 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.onPrimary20,
       opacity: 0.35,
     },
+    card: {
+      width: "100%",
+      maxWidth: 400,
+      padding: spacing.spaceLg,
+      alignItems: "center",
+      gap: 14,
+    },
     logo: {
       width: spacing.radarCore + spacing.spaceLg,
       height: spacing.radarCore + spacing.spaceLg,
       borderRadius: 24,
     },
     tagline: {
-      fontFamily: fontFamily.inter,
-      fontSize: 13,
-      lineHeight: 16,
-      fontWeight: "600",
+      ...typography.label,
       textAlign: "center",
       color: colors.onSurfaceVariant,
     },
-    footer: {
-      alignItems: "center",
-      gap: 10,
-      marginTop: 24,
+    actionButton: {
+      alignSelf: "stretch",
     },
   });

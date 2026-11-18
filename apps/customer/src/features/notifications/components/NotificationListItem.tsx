@@ -33,7 +33,7 @@ export function NotificationListItem({
         <MaterialIcons
           name={
             category(item.type) === "vehicle"
-              ? "directions-car"
+              ? "alt-route"
               : category(item.type) === "promo"
                 ? "local-offer"
                 : "notifications"

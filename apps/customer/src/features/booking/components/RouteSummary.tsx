@@ -1,5 +1,5 @@
 import { translate as t } from "@datxe/shared";
-import { MotionPressable as Pressable, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
+import { MotionPressable as Pressable, Typography as Text, typography, useLanguage, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import type { BookingPlace } from "../types";
@@ -26,8 +26,8 @@ export function RouteSummary({
   useLanguage();
   const colors = useThemeColors();
   const stops = [
-    { place: pickup, label: t("Điểm đón"), color: colors.primary, onPress: onPickup },
-    { place: dropoff, label: t("Điểm đến"), color: colors.error, onPress: onDropoff },
+    { place: pickup, label: t("Điểm đón"), color: colors.ridePickup, onPress: onPickup },
+    { place: dropoff, label: t("Điểm đến"), color: colors.rideDropoff, onPress: onDropoff },
   ];
 
   return (
@@ -50,7 +50,7 @@ export function RouteSummary({
             </View>
             <View style={styles.copy}>
               <Text style={[styles.label, { color: colors.onSurfaceVariant }]}>{label}</Text>
-              <Text style={styles.address} numberOfLines={1}>{address}</Text>
+              <Text style={styles.address}>{address}</Text>
             </View>
             {onPress ? <MaterialIcons name="edit" size={18} color={colors.onSurfaceVariant} /> : null}
           </Pressable>
@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
   line: { width: 1, flex: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   copy: { flex: 1, paddingVertical: 4 },
-  label: { fontSize: 12, lineHeight: 16 },
-  address: { fontSize: 15, lineHeight: 20, fontWeight: "600" },
+  label: { ...typography.caption },
+  address: { ...typography.cardTitle },
 });

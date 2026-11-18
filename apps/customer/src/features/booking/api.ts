@@ -3,12 +3,59 @@ import { request } from '@/lib/api';
 import { customerApi } from '@/lib/customerApi';
 import type { CreateCustomerRideRequest,CreateCustomerRideResponse,NearbyDriverMarker,RideCoordinates,RideEstimate,RideEstimateRequest } from '@datxe/shared';
 import { isCoordinate } from './bookingUtils';
-import type { BookingPlace, PlaceSuggestion, PlaceSearchResult } from './types';
+import type { BookingPlace, CustomerPlace, NearbyPlacesResult, PlaceSuggestion, PlaceSearchResult, ReportPlaceInput } from './types';
 
 export async function searchBookingPlaces(text: string, proximity?: RideCoordinates, signal?: AbortSignal): Promise<PlaceSearchResult> {
   const query = new URLSearchParams({ query: text.trim() });
   if (proximity) { query.set('proximityLat', String(proximity.lat)); query.set('proximityLng', String(proximity.lng)); }
   return (await request<PlaceSearchResult>(`/location/places/search?${query.toString()}`, { signal }))!;
+}
+
+export async function getNearbyBookingPlaces(
+  point: RideCoordinates,
+  signal?: AbortSignal,
+  radiusMeters = 100,
+  limit = 8,
+): Promise<NearbyPlacesResult> {
+  const query = new URLSearchParams({
+    lat: String(point.lat),
+    lng: String(point.lng),
+    radius: String(radiusMeters),
+    limit: String(limit),
+  });
+  return (await request<NearbyPlacesResult>(`/location/places/nearby?${query.toString()}`, { signal }))!;
+}
+
+export async function getRecentBookingPlaces(
+  kind: 'pickup' | 'dropoff',
+  proximity?: RideCoordinates,
+  signal?: AbortSignal,
+  limit = 5,
+): Promise<CustomerPlace[]> {
+  const query = new URLSearchParams({ kind, limit: String(limit) });
+  if (proximity) { query.set('proximityLat', String(proximity.lat)); query.set('proximityLng', String(proximity.lng)); }
+  return (await request<CustomerPlace[]>(`/customer/places/recent?${query.toString()}`, { signal })) ?? [];
+}
+
+export async function getPopularBookingPlaces(
+  proximity?: RideCoordinates,
+  signal?: AbortSignal,
+  limit = 6,
+): Promise<CustomerPlace[]> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (proximity) { query.set('proximityLat', String(proximity.lat)); query.set('proximityLng', String(proximity.lng)); }
+  return (await request<CustomerPlace[]>(`/customer/places/popular?${query.toString()}`, { signal })) ?? [];
+}
+
+export async function reportBookingPlace(
+  input: ReportPlaceInput,
+  signal?: AbortSignal,
+): Promise<{ ticketId: number; code: string }> {
+  return (await request<{ ticketId: number; code: string }>('/customer/places/report', {
+    method: 'POST',
+    body: input,
+    signal,
+  }))!;
 }
 
 export async function resolveBookingPlace(suggestion: PlaceSuggestion, signal?: AbortSignal): Promise<BookingPlace> {
@@ -18,7 +65,13 @@ export async function resolveBookingPlace(suggestion: PlaceSuggestion, signal?: 
   const place = (await request<PlaceSuggestion>(`/location/places/detail?${query.toString()}`, { signal }))!;
   if (!place.coordinate || !isCoordinate(place.coordinate)) throw new Error(i18nT("Chưa lấy được vị trí của địa chỉ này. Hãy thử lại hoặc chọn ghim trên bản đồ."));
   // Keep the exact suggestion address the user chose; details supplies verified coordinates.
-  return { ...place, name: suggestion.name, address: suggestion.address, secondaryAddress: suggestion.secondaryAddress ?? place.secondaryAddress, coordinate: place.coordinate };
+  return {
+    ...place,
+    name: suggestion.name?.trim() || place.name,
+    address: suggestion.address?.trim() || place.address,
+    secondaryAddress: suggestion.secondaryAddress ?? place.secondaryAddress,
+    coordinate: place.coordinate,
+  };
 }
 
 export async function reverseBookingPlace(point: RideCoordinates, signal?: AbortSignal): Promise<BookingPlace> {

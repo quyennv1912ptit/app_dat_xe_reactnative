@@ -3,6 +3,7 @@ import { ActivityIndicator } from "react-native-paper";
 import { HeaderIconButton, ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
 import {
+  Button,
   GroupedList,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
@@ -12,7 +13,9 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Image, ScrollView, View } from "react-native";
+import { Image } from "expo-image";
+import { useState } from "react";
+import { ScrollView, View } from "react-native";
 
 import { styles as base_styles } from "../components/CustomerVehiclesScreenParts";
 import { useCustomerVehicles } from "../hooks/useCustomerVehicles";
@@ -22,21 +25,24 @@ export default function CustomerVehiclesScreen() {
   const colors = useThemeColors();
 
   const styles = useThemedStyles(base_styles);
+  const [failedImageIds, setFailedImageIds] = useState<Record<number, boolean>>({});
 
-  const { router, vehicles, loading, error, deletingId, remove, refresh } =
+  const { router, vehicles, loading, error, deletingId, remove, refresh, defaultId, setDefault } =
     useCustomerVehicles();
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={i18nT("Xe của tôi")}
+        title={i18nT("Phương tiện của tôi")}
         onBack={() => router.back()}
         rightContent={
-          <HeaderIconButton
-            icon="add"
-            accessibilityLabel={i18nT("Thêm xe")}
-            onPress={() => router.push("/add-vehicle")}
-            tone="primary"
-          />
+          vehicles.length > 0 ? (
+            <HeaderIconButton
+              icon="add"
+              accessibilityLabel={i18nT("Thêm xe")}
+              onPress={() => router.push("/add-vehicle")}
+              tone="primary"
+            />
+          ) : undefined
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
@@ -45,7 +51,7 @@ export default function CustomerVehiclesScreen() {
         {!loading && !error && vehicles.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons
-              name="directions-car"
+              name="verified-user"
               size={38}
               color={colors.primary}
             />
@@ -53,24 +59,30 @@ export default function CustomerVehiclesScreen() {
             <Text style={styles.meta}>
               {i18nT("Thêm xe để chọn khi tạo chuyến đi.")}
             </Text>
+            <Button label={i18nT("Thêm xe mới")} onPress={() => router.push("/add-vehicle")} />
           </View>
         ) : null}
         {vehicles.length ? (
           <GroupedList>
             {vehicles.map((vehicle) => (
               <View key={vehicle.id} style={styles.vehicle}>
-                {vehicle.images[0]?.secure_url ? (
+                {vehicle.images[0]?.secure_url && !failedImageIds[vehicle.id] ? (
                   <Image
                     source={{ uri: vehicle.images[0].secure_url }}
-                    style={styles.image}
+                    cachePolicy="memory"
+                    contentFit="cover"
+                    onError={() =>
+                      setFailedImageIds((prev) =>
+                        prev[vehicle.id] ? prev : { ...prev, [vehicle.id]: true },
+                      )
+                    }
+                    style={[styles.image, { backgroundColor: colors.surfaceContainerHigh }]}
                   />
                 ) : (
                   <View style={styles.imagePlaceholder}>
-                    <MaterialIcons
-                      name="directions-car"
-                      size={28}
-                      color={colors.primary}
-                    />
+                    <Text style={styles.typePlaceholder}>
+                      {i18nT(vehicle.vehicle_type === "MOTORCYCLE" ? "Xe máy" : vehicle.vehicle_type === "CAR" ? "Ô tô" : "Xe")}
+                    </Text>
                   </View>
                 )}
                 <Pressable
@@ -97,15 +109,23 @@ export default function CustomerVehiclesScreen() {
                   <Text style={styles.meta}>
                     {i18nT(vehicle.vehicle_type === "MOTORCYCLE" ? "Xe máy" : vehicle.vehicle_type === "CAR" ? "Ô tô" : "—")} ·{" "}
                     {i18nT(vehicle.transmission_type === "AUTO" ? "Số tự động" : vehicle.transmission_type === "MANUAL" ? "Số sàn" : "—")}
+                    {vehicle.is_default ? " · " + i18nT("Mặc định") : ""}
                     {i18nT(vehicle.color ? ` · ${vehicle.color}` : "")}
                     {i18nT(
                       vehicle.engine_cc ? ` · ${vehicle.engine_cc} cc` : "",
                     )}
                   </Text>
                 </Pressable>
+                {!vehicle.is_default ? <Pressable
+                  accessibilityRole="button" accessibilityLabel={i18nT("Đặt làm xe mặc định")}
+                  disabled={defaultId !== null || deletingId === vehicle.id}
+                  onPress={() => void setDefault(vehicle.id)} style={styles.delete}>
+                  {defaultId === vehicle.id ? <ActivityIndicator color={colors.primary} />
+                    : <MaterialIcons name="star-outline" size={23} color={colors.primary} />}
+                </Pressable> : null}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={i18nT("Xóa {0}", {
+                  accessibilityLabel={i18nT("Lưu trữ {0}", {
                     "0": vehicle.plate_number || i18nT("xe"),
                   })}
                   disabled={deletingId === vehicle.id}
@@ -126,14 +146,6 @@ export default function CustomerVehiclesScreen() {
             ))}
           </GroupedList>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push("/add-vehicle")}
-          style={styles.add}
-        >
-          <MaterialIcons name="add" size={20} color={colors.onPrimary} />
-          <Text style={styles.addText}>{i18nT("Thêm xe mới")}</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

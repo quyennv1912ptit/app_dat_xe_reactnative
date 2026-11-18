@@ -6,7 +6,7 @@ import { translate as t, type CustomerRideDetail } from "@datxe/shared";
 import { Button, Card, ScreenWrapper, SupportCenter, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet } from "react-native";
+import { KeyboardAvoidingView, Linking, ScrollView, StyleSheet } from "react-native";
 import { useCustomerSupport } from "../hooks/useCustomerSupport";
 import { rideStatusLabel, chatStatuses } from "@/lib/customerRidePresentation";
 
@@ -23,7 +23,7 @@ function CustomerHelp() {
   return (
     <ScreenWrapper>
       <ScreenHeader title={t("Trợ giúp")} onBack={() => router.back()} />
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <SupportCenter
             {...support}

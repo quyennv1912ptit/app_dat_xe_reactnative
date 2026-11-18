@@ -21,7 +21,6 @@ import { usePreventRemove, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -161,7 +160,7 @@ function ProfileForm({ initial }: { initial: CustomerProfile }) {
   return (
     <KeyboardAvoidingView
       style={extra.item1}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"

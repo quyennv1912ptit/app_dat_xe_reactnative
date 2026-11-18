@@ -48,6 +48,10 @@ const openNotification = async (item: CustomerNotification) => {
     const rideId = typeof rawRideId === 'number' ? rawRideId : typeof rawRideId === 'string' ? Number(rawRideId) : NaN;
     if (Number.isSafeInteger(rideId) && rideId > 0) {
       router.push({ pathname: '/ride/[id]', params: { id: String(rideId), rideId: String(rideId), returnTo: 'notifications' } });
+      return;
+    }
+    if (item.type === 'VOUCHER_GRANTED' || item.type === 'VOUCHER_CAMPAIGN') {
+      router.push('/vouchers');
     }
   };
 const visible = items.filter((item) => filter === 'all' || category(item.type) === filter);

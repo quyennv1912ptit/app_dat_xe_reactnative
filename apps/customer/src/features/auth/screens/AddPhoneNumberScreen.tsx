@@ -13,7 +13,7 @@ import {
   useLanguage,
   useThemedStyles,
 } from "@datxe/ui";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import { styles as base_styles } from "../components/AddPhoneNumberScreenParts";
 import { useAddPhoneNumber } from "../hooks/useAddPhoneNumber";
@@ -49,7 +49,7 @@ export default function AddPhoneNumberScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={styles.flex}
       >
         <View style={styles.topBar}>

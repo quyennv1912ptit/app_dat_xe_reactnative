@@ -1,10 +1,7 @@
-import { customerType } from "@/components/CustomerRideUI";
-import { ActivityIndicator } from "react-native-paper";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { translate as i18nT } from "@datxe/shared";
-import type { ThemeColors } from "@datxe/ui";
+import { ActivityIndicator } from 'react-native-paper';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { translate as i18nT } from '@datxe/shared';
 import {
-  GroupedList,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
@@ -12,326 +9,290 @@ import {
   useLanguage,
   useThemeColors,
   useThemedStyles,
-} from "@datxe/ui";
-import { useRef, useState, type ComponentRef } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
+} from '@datxe/ui';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRef, useState, type ComponentRef } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
-  StyleSheet,
   View,
-} from "react-native";
-
-import { bookingStyles as base_s } from "../components/bookingStyles";
-import { usePlaceSelection } from "../hooks/usePlaceSelection";
-import type { PlaceKind } from "../types";
+} from 'react-native';
+import { formatDistanceMeters } from '../bookingUtils';
+import { PlaceKindIcon, PlaceRow } from '../components/PlaceRow';
+import { placeAccent, placeStyles } from '../components/placeStyles';
+import { usePlaceSelection } from '../hooks/usePlaceSelection';
+import type { PlaceKind } from '../types';
 
 export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
-  const extra = useThemedStyles(extraStyles);
-  const searchInput = useRef<ComponentRef<typeof TextInput>>(null);
-
   useLanguage();
-
   const colors = useThemeColors();
-
-  const s = useThemedStyles(base_s);
-
+  const s = useThemedStyles(placeStyles);
+  const accent = placeAccent(colors);
   const h = usePlaceSelection(kind);
-  const [searchPreset, setSearchPreset] = useState({ text: h.initialText, revision: 0 });
-  const fillRecentAddress = (address: string) => {
-    setSearchPreset((previous) => ({ text: address, revision: previous.revision + 1 }));
-    h.onChangeText(address);
+  const searchInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const [activeField, setActiveField] = useState<PlaceKind>(kind);
+  const isPickup = kind === 'pickup';
+  const hasText = h.text.trim().length > 0;
+  const savedNames = new Set(h.savedPlaces.map((place) => place.name));
+  const selected = h.selected;
+
+  const clearSearch = () => {
+    searchInput.current?.clear();
+    h.clearText();
   };
-  const isPickup = kind === "pickup";
-  return (
-    <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
-      <ScreenHeader
-        title={i18nT(isPickup ? "Chọn điểm đón" : "Bạn muốn đến đâu?")}
-        onBack={() => h.router.back()}
+
+  const searchField = (
+    <View style={[s.fieldBox, activeField === kind && s.fieldBoxActive]}>
+      <PlaceKindIcon pickup={isPickup} />
+      <TextInput
+        ref={searchInput}
+        autoFocus
+        accessibilityLabel={i18nT(isPickup ? 'Tìm điểm đón' : 'Tìm điểm đến')}
+        defaultValue={h.initialText}
+        onChangeText={h.onChangeText}
+        onFocus={() => setActiveField(kind)}
+        placeholder={i18nT(isPickup ? 'Nhập điểm đón' : 'Nhập điểm đến')}
+        placeholderTextColor={colors.onSurfaceVariant}
+        maxLength={255}
+        returnKeyType="search"
+        style={s.fieldInput}
       />
-      <KeyboardAvoidingView
-        style={s.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={[s.page, extra.item1]}>
-          <Text style={s.label}>
-            {i18nT("Bước")} {i18nT(isPickup ? "1" : "2")}/4 ·{" "}
-            {i18nT(isPickup ? "Điểm đón" : "Điểm đến")}
-          </Text>
-          {!isPickup && h.pickup ? (
-            <View style={s.row}>
-              <MaterialIcons
-                name="radio-button-checked"
-                size={14}
-                color={colors.success}
-              />
-              <Text style={[s.muted, s.flex]} numberOfLines={1}>
-                {i18nT("Từ")} {h.pickup.address}
-              </Text>
-            </View>
-          ) : null}
-          <View style={s.searchBox}>
-            <MaterialIcons name="search" size={23} color={colors.primary} />
-            <TextInput
-              accessibilityLabel={i18nT(
-                isPickup ? "Tìm điểm đón" : "Tìm điểm đến",
-              )}
-              ref={searchInput}
-              key={searchPreset.revision}
-              defaultValue={searchPreset.text}
-              onChangeText={h.onChangeText}
-              placeholder={i18nT("Tìm tên đường, địa chỉ, địa điểm…")}
-              maxLength={255}
-              style={s.search}
-              returnKeyType="search"
-            />
-            {h.text ? (
-              <Pressable
-                accessibilityLabel={i18nT("Xóa tìm kiếm")}
-                accessibilityRole="button"
-                style={[customerType.target, extra.clear]}
-                onPress={() => { searchInput.current?.clear(); h.clearText(); }}
-              >
-                <MaterialIcons name="cancel" size={20} color={colors.outline} />
-              </Pressable>
-            ) : null}
-          </View>
-          <Pressable onPress={h.openMap} accessibilityRole="button" style={[s.row, extra.item2, customerType.target]}>
-            <MaterialIcons name="map" size={23} color={colors.primary} />
-            <Text style={s.link}>{i18nT("Chọn vị trí trên bản đồ")}</Text>
-            <MaterialIcons
-              name="chevron-right"
-              size={21}
-              color={colors.primary}
-            />
+      {hasText ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={i18nT('Xóa tìm kiếm')}
+          onPress={clearSearch}
+          style={s.fieldClear}
+          hitSlop={8}
+        >
+          <MaterialIcons name="cancel" size={20} color={colors.outline} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  const otherField = kind === 'dropoff' ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={i18nT('Đổi điểm đón')}
+      onPress={() => h.editTarget('pickup')}
+      style={s.fieldBox}
+    >
+      <PlaceKindIcon pickup />
+      <Text style={[s.fieldValue, !h.pickup && s.fieldPlaceholder]}>
+        {h.pickup?.address ?? i18nT('Chọn điểm đón')}
+      </Text>
+      <MaterialIcons name="chevron-right" size={20} color={colors.outline} />
+    </Pressable>
+  ) : null;
+
+  return (
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <ScreenHeader
+        title={i18nT(isPickup ? 'Chọn điểm đón' : 'Bạn muốn đi đâu?')}
+        onBack={() => h.router.back()}
+        rightContent={(
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT('Chọn từ bản đồ')}
+            onPress={h.openMap}
+            style={s.headerLinkTarget}
+          >
+            <Text style={s.headerLink}>{i18nT('Chọn từ bản đồ')}</Text>
           </Pressable>
-        </View>
+        )}
+      />
+      <KeyboardAvoidingView style={s.flex} behavior="padding">
         <ScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          style={s.flex}
-          contentContainerStyle={s.page}
+          contentContainerStyle={s.content}
         >
-          {!h.text.trim() ? (
-            <GroupedList>
-              {h.savedPlaces.map((place) => (
-                <Pressable
-                  key={place.id}
-                  onPress={() => void h.select(place)}
-                  style={s.listItem}
-                >
-                  <MaterialIcons
-                    name={
-                      place.name === "Nhà"
-                        ? "home"
-                        : place.name === "Cơ quan"
-                          ? "work"
-                          : "star"
-                    }
-                    size={24}
-                    color={colors.primary}
-                  />
-                  <View style={s.flex}>
-                    <Text style={s.text}>{i18nT(place.name)}</Text>
-                    <Text style={s.muted}>{place.address}</Text>
-                  </View>
-                </Pressable>
-              ))}
+          <View style={s.fieldsRow}>
+            <View style={s.fieldsColumn}>
+              {otherField}
+              {searchField}
+            </View>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
+            {h.savedPlaces.map((place) => (
+              <Pressable
+                key={place.id}
+                accessibilityRole="button"
+                accessibilityLabel={i18nT('Dùng địa điểm đã lưu {0}', { 0: i18nT(place.name) })}
+                onPress={() => h.selectKnownPlace(place)}
+                style={s.chip}
+              >
+                <MaterialIcons
+                  name={place.name === 'Nhà' ? 'home' : place.name === 'Cơ quan' ? 'work' : 'star'}
+                  size={18}
+                  color={colors.onSurfaceVariant}
+                />
+                <Text style={s.chipText}>{i18nT(place.name)}</Text>
+              </Pressable>
+            ))}
+            {!savedNames.has('Nhà') ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={i18nT('Thêm nhà')}
+                onPress={() => h.addSavedPlace('Nhà')}
+                style={s.chip}
+              >
+                <MaterialIcons name="add-location-alt" size={18} color={colors.onSurfaceVariant} />
+                <Text style={s.chipText}>{i18nT('Thêm nhà')}</Text>
+              </Pressable>
+            ) : null}
+            {!savedNames.has('Cơ quan') ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={i18nT('Thêm công ty')}
+                onPress={() => h.addSavedPlace('Cơ quan')}
+                style={s.chip}
+              >
+                <MaterialIcons name="add-location-alt" size={18} color={colors.onSurfaceVariant} />
+                <Text style={s.chipText}>{i18nT('Thêm công ty')}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={i18nT('Thêm địa chỉ')}
+              onPress={() => h.addSavedPlace('Yêu thích')}
+              style={s.chip}
+            >
+              <MaterialIcons name="add" size={18} color={colors.onSurfaceVariant} />
+              <Text style={s.chipText}>{i18nT('Thêm địa chỉ')}</Text>
+            </Pressable>
+          </ScrollView>
+
+          {h.error ? (
+            <View style={s.errorBox}>
+              <Text accessibilityRole="alert" style={s.errorText}>{i18nT(h.error)}</Text>
+            </View>
+          ) : null}
+
+          {!hasText ? (
+            <>
+              {selected ? (
+                <PlaceRow
+                  selected
+                  title={i18nT('Địa điểm đã chọn')}
+                  address={selected.address}
+                  icon="check-circle"
+                  iconColor={colors.primary}
+                  onPress={() => void h.select(selected)}
+                  onMore={() => h.openDetail(selected)}
+                />
+              ) : null}
 
               {isPickup ? (
-                <Pressable
-                  disabled={h.locating}
+                <PlaceRow
+                  title={i18nT('Dùng vị trí hiện tại')}
+                  address={i18nT('Xác định điểm đón bằng GPS')}
+                  icon="my-location"
+                  iconColor={accent.pickup}
                   onPress={() => void h.useCurrentLocation()}
-                  style={s.listItem}
-                >
-                  <View style={[s.icon, extra.item3]}>
-                    {h.locating ? (
-                      <ActivityIndicator />
-                    ) : (
-                      <MaterialIcons
-                        name="my-location"
-                        size={23}
-                        color={colors.successStrong}
-                      />
-                    )}
-                  </View>
-                  <View style={s.flex}>
-                    <Text style={[s.text, extra.item4]}>
-                      {i18nT("Dùng vị trí hiện tại")}
-                    </Text>
-                    <Text style={s.muted}>
-                      {i18nT("Xác định điểm đón bằng GPS")}
-                    </Text>
-                  </View>
-                </Pressable>
+                  disabled={h.locating}
+                  meta={h.locating ? i18nT('Đang lấy vị trí…') : undefined}
+                />
               ) : null}
-              {h.selected ? (
-                <Pressable
-                  onPress={() => h.select(h.selected!)}
-                  style={s.listItem}
-                >
-                  <MaterialIcons
-                    name="check-circle"
-                    size={24}
-                    color={colors.primary}
-                  />
-                  <View style={s.flex}>
-                    <Text style={s.label}>{i18nT("Địa điểm đã chọn")}</Text>
-                    <Text style={s.text}>{h.selected.address}</Text>
-                  </View>
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={22}
-                    color={colors.onSurfaceVariant}
-                  />
-                </Pressable>
+
+              {h.recentLoading || h.popularLoading ? (
+                <View style={s.loadingRow}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={s.helper}>{i18nT('Đang tìm địa điểm…')}</Text>
+                </View>
               ) : null}
-              {h.recentAddresses.length ? (
-                <Text style={[s.label, extra.item5]}>
-                  {i18nT("Địa điểm gần đây")}
+
+              {h.recentPlaces.length ? (
+                <Text style={s.section}>
+                  {i18nT(isPickup ? 'Địa điểm gần đây' : 'Điểm đến gần đây')}
                 </Text>
               ) : null}
-              {h.recentAddresses.map((address) => (
-                <Pressable
-                  key={address}
-                  onPress={() => fillRecentAddress(address)}
-                  style={s.listItem}
-                >
-                  <View style={s.icon}>
-                    <MaterialIcons
-                      name="history"
-                      size={22}
-                      color={colors.onSurfaceVariant}
-                    />
-                  </View>
-                  <Text style={[s.text, s.flex]} numberOfLines={2}>
-                    {address}
-                  </Text>
-                </Pressable>
+              {h.recentPlaces.map((place) => (
+                <PlaceRow
+                  key={place.id}
+                  title={place.name}
+                  address={place.address}
+                  meta={formatDistanceMeters(place.distanceMeters)}
+                  icon="history"
+                  onPress={() => h.selectKnownPlace(place)}
+                  onMore={() => h.openDetail(place)}
+                  disabled={h.selectingId !== null}
+                />
               ))}
-              {!h.recentAddresses.length && !h.selected ? (
+
+              {kind === 'dropoff' && h.popularPlaces.length ? (
+                <Text style={s.section}>{i18nT('Điểm đến phổ biến')}</Text>
+              ) : null}
+              {kind === 'dropoff' ? h.popularPlaces.map((place) => (
+                <PlaceRow
+                  key={place.id}
+                  title={place.name}
+                  address={place.address}
+                  meta={formatDistanceMeters(place.distanceMeters)}
+                  icon="trending-up"
+                  iconColor={accent.dropoff}
+                  onPress={() => void h.select(place)}
+                  onMore={() => h.openDetail(place)}
+                  disabled={h.selectingId !== null}
+                />
+              )) : null}
+
+              {!h.recentPlaces.length && !(kind === 'dropoff' && h.popularPlaces.length) && !selected && !h.recentLoading && !h.popularLoading ? (
                 <View style={s.empty}>
-                  <MaterialIcons
-                    name="travel-explore"
-                    size={42}
-                    color={colors.outline}
-                  />
-                  <Text style={s.muted}>
-                    {i18nT(
-                      "Tìm địa chỉ hoặc chọn một vị trí trên bản đồ để tiếp tục.",
-                    )}
+                  <MaterialIcons name="travel-explore" size={42} color={colors.outline} />
+                  <Text style={s.helper}>
+                    {i18nT('Tìm địa chỉ hoặc chọn một vị trí trên bản đồ để tiếp tục.')}
                   </Text>
                 </View>
               ) : null}
-            </GroupedList>
-          ) : null}
-          {h.loading ? (
-            <View style={s.empty}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={s.muted}>{i18nT("Đang tìm địa điểm…")}</Text>
-            </View>
-          ) : null}
-          {h.text.trim().length === 1 ? (
-            <Text style={[s.muted, extra.item6]}>
-              {i18nT("Nhập ít nhất 2 ký tự để tìm địa điểm.")}
-            </Text>
-          ) : null}
-          {h.error || h.locationError ? (
-            <View style={[s.errorBox, extra.item7]}>
-              <Text accessibilityRole="alert" style={s.error}>
-                {i18nT(h.error || h.locationError)}
-              </Text>
-            </View>
-          ) : null}
-          {!h.loading && h.results.length > 0 ? (
-            <GroupedList>
-              {h.results.map((place) => (
-                <Pressable
+            </>
+          ) : (
+            <>
+              {h.loading ? (
+                <View style={s.loadingRow}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={s.helper}>{i18nT('Đang tìm địa điểm…')}</Text>
+                </View>
+              ) : null}
+              {!h.canSearch ? (
+                <Text style={s.helperPadded}>{i18nT('Nhập ít nhất 2 ký tự để tìm địa điểm.')}</Text>
+              ) : null}
+              {h.canSearch && h.results.length ? (
+                <Text style={s.section}>{i18nT('Kết quả tìm kiếm')}</Text>
+              ) : null}
+              {h.canSearch ? h.results.map((place) => (
+                <PlaceRow
                   key={place.id}
-                  accessibilityRole="button"
-                  disabled={h.selectingId !== null}
+                  title={place.name}
+                  address={place.address}
+                  icon="place"
+                  iconColor={isPickup ? accent.pickup : accent.dropoff}
+                  meta={h.selectingId === place.id ? i18nT('Đang xác định vị trí chính xác…') : undefined}
                   onPress={() => void h.select(place)}
-                  style={s.listItem}
-                >
-                  <View style={s.icon}>
-                    <MaterialIcons
-                      name="place"
-                      size={23}
-                      color={isPickup ? colors.successStrong : colors.error}
-                    />
-                  </View>
-                  <View style={s.flex}>
-                    <Text style={[s.text, extra.item8]}>{place.name}</Text>
-                    <Text style={s.muted}>{place.address}</Text>
-                    {place.secondaryAddress ? (
-                      <Text style={s.muted}>
-                        {i18nT("Địa chỉ trước đây:")} {place.secondaryAddress}
-                      </Text>
-                    ) : null}
-                    {h.selectingId === place.id ? (
-                      <Text style={s.link}>
-                        {i18nT("Đang xác định vị trí chính xác…")}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {h.selectingId === place.id ? (
-                    <ActivityIndicator color={colors.primary} />
-                  ) : (
-                    <MaterialIcons
-                      name="north-west"
-                      size={19}
-                      color={colors.outline}
-                    />
-                  )}
-                </Pressable>
-              ))}
-            </GroupedList>
-          ) : null}
-          {h.limitedCoverage &&
-          !h.loading &&
-          !h.error &&
-          h.results.length > 0 ? (
-            <Text style={[s.muted, extra.item9]}>
-              {i18nT(
-                "Chưa thấy đúng địa chỉ? Nhập thêm số nhà, ngõ/ngách, quận hoặc chọn vị trí trên bản đồ.",
-              )}
-            </Text>
-          ) : null}
-          {h.text.trim().length >= 2 &&
-          !h.loading &&
-          !h.error &&
-          !h.results.length ? (
-            <View style={s.empty}>
-              <MaterialIcons
-                name="search-off"
-                size={36}
-                color={colors.outline}
-              />
-              <Text style={s.section}>{i18nT("Chưa tìm thấy địa điểm")}</Text>
-              <Text style={s.muted}>
-                {i18nT(
-                  "Thử thêm tên đường, quận hoặc thành phố, hoặc chọn trên bản đồ.",
-                )}
-              </Text>
-            </View>
-          ) : null}
+                  onMore={() => h.openDetail(place)}
+                  disabled={h.selectingId !== null}
+                />
+              )) : null}
+              {h.canSearch && !h.loading && !h.error && !h.results.length ? (
+                <View style={s.empty}>
+                  <MaterialIcons name="search-off" size={36} color={colors.outline} />
+                  <Text style={s.listTitle}>{i18nT('Chưa tìm thấy địa điểm')}</Text>
+                  <Text style={s.helper}>
+                    {i18nT('Thử thêm tên đường, quận hoặc thành phố, hoặc chọn trên bản đồ.')}
+                  </Text>
+                </View>
+              ) : null}
+              {h.limitedCoverage && !h.loading && h.results.length ? (
+                <Text style={s.helperPadded}>
+                  {i18nT('Chưa thấy đúng địa chỉ? Nhập thêm số nhà, ngõ/ngách, quận hoặc chọn vị trí trên bản đồ.')}
+                </Text>
+              ) : null}
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const extraStyles = (colors: ThemeColors) =>
-  StyleSheet.create({
-    item1: { paddingBottom: 12 },
-    clear: { alignItems: "center" },
-    item2: { paddingVertical: 8 },
-    item3: { backgroundColor: colors.successContainer },
-    item4: { fontWeight: "600" },
-    item5: { margin: 16, marginBottom: 4 },
-    item6: { padding: 16 },
-    item7: { margin: 16 },
-    item8: { fontWeight: "600" },
-    item9: { padding: 16 },
-  });

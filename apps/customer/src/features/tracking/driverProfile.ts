@@ -1,4 +1,4 @@
-import type { CustomerRideDetail, CustomerRideDriver } from '@datxe/shared';
+import { getAvatarInitials, type CustomerRideDetail, type CustomerRideDriver } from '@datxe/shared';
 
 export function assignedDriver(ride: Pick<CustomerRideDetail, 'driverId' | 'driver'>): CustomerRideDriver | null {
   return ride.driverId && ride.driver?.id === ride.driverId ? ride.driver : null;
@@ -19,6 +19,4 @@ export function driverExperience(years: number | null | undefined): number | nul
   return typeof years === 'number' && Number.isSafeInteger(years) && years >= 0 ? years : null;
 }
 
-export function driverInitials(name: string | null | undefined) {
-  return name?.trim().split(/\s+/).slice(-2).map(part => part.charAt(0)).join('').toUpperCase() || '';
-}
+export const driverInitials = (name: string | null | undefined) => getAvatarInitials(name, '');

@@ -14,7 +14,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import {
   styles as base_styles,
@@ -87,7 +87,7 @@ export default function RegisterScreen() {
       </View>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -182,7 +182,7 @@ export default function RegisterScreen() {
               <Text style={styles.infoLabel}>
                 {i18nT("Phương thức đăng nhập")}
               </Text>
-              <Text style={styles.infoValue} numberOfLines={1}>
+              <Text style={styles.infoValue}>
                 {i18nT(
                   user.phoneNumber ??
                     (phoneParam ? String(phoneParam) : user.email) ??

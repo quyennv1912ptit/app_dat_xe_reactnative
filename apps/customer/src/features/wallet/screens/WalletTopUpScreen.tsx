@@ -3,14 +3,23 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { walletBalance } from '@datxe/shared';
 import { Button, Card, ScreenWrapper, Typography as Text, WalletBalanceCard, WalletLoadState, WalletMoneyForm } from '@datxe/ui';
 import { useRouter } from 'expo-router';
-import { ScrollView } from 'react-native';
+import { useEffect, useRef, type ComponentRef } from 'react';
+import { Keyboard, KeyboardAvoidingView, ScrollView } from 'react-native';
 export default function WalletTopUpScreen() {
   const router = useRouter();
   const overview = useWalletOverview();
   const submit = useWalletTopUp();
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    });
+    return () => sub.remove();
+  }, []);
   return <ScreenWrapper>
     <ScreenHeader title="Nạp tiền vào ví" onBack={() => router.back()} />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 20 }}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+    <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 20 }}>
       <WalletBalanceCard title="Số dư ví ứng dụng" balance={walletBalance(overview.data, 'CUSTOMER')} description="Tiền nạp dùng để thanh toán chuyến đi." />
       <WalletLoadState loading={overview.isLoading} error={overview.error?.message} onRetry={() => void overview.refetch()} />
       {overview.data && !overview.isError ? overview.data.mockTopUpEnabled ? <WalletMoneyForm mode="topup" maxAmount={overview.data.maxTopUpAmount} onSubmit={submit} onDone={() => router.back()} /> : <Card style={{ gap: 16 }}>
@@ -18,5 +27,6 @@ export default function WalletTopUpScreen() {
         <Button label="Liên hệ hỗ trợ nạp tiền" onPress={() => router.push('/support')} />
       </Card> : null}
     </ScrollView>
+    </KeyboardAvoidingView>
   </ScreenWrapper>;
 }

@@ -29,7 +29,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Image, Modal, ScrollView, View } from "react-native";
+import { Image } from "expo-image";
+import { Modal, ScrollView, View } from "react-native";
 
 import {
   getApiErrorMessage,
@@ -149,6 +150,8 @@ export default function ProfileScreen() {
               {profile?.avatar_url ? (
                 <Image
                   source={{ uri: profile.avatar_url }}
+                  cachePolicy="memory"
+                  contentFit="cover"
                   style={styles.avatar}
                 />
               ) : (
@@ -171,7 +174,7 @@ export default function ProfileScreen() {
               </View>
             </Pressable>
             <View style={styles.identityCopy}>
-              <Text style={styles.userName} numberOfLines={2}>
+              <Text style={styles.userName}>
                 {getCustomerDisplayName(profile?.full_name) ||
                   i18nT("Khách hàng")}
               </Text>
@@ -190,7 +193,7 @@ export default function ProfileScreen() {
                   </Text>
                 </Pressable>
               )}
-              <Text style={styles.userEmail} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <Text style={styles.userEmail}>
                 {i18nT(profile?.email || "Chưa cập nhật email")}
               </Text>
             </View>

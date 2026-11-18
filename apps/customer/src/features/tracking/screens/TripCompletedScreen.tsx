@@ -14,7 +14,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { useRef, type ComponentRef } from "react";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import { styles as base_styles } from "../components/TripCompletedScreenParts";
 import { useTripCompleted } from "../hooks/useTripCompleted";
@@ -33,10 +34,12 @@ export default function TripCompletedScreen() {
     comment,
     setComment,
     saving,
+    alreadyRated,
     error,
     refresh,
     finish,
   } = useTripCompleted();
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
@@ -45,8 +48,8 @@ export default function TripCompletedScreen() {
         backAccessibilityLabel={i18nT("Về trang chủ")}
         onBack={() => router.replace("/(tabs)/home")}
       />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           {ride?.status === "COMPLETED" ? (
             <View style={styles.success}>
               <MaterialIcons
@@ -68,7 +71,14 @@ export default function TripCompletedScreen() {
             </>
           ) : !error ? <ActivityIndicator color={colors.primary} /> : null}
           {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
-          {ride?.status === "COMPLETED" && ride.driverId ? <Card style={styles.card}>
+          {ride?.status === "COMPLETED" && ride.driverId ? alreadyRated ? (
+            <Card style={styles.card}>
+              <View style={styles.success}>
+                <MaterialIcons name="verified" size={24} color={colors.successStrong} />
+                <Text style={styles.section}>{i18nT("Bạn đã đánh giá tài xế cho chuyến đi này.")}</Text>
+              </View>
+            </Card>
+          ) : <Card style={styles.card}>
             <Text style={styles.section}>{i18nT("Đánh giá chuyến đi")}</Text>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map((value) => (
@@ -76,7 +86,7 @@ export default function TripCompletedScreen() {
                   key={value}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: value === stars }}
-                  accessibilityLabel={i18nT(`${value} sao`)}
+                  accessibilityLabel={i18nT("{0} sao", { 0: value })}
                   style={[customerType.target, styles.star]}
                   onPress={() => setStars(value)}
                 >
@@ -90,13 +100,31 @@ export default function TripCompletedScreen() {
             </View>
             <TextInput
               multiline
+              accessibilityLabel={i18nT("Nhận xét (không bắt buộc)")}
               draftValue={comment}
               onChangeText={setComment}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
               placeholder={i18nT("Nhận xét (không bắt buộc)")}
               style={styles.input}
               maxLength={2000}
             />
             <Text style={styles.counter}>{i18nT(comment.length)}/2000</Text>
+            <Pressable
+              accessibilityRole="button"
+              disabled={saving || !ride || ride.status !== "COMPLETED" || !ride.driverId}
+              onPress={() => void finish()}
+              style={[
+                styles.primary,
+                { marginTop: 12 },
+                (saving || !ride || ride.status !== "COMPLETED" || !ride.driverId) && styles.disabled,
+              ]}
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.onPrimary} />
+              ) : (
+                <Text style={styles.primaryText}>{i18nT("Gửi đánh giá")}</Text>
+              )}
+            </Pressable>
           </Card> : null}
           {ride && ride.status !== "COMPLETED" ? (
             <Text style={styles.error}>
@@ -105,34 +133,15 @@ export default function TripCompletedScreen() {
           ) : null}
         </ScrollView>
         <View style={styles.footer}>
-          {ride?.status === "COMPLETED" && ride.driverId ? <Pressable
-            accessibilityRole="button"
-            disabled={
-              saving || !ride || ride.status !== "COMPLETED" || !ride.driverId
-            }
-            onPress={() => void finish()}
-            style={[
-              styles.primary,
-              (saving ||
-                !ride ||
-                ride.status !== "COMPLETED" ||
-                !ride.driverId) &&
-                styles.disabled,
-            ]}
-          >
-            {saving ? (
-              <ActivityIndicator color={colors.onPrimary} />
-            ) : (
-              <Text style={styles.primaryText}>{i18nT("Gửi đánh giá")}</Text>
-            )}
-          </Pressable> : null}
           <Pressable
             accessibilityRole="button"
             disabled={saving}
             onPress={() => void finish(true)}
-            style={styles.skip}
+            style={alreadyRated ? styles.primary : styles.skip}
           >
-            <Text style={styles.skipText}>{i18nT("Bỏ qua và về trang chủ")}</Text>
+            <Text style={alreadyRated ? styles.primaryText : styles.skipText}>
+              {i18nT(alreadyRated ? "Về trang chủ" : "Bỏ qua và về trang chủ")}
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

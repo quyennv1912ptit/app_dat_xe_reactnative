@@ -5,6 +5,7 @@ import {
   PaperTextInput as TextInput,
   localizedAlert,
   ScreenWrapper,
+  typography,
   useDebouncedTextChange,
   useLanguage,
   useThemeColors,
@@ -524,11 +525,10 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       alignSelf: "center",
     },
     row: { minHeight: 48, paddingVertical: 8, paddingHorizontal: 0, borderRadius: 24 },
-    rowTitle: { color: colors.onSurface, fontSize: 16, fontWeight: "500" },
+    rowTitle: { ...typography.cardTitle, color: colors.onSurface },
     rowDescription: {
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
-      fontSize: 14,
-      lineHeight: 20,
     },
     trailing: { alignSelf: "center", justifyContent: "center" },
     divider: {
@@ -537,9 +537,9 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       marginVertical: 4,
     },
     helper: {
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
       marginBottom: 16,
-      lineHeight: 22,
     },
     input: { backgroundColor: colors.inputSurface },
     inputOutline: { borderRadius: 24 },
