@@ -389,7 +389,7 @@ function CaptureSession({
             {selfie ? 'Khung chỉ để căn chỉnh. Ứng dụng chưa tự kiểm tra khuôn mặt hay người thật.'
               : 'Khung chỉ để căn chỉnh. Ứng dụng chưa tự nhận diện bốn góc thẻ.'}
           </Text>
-          {error ? <Text style={[styles.disclaimer, { color: colors.errorContainer }]} accessibilityLiveRegion="polite">{error}</Text> : null}
+          {error ? <Text style={[styles.disclaimer, styles.errorBanner]} accessibilityLiveRegion="polite">{error}</Text> : null}
           <View style={styles.shutterRow}>
             <View style={styles.sideSlot}>
               {galleryAllowed ? (
@@ -476,7 +476,7 @@ function OvalOverlay({ width, height, frameW, frameH }: { width: number; height:
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.mediaViewerBackground },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   topTitleWrap: { flex: 1, alignItems: 'center' },
   topTitle: { ...typography.sectionTitle, color: colors.onScrim, textAlign: 'center' },
   topSubtitle: { ...typography.caption, color: colors.onScrim, textAlign: 'center' },
@@ -501,6 +501,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   tip: { backgroundColor: colors.scrim60, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   tipText: { ...typography.label, color: colors.onScrim },
   disclaimer: { ...typography.caption, color: colors.onScrim, textAlign: 'center' },
+  errorBanner: { color: colors.onErrorContainer, backgroundColor: colors.errorContainer, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   shutterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 },
   sideSlot: { minWidth: 112, alignItems: 'center' },
   shutterOuter: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.onScrim, alignItems: 'center', justifyContent: 'center' },

@@ -2,7 +2,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useCreateTicket } from '@/lib/useTickets';
 import { ScreenWrapper, TicketCreate } from '@datxe/ui';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 import { Snackbar } from 'react-native-paper';
 
@@ -10,13 +10,35 @@ export default function CreateTicketScreen() {
   const router = useRouter();
   const create = useCreateTicket();
   const [toast, setToast] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/tickets');
+  };
 
   return (
     <ScreenWrapper>
-      <ScreenHeader title="Tạo yêu cầu hỗ trợ" onBack={() => router.back()} />
+      <ScreenHeader title="Tạo yêu cầu hỗ trợ" onBack={leave} />
       <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <TicketCreate pending={create.isPending} error={create.error?.message} onSubmit={draft => create.mutateAsync(draft, { onSuccess: () => { setToast(true); setTimeout(() => router.back(), 900); } })} />
+          <TicketCreate
+            pending={create.isPending}
+            error={create.error?.message}
+            onSubmit={draft =>
+              create.mutateAsync(draft, {
+                onSuccess: () => {
+                  setToast(true);
+                  if (timerRef.current) clearTimeout(timerRef.current);
+                  timerRef.current = setTimeout(leave, 900);
+                },
+              })
+            }
+          />
         </ScrollView>
       </KeyboardAvoidingView>
       <Snackbar visible={toast} onDismiss={() => setToast(false)} duration={800}>Đã gửi yêu cầu hỗ trợ</Snackbar>

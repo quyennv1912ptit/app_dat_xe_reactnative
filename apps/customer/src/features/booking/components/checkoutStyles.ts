@@ -101,7 +101,7 @@ export const checkoutStyles = (colors: ThemeColors) =>
     modeRow: { flexDirection: 'row', gap: 8 },
     modeCell: {
       flex: 1,
-      minHeight: 44,
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -121,6 +121,10 @@ export const checkoutStyles = (colors: ThemeColors) =>
       flex: 1,
       justifyContent: 'flex-end',
       backgroundColor: colors.scrim60,
+    },
+    modalScroll: {
+      flexGrow: 0,
+      maxHeight: '90%',
     },
     modalSheet: {
       backgroundColor: colors.surfaceContainerLowest,
@@ -142,9 +146,9 @@ export const checkoutStyles = (colors: ThemeColors) =>
       color: colors.onSurface,
     },
     modalClose: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.surfaceContainerHigh,

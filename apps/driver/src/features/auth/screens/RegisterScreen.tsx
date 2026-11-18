@@ -162,7 +162,6 @@ export default function DriverRegisterScreen() {
                 loadingLabel="Đang xác minh..."
                 onPress={codeSent ? verifyCode : sendCode}
                 style={themed_styles.secondaryButton}
-                textStyle={themed_styles.secondaryButtonText}
                 variant="tertiary"
               />
             </>

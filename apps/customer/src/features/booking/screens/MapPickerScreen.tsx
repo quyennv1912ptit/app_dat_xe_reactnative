@@ -100,7 +100,7 @@ export default function MapPickerScreen() {
           title={h.place.name}
           address={h.place.address}
           icon={pickup ? 'person-pin-circle' : 'place'}
-          iconColor={accent.onAccent}
+          iconColor={pickup ? accent.onAccent : colors.onRideDropoff}
           iconBackground={pickup ? accent.pickup : accent.dropoff}
         />
       ) : (

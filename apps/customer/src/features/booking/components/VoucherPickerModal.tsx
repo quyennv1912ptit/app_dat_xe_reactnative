@@ -78,7 +78,7 @@ export function VoucherPickerModal(p: Props) {
               accessibilityRole="button"
               accessibilityLabel={i18nT("Đóng")}
               onPress={p.close}
-              hitSlop={12}
+              style={extra.closeButton}
             >
               <MaterialIcons
                 name="close"
@@ -105,6 +105,7 @@ export function VoucherPickerModal(p: Props) {
               accessibilityLabel={i18nT("Không dùng ưu đãi")}
               accessibilityState={{
                 selected: !p.selectedCode && p.selectedId == null,
+                checked: !p.selectedCode && p.selectedId == null,
                 disabled: p.applyingKey !== null,
               }}
               style={[s.card, s.row, !p.selectedCode && p.selectedId == null && s.selected]}
@@ -125,7 +126,7 @@ export function VoucherPickerModal(p: Props) {
             {p.campaignsError ? (
               <View style={s.errorBox}>
                 <Text style={s.error}>{i18nT(p.campaignsError)}</Text>
-                <Pressable onPress={p.retryCampaigns}>
+                <Pressable accessibilityRole="button" style={extra.retryLink} onPress={p.retryCampaigns}>
                   <Text style={s.link}>{i18nT("Tải lại ưu đãi")}</Text>
                 </Pressable>
               </View>
@@ -167,7 +168,9 @@ export function VoucherPickerModal(p: Props) {
                     </View>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={i18nT("Nhận")}
+                      accessibilityLabel={i18nT("Nhận ưu đãi {0}", {
+                        0: campaign.campaignTitle?.trim() || campaign.code,
+                      })}
                       disabled={claiming}
                       onPress={() => p.claimVoucher(campaign.id)}
                       hitSlop={8}
@@ -187,7 +190,7 @@ export function VoucherPickerModal(p: Props) {
             {p.error ? (
               <View style={s.errorBox}>
                 <Text style={s.error}>{i18nT(p.error)}</Text>
-                <Pressable onPress={p.onRetry}>
+                <Pressable accessibilityRole="button" style={extra.retryLink} onPress={p.onRetry}>
                   <Text style={s.link}>{i18nT("Tải lại ưu đãi")}</Text>
                 </Pressable>
               </View>
@@ -221,6 +224,7 @@ export function VoucherPickerModal(p: Props) {
                   accessibilityLabel={info.title}
                   accessibilityState={{
                     selected,
+                    checked: selected,
                     disabled: Boolean(reason) || p.applyingKey !== null,
                   }}
                   style={[
@@ -298,10 +302,12 @@ const extraStyles = (colors: ThemeColors) =>
       justifyContent: "flex-end",
     },
     item2: { flex: 1, minHeight: 48 },
-    item3: { maxHeight: "85%" },
+    item3: { flex: 0, maxHeight: "85%" },
     item4: { gap: 12, paddingBottom: 12 },
     item5: { opacity: 0.5 },
     item6: { backgroundColor: colors.primarySoft },
+    closeButton: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+    retryLink: { minHeight: 48, minWidth: 48, justifyContent: "center" },
     claimButton: {
       minHeight: 48,
       minWidth: 48,

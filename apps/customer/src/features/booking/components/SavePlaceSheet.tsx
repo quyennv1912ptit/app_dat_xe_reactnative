@@ -28,7 +28,7 @@ export function SavePlaceSheet({
   const { bottom } = useSafeAreaInsets();
   const s = useThemedStyles(placeStyles);
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalBackdrop}>
         <Pressable
           accessibilityRole="button"

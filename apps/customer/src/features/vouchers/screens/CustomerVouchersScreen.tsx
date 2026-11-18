@@ -121,6 +121,9 @@ export default function CustomerVouchersScreen() {
                       </Text>
                       <Pressable
                         accessibilityRole="button"
+                        accessibilityLabel={i18nT("Nhận ưu đãi {0}", {
+                          0: campaign.campaignTitle?.trim() || campaign.code,
+                        })}
                         disabled={claiming || claimingId !== null || exhausted}
                         onPress={() => claimCampaign(campaign.id)}
                         style={styles.use}
@@ -192,6 +195,7 @@ export default function CustomerVouchersScreen() {
                       ) : null}
                       <Pressable
                         accessibilityRole="button"
+                        accessibilityLabel={i18nT("Dùng ưu đãi {0}", { 0: info.title })}
                         onPress={() =>
                           router.push({
                             pathname: "/ride/route-selection",

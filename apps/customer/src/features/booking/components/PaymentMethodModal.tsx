@@ -8,7 +8,7 @@ import {
   useThemedStyles,
 } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Modal, View } from 'react-native';
+import { Modal, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { money } from '../bookingUtils';
 import { checkoutStyles } from './checkoutStyles';
@@ -51,7 +51,7 @@ export function PaymentMethodModal({
     return (
       <Pressable
         accessibilityRole="radio"
-        accessibilityState={{ selected: active, disabled: submitting }}
+        accessibilityState={{ selected: active, checked: active, disabled: submitting }}
         disabled={submitting}
         onPress={() => onChange(value)}
         style={[s.paymentRow, active && s.paymentRowActive]}
@@ -73,10 +73,14 @@ export function PaymentMethodModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={close}>
       <View style={s.modalScrim}>
         <Pressable accessibilityLabel={i18nT('Đóng')} style={{ flex: 1 }} onPress={close} />
-        <View style={[s.modalSheet, { paddingBottom: Math.max(26, insets.bottom + 12) }]}>
+        <ScrollView
+          style={s.modalScroll}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[s.modalSheet, { paddingBottom: Math.max(26, insets.bottom + 12) }]}
+        >
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{i18nT('Phương thức thanh toán')}</Text>
             <Pressable
@@ -113,7 +117,7 @@ export function PaymentMethodModal({
           ) : null}
 
           <Button label="Xong" disabled={submitting} onPress={close} />
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );

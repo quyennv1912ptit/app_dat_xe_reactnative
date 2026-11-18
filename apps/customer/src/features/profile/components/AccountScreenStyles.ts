@@ -59,6 +59,8 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
     dateTextPlaceholder: { color: c.onSurfaceVariant },
     choices: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     choice: {
+      minHeight: 48,
+      justifyContent: "center",
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 999,

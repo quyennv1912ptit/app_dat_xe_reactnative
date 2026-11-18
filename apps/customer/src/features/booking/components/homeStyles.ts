@@ -60,7 +60,7 @@ export const homeStyles = (colors: ThemeColors) =>
     },
     walletAction: {
       flexShrink: 0,
-      minHeight: 44,
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
@@ -174,6 +174,7 @@ export const homeStyles = (colors: ThemeColors) =>
     nearbyText: {
       ...typography.caption,
       color: colors.onSurfaceVariant,
+      fontVariant: ['tabular-nums'],
     },
     recentSection: { gap: 8 },
     recentHeading: {

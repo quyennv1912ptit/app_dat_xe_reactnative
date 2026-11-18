@@ -173,6 +173,8 @@ export default function AddVehicleScreen() {
               <View style={styles.group}>
                 <Text style={styles.label}>{i18nT("Ảnh xe (không bắt buộc)")}</Text>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={i18nT("Chọn ảnh xe")}
                   onPress={() => void choosePhoto()}
                   style={styles.photoPicker}
                 >
@@ -201,6 +203,7 @@ export default function AddVehicleScreen() {
                     />
                     <Text style={styles.photoText}>{i18nT("Ảnh đã lưu")}</Text>
                     <Pressable
+                      accessibilityRole="button"
                       accessibilityLabel={i18nT("Xóa ảnh xe")}
                       disabled={deletingImageId !== null}
                       onPress={() => removeImage(image.id)}

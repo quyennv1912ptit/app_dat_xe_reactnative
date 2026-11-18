@@ -30,7 +30,7 @@ import {
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { Modal, ScrollView, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   getApiErrorMessage,
@@ -125,7 +125,7 @@ export default function ProfileScreen() {
           <ActivityIndicator color={colors.primary} />
         ) : null}
         {loadError ? (
-          <Pressable onPress={() => void refresh()} style={styles.loadErrorBox}>
+          <Pressable accessibilityRole="button" onPress={() => void refresh()} style={styles.loadErrorBox}>
             <Text accessibilityRole="alert" style={styles.loadErrorText}>
               {i18nT(loadError)}
             </Text>
@@ -339,6 +339,7 @@ export default function ProfileScreen() {
             ) : null}
             <View style={styles.dialogActions}>
               <Pressable
+                accessibilityRole="button"
                 disabled={deletingAccount}
                 onPress={() => setDeleteVisible(false)}
                 style={[styles.dialogButton, styles.dialogButtonGhost]}
@@ -348,6 +349,7 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 disabled={deletingAccount}
                 onPress={() => void confirmDeleteAccount()}
                 style={[
@@ -375,11 +377,14 @@ export default function ProfileScreen() {
         transparent
         visible={logoutVisible}
       >
-        <Pressable
-          onPress={() => setLogoutVisible(false)}
-          style={styles.dialogOverlay}
-        >
-          <Pressable style={styles.dialogCard}>
+        <View style={styles.dialogOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Đóng")}
+            onPress={() => setLogoutVisible(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.dialogCard}>
             <View style={styles.dialogIcon}>
               <MaterialIcons
                 name="logout"
@@ -399,6 +404,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.dialogActions}>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setLogoutVisible(false)}
                 style={[styles.dialogButton, styles.dialogButtonGhost]}
               >
@@ -407,6 +413,7 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => {
                   void signOutFirebase()
                     .then(() => {
@@ -427,8 +434,8 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

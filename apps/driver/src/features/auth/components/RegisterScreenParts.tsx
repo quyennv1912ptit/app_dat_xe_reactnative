@@ -44,12 +44,12 @@ export const styles = (colors: ThemeColors) =>
       marginBottom: 8,
     },
     title: {
-      ...typography.headlineXlMobile,
+      ...typography.display,
       color: colors.onSurface,
       textAlign: "center",
     },
     subtitle: {
-      ...typography.bodyMd,
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
       textAlign: "center",
       marginTop: spacing.spaceXs,
@@ -66,15 +66,14 @@ export const styles = (colors: ThemeColors) =>
     },
     verifiedText: { ...typography.label, color: colors.primary, flex: 1 },
     secondaryButton: { marginTop: -spacing.spaceXs },
-    secondaryButtonText: { color: colors.onPrimary },
-    errorText: { ...typography.bodyMd, color: colors.error },
+    errorText: { ...typography.bodySecondary, color: colors.error },
     submitButton: {
       marginTop: spacing.spaceXs,
       backgroundColor: colors.primary,
     },
-    step: { ...typography.labelMd, color: colors.primary, textAlign: "center", marginBottom: 8 },
+    step: { ...typography.label, color: colors.primary, textAlign: "center", marginBottom: 8 },
     note: {
-      ...typography.labelSm,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
       textAlign: "center",
     },

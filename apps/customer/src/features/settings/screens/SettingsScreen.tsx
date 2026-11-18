@@ -17,7 +17,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AppState, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, KeyboardAvoidingView, Linking, ScrollView, StyleSheet, View } from "react-native";
 import {
   ActivityIndicator,
   Button,
@@ -193,6 +193,7 @@ export default function SettingsScreen() {
         title={i18nT(validSection ? sections[validSection] : "Cài đặt")}
         onBack={() => router.back()}
       />
+      <KeyboardAvoidingView style={settings.flex} behavior="padding">
       <ScrollView
         contentContainerStyle={settings.content}
         keyboardShouldPersistTaps="handled"
@@ -509,12 +510,14 @@ export default function SettingsScreen() {
           </Text>
         ) : null}
       </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenWrapper>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
+    flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: colors.background },
     content: {
       padding: 16,

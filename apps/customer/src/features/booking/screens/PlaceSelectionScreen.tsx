@@ -232,7 +232,8 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
                   address={place.address}
                   meta={formatDistanceMeters(place.distanceMeters)}
                   icon="trending-up"
-                  iconColor={accent.dropoff}
+                  iconColor={colors.onRideDropoff}
+                  iconBackground={accent.dropoff}
                   onPress={() => void h.select(place)}
                   onMore={() => h.openDetail(place)}
                   disabled={h.selectingId !== null}
@@ -268,7 +269,8 @@ export default function PlaceSelectionScreen({ kind }: { kind: PlaceKind }) {
                   title={place.name}
                   address={place.address}
                   icon="place"
-                  iconColor={isPickup ? accent.pickup : accent.dropoff}
+                  iconColor={isPickup ? accent.onAccent : colors.onRideDropoff}
+                  iconBackground={isPickup ? accent.pickup : accent.dropoff}
                   meta={h.selectingId === place.id ? i18nT('Đang xác định vị trí chính xác…') : undefined}
                   onPress={() => void h.select(place)}
                   onMore={() => h.openDetail(place)}

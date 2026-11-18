@@ -62,7 +62,7 @@ export const placeStyles = (colors: ThemeColors) =>
       color: colors.onSurface,
     },
     fieldPlaceholder: { color: colors.onSurfaceVariant },
-    fieldClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    fieldClear: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
 
     chips: { gap: 8, paddingVertical: 14, paddingEnd: 8 },
     chip: {
@@ -135,7 +135,7 @@ export const placeStyles = (colors: ThemeColors) =>
       ...typography.caption,
       color: colors.onSurfaceVariant,
     },
-    moreButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    moreButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
     pressed: { opacity: 0.65 },
 
     selectedRow: {
@@ -174,9 +174,9 @@ export const placeStyles = (colors: ThemeColors) =>
       color: colors.onSurfaceVariant,
     },
     sheetEdit: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.surfaceContainerHigh,
