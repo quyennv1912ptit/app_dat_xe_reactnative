@@ -5,9 +5,10 @@ import type {
   SupportTicket,
   SupportStatusFilter,
 } from "@datxe/shared";
+import { Image } from "expo-image";
 import { Fragment, useRef, useState } from "react";
 import { Divider, List, RadioButton } from "react-native-paper";
-import { Image, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { Button } from "./components/Button";
 import { Card } from "./components/Card";
 import { Typography as Text } from "./components/Typography";
@@ -78,6 +79,8 @@ export function EvidenceEditor({
         <View key={image.publicId} style={s.stack}>
           <Image
             source={{ uri: image.fileUrl }}
+            cachePolicy="memory"
+            contentFit="cover"
             style={s.image}
             accessibilityLabel={`Ảnh đính kèm ${index + 1}`}
           />
@@ -390,6 +393,8 @@ export function SupportCenter({
                 <Image
                   key={image.publicId}
                   source={{ uri: image.fileUrl }}
+                  cachePolicy="memory"
+                  contentFit="cover"
                   style={s.image}
                   accessibilityLabel="Ảnh yêu cầu hỗ trợ"
                 />
@@ -525,7 +530,7 @@ const styles = (c: ThemeColors) =>
       borderRadius: 24,
       padding: 16,
     },
-    counter: { ...typography.caption, color: c.onSurfaceMuted },
+    counter: { ...typography.caption, color: c.onSurfaceMuted, fontVariant: ["tabular-nums"] },
     attachments: { gap: 12, marginTop: 12 },
     action: { minHeight: 48, marginVertical: 12 },
     image: { width: "100%", height: 180, borderRadius: 24 },

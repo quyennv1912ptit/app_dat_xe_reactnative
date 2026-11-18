@@ -25,14 +25,14 @@ export function WalletBalanceCard({
   const containerBg = accent === 'primary' ? c.surfaceContainerHigh : c.surfaceContainerLow;
   return (
     <Card style={[s.balanceCard, { backgroundColor: containerBg }, style]}>
-      <Text style={[typography.labelLg, { color: c.onSurfaceVariant }]}>{title}</Text>
+      <Text style={[typography.label, { color: c.onSurfaceVariant }]}>{title}</Text>
       <MoneyText
         value={balance}
         variant="headline"
         accessibilityLabel={`${title}: ${balance === undefined ? 'Chưa tải được số dư' : formatMoney(balance)}`}
         color={balance !== undefined && balance < 0 ? c.error : accent === 'primary' ? c.primary : c.onSurface}
       />
-      <Text style={[typography.labelMd, { color: c.onSurfaceVariant }]}>{description}</Text>
+      <Text style={[typography.bodySecondary, { color: c.onSurfaceVariant }]}>{description}</Text>
       {children ? <View style={s.actions}>{children}</View> : null}
     </Card>
   );
@@ -79,8 +79,8 @@ export const WalletEntryCard = memo(function WalletEntryCard({
     <Card style={s.entryCard}>
       <View style={s.row}>
         <View style={s.grow}>
-          <Text style={typography.titleMd}>{transactionLabel[item.transactionType] ?? item.transactionType}</Text>
-          <Text style={[typography.labelMd, { color: c.onSurfaceVariant }]}>
+          <Text style={typography.cardTitle}>{transactionLabel[item.transactionType] ?? item.transactionType}</Text>
+          <Text style={[typography.bodySecondary, { color: c.onSurfaceVariant }]}>
             {item.walletType === 'CREDIT' ? 'Ví tín dụng' : item.walletType === 'CASH' ? 'Ví tiền mặt' : 'Ví ứng dụng'}
             {' · '}
             <Text style={{ color: item.status === 'FAILED' ? c.error : c.onSurfaceVariant }}>
@@ -96,19 +96,19 @@ export const WalletEntryCard = memo(function WalletEntryCard({
           style={s.entryAmount}
         />
       </View>
-      {item.description ? <Text style={typography.bodyMd}>{item.description}</Text> : null}
+      {item.description ? <Text style={typography.bodySecondary}>{item.description}</Text> : null}
       <Divider />
       <View style={s.metaRow}>
-        <Text style={[typography.labelMd, { color: c.onSurfaceVariant }]}>{new Date(item.createdAt).toLocaleString(getLocale())}</Text>
-        <Text selectable style={[typography.labelMd, { color: c.onSurfaceVariant }]}>GD #{item.transactionId}</Text>
+        <Text style={[typography.caption, { color: c.onSurfaceVariant, fontVariant: ['tabular-nums'] }]}>{new Date(item.createdAt).toLocaleString(getLocale())}</Text>
+        <Text selectable style={[typography.caption, { color: c.onSurfaceVariant, fontVariant: ['tabular-nums'] }]}>GD #{item.transactionId}</Text>
       </View>
       {item.balanceAfter != null ? (
-        <Text style={[typography.labelMd, s.amount, { color: c.onSurfaceVariant }]}>
+        <Text style={[typography.caption, s.amount, { color: c.onSurfaceVariant }]}>
           Số dư sau GD: {formatMoney(item.balanceAfter)}
         </Text>
       ) : null}
       {item.withdrawalId ? (
-        <Text selectable style={typography.labelMd}>
+        <Text selectable style={[typography.caption, { fontVariant: ['tabular-nums'] }]}>
           Yêu cầu rút #{item.withdrawalId}{item.status === 'FAILED' ? ' · Khoản giữ tiền đã được hoàn lại' : ''}
         </Text>
       ) : null}
@@ -126,7 +126,7 @@ export function WalletHistorySection({ items, loading, error, hasMore, loadingMo
   const c = useThemeColors();
   return (
     <View style={s.stack}>
-      <Text accessibilityRole="header" style={typography.titleLg}>Lịch sử giao dịch</Text>
+      <Text accessibilityRole="header" style={typography.sectionTitle}>Lịch sử giao dịch</Text>
       <WalletLoadState loading={loading} error={error} onRetry={onRetry} />
       {!loading && !error && !items.length ? (
         <Card style={s.card}>
@@ -208,7 +208,7 @@ export function WalletMoneyForm({
   if (done) {
     return (
       <Card style={s.card}>
-        <Text accessibilityRole="alert" style={typography.titleLg}>
+        <Text accessibilityRole="alert" style={typography.sectionTitle}>
           {mode === 'topup' ? 'Nạp tiền thành công' : 'Đã gửi yêu cầu rút tiền'}
         </Text>
         <Text>
@@ -223,7 +223,7 @@ export function WalletMoneyForm({
 
   return (
     <Card style={s.card}>
-      <Text style={typography.titleLg}>{mode === 'topup' ? 'Nạp tiền giả lập' : 'Tạo yêu cầu rút tiền'}</Text>
+      <Text style={typography.sectionTitle}>{mode === 'topup' ? 'Nạp tiền giả lập' : 'Tạo yêu cầu rút tiền'}</Text>
       <Text style={{ color: c.onSurfaceVariant }}>
         {mode === 'topup'
           ? 'Chế độ thử nghiệm, không thu tiền thật.'

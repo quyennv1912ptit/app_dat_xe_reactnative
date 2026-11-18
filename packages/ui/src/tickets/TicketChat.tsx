@@ -1,8 +1,9 @@
 import { translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Image, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Appbar, Avatar, IconButton } from 'react-native-paper';
+import { ChatImageViewer } from '../chat/ChatImageViewer';
 import { Button } from '../components/Button';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { ThemedTextInput } from '../components/ThemedTextInput';
@@ -75,10 +76,10 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
         <Appbar.BackAction style={s.action} accessibilityLabel={t('Quay lại')} onPress={onBack} />
         <View style={s.identity}>
           <Text accessibilityRole="header" numberOfLines={1} style={s.title}>
-            {ticket ? `${ticket.code} · ${categoryLabels[ticket.category] ?? ticket.category}` : t('Hỗ trợ')}
+            {ticket ? `${ticket.code} · ${t(categoryLabels[ticket.category] ?? ticket.category)}` : t('Hỗ trợ')}
           </Text>
           <Text numberOfLines={1} style={s.subtitle}>
-            {ticket ? statusLabels[ticket.status] : t('Đang tải hội thoại…')}
+            {ticket ? t(statusLabels[ticket.status]) : t('Đang tải hội thoại…')}
           </Text>
         </View>
         {onRefresh ? (
@@ -118,7 +119,7 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
         {image ? (
           <View style={s.previewRow}>
             <Image source={{ uri: image.uri }} style={s.preview} />
-            <IconButton icon="close" size={18} accessibilityLabel={t('Bỏ ảnh đã chọn')} onPress={() => setImage(null)} />
+            <IconButton icon="close" size={18} style={s.action} accessibilityLabel={t('Bỏ ảnh đã chọn')} onPress={() => setImage(null)} />
           </View>
         ) : null}
         <View style={s.composer}>
@@ -157,11 +158,7 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
           )}
         </View>
       </KeyboardAvoidingView>
-      <Modal visible={Boolean(preview)} transparent animationType="fade" onRequestClose={() => setPreview(null)}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('Đóng ảnh')} style={s.lightbox} onPress={() => setPreview(null)}>
-          {preview ? <Image source={{ uri: preview }} style={s.lightboxImage} resizeMode="contain" /> : null}
-        </Pressable>
-      </Modal>
+      {preview ? <ChatImageViewer uri={preview} title={t('Ảnh đính kèm')} onClose={() => setPreview(null)} /> : null}
     </ScreenWrapper>
   );
 }
@@ -178,16 +175,27 @@ function MessageRow({ message, mine, onImage }: { message: TicketMessage; mine: 
   return (
     <View style={[s.row, mine ? s.rowMine : s.rowTheirs]}>
       {!mine ? (
-        <Avatar.Icon size={30} icon="support-agent" color={s.avatarIcon.color} style={s.avatar} />
+        <Avatar.Icon
+          size={30}
+          icon={({ size, color }) => <MaterialIcons name="support-agent" size={size} color={color} />}
+          color={s.avatarIcon.color}
+          style={s.avatar}
+        />
       ) : null}
       <View style={[s.bubble, mine ? s.mine : s.theirs]}>
         {message.imageUrl ? (
-          <Pressable accessibilityRole="imagebutton" accessibilityLabel={t(imageState === 'error' ? 'Thử tải lại ảnh' : 'Xem ảnh đính kèm')} disabled={imageState === 'loading'} onPress={() => {
-            if (imageState === 'error') {
-              setImageState('loading');
-              setImageAttempt(value => value + 1);
-            } else if (message.imageUrl) onImage(message.imageUrl);
-          }}>
+          <Pressable
+            accessibilityRole="imagebutton"
+            accessibilityLabel={t(imageState === 'error' ? 'Thử tải lại ảnh' : 'Xem ảnh đính kèm')}
+            disabled={imageState === 'loading'}
+            style={imageState === 'ready' ? undefined : s.imagePlaceholder}
+            onPress={() => {
+              if (imageState === 'error') {
+                setImageState('loading');
+                setImageAttempt(value => value + 1);
+              } else if (message.imageUrl) onImage(message.imageUrl);
+            }}
+          >
             {imageState !== 'error' ? <Image key={imageAttempt} source={{ uri: message.imageUrl }}
               style={imageState === 'ready' ? s.image : s.pendingImage}
               resizeMode="cover" onLoad={() => setImageState('ready')} onError={() => setImageState('error')} /> : null}
@@ -205,7 +213,7 @@ function MessageRow({ message, mine, onImage }: { message: TicketMessage; mine: 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
   fill: { flex: 1 },
   header: { backgroundColor: c.surface },
-  action: { margin: 0 },
+  action: { margin: 0, minWidth: 48, minHeight: 48 },
   identity: { flex: 1, gap: 2 },
   title: { ...typography.cardTitle },
   subtitle: { ...typography.caption, color: c.onSurfaceVariant },
@@ -220,7 +228,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   theirs: { backgroundColor: c.surfaceContainerHigh, borderBottomLeftRadius: 4 },
   message: { ...typography.body, color: c.onSurface },
   mineText: { color: c.onPrimary },
-  meta: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end' },
+  meta: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end', fontVariant: ['tabular-nums'] },
   mineMeta: { color: c.onPrimary, opacity: 0.8 },
   system: { ...typography.caption, alignSelf: 'center', color: c.onSurfaceVariant, paddingVertical: 6 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
@@ -234,8 +242,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   sending: { margin: 12 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8 },
   preview: { width: 56, height: 56, borderRadius: 10 },
+  imagePlaceholder: { width: 210, maxWidth: '100%', minHeight: 120, borderRadius: 12, justifyContent: 'center', alignItems: 'center', padding: 12 },
   pendingImage: { position: 'absolute', width: 1, height: 1, opacity: 0 },
   image: { width: 210, maxWidth: '100%', height: 160, borderRadius: 12, marginBottom: 2 },
-  lightbox: { flex: 1, backgroundColor: c.mediaViewerBackground, alignItems: 'center', justifyContent: 'center', padding: 16 },
-  lightboxImage: { width: '100%', height: '90%' },
 });

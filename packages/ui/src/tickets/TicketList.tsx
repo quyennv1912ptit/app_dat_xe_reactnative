@@ -58,9 +58,9 @@ export function TicketList({ tickets, loading, refreshing, error, onRefresh, onR
           <Pressable accessibilityRole="button" accessibilityLabel={t('Mở yêu cầu {0}', { '0': item.code })} onPress={() => onOpen(item.id)}>
             <Card style={s.card}>
               <View style={s.row}>
-                <Text style={s.subject}>{categoryLabels[item.category] ?? item.category}</Text>
+                <Text style={s.subject}>{t(categoryLabels[item.category] ?? item.category)}</Text>
                 <View style={[s.badge, statusTone(item.status, s)]}>
-                  <Text style={[s.badgeText, { color: statusTone(item.status, s).color }]}>{statusLabels[item.status]}</Text>
+                  <Text style={[s.badgeText, { color: statusTone(item.status, s).color }]}>{t(statusLabels[item.status])}</Text>
                 </View>
               </View>
               <Text selectable style={s.code}>{item.code}</Text>

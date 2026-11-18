@@ -79,9 +79,16 @@ export function TonalNavigationBar({
                   />
                 </View>
                 {item.badge ? (
-                  <Badge size={16} style={styles.badge}>
-                    {item.badge > 99 ? "99+" : item.badge}
-                  </Badge>
+                  <View
+                    accessible={false}
+                    importantForAccessibility="no-hide-descendants"
+                    accessibilityElementsHidden
+                    style={styles.badgeWrap}
+                  >
+                    <Badge size={16} style={styles.badge}>
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </Badge>
+                  </View>
                 ) : null}
               </View>
               <Text
@@ -136,5 +143,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badge: { position: "absolute", top: -4, right: 4, borderRadius: 999 },
+  badgeWrap: { position: "absolute", top: -4, right: 4 },
+  badge: { borderRadius: 999 },
 });

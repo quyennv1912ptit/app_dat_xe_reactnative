@@ -1212,6 +1212,7 @@
   "Đang nhận…": "Claiming…",
   "Đã hết suất nhận": "No claims left",
   "Nhận ưu đãi": "Claim voucher",
+  "Nhận ưu đãi {0}": "Claim voucher {0}",
   "Ưu đãi của bạn": "Your vouchers",
   "Bạn vừa nhận được ưu đãi": "You received a new voucher",
   "Ưu đãi mới đã được thêm vào mục Ưu đãi của tôi.": "A new voucher has been added to My Vouchers.",
@@ -1240,5 +1241,13 @@
   "Ưu đãi hệ thống": "System offer",
   "Áp dụng cho chuyến đi đầu tiên của bạn": "Valid for your first ride",
   "Gọi điện cho tài xế": "Call driver",
-  "Mỗi tài khoản nhận tối đa một lượt. Ưu đãi có thể hết trước thời hạn.": "Maximum one claim per account. Offers may run out before the deadline."
+  "Mỗi tài khoản nhận tối đa một lượt. Ưu đãi có thể hết trước thời hạn.": "Maximum one claim per account. Offers may run out before the deadline.",
+  "Chọn ảnh xe": "Choose vehicle photo",
+  "Dùng ưu đãi {0}": "Use voucher {0}",
+  "Vấn đề khác": "Other issue",
+  "Đã tiếp nhận": "Received",
+  "Đang xử lý": "In progress",
+  "Chờ bạn phản hồi": "Waiting for your reply",
+  "Đã giải quyết": "Resolved",
+  "Đã đóng": "Closed"
 }

@@ -43,6 +43,8 @@ export function SharedStatusBadge({
   const colors = useThemeColors();
   const palette = sharedStatusColors(colors)[tone];
   const resolvedIcon = icon === undefined ? defaultIcons[tone] : icon;
+  const labelMinWidth =
+    label.includes(" ") && label.length <= 28 ? Math.ceil(label.length * 6.9) : undefined;
 
   return (
     <View
@@ -61,7 +63,11 @@ export function SharedStatusBadge({
       ) : null}
       <Typography
         textBreakStrategy="simple"
-        style={[styles.label, { color: palette.color }]}
+        style={[
+          styles.label,
+          labelMinWidth !== undefined ? { minWidth: labelMinWidth } : null,
+          { color: palette.color },
+        ]}
       >
         {label}
       </Typography>
@@ -74,6 +80,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 0,
     maxWidth: "100%",
     minHeight: 32,
     gap: 6,

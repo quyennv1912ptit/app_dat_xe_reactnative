@@ -294,7 +294,7 @@ export const typography = {
     fontSize: fontSize.badge,
     lineHeight: lineHeight.badge,
     fontWeight: fontWeight.semibold,
-    letterSpacing: 0.15,
+    letterSpacing: 0,
   },
   navigationLabel: {
     fontFamily: fontFamily.system,

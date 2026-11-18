@@ -113,6 +113,6 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   icon: { color: c.onSurfaceVariant },
   input: { borderRadius: borderRadius.default, backgroundColor: c.surfaceContainerHigh, paddingHorizontal: spacing.px3 },
   textarea: { minHeight: 120, borderRadius: borderRadius.default, backgroundColor: c.surfaceContainerHigh, padding: spacing.px3, textAlignVertical: 'top' },
-  counter: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end' },
+  counter: { ...typography.caption, color: c.onSurfaceVariant, alignSelf: 'flex-end', fontVariant: ['tabular-nums'] },
   error: { ...typography.bodySecondary, color: c.error },
 });

@@ -281,8 +281,8 @@ const base_styles = (colors: ThemeColors) =>
       paddingVertical: spacing.px3_5,
     },
     headerAction: {
-      minWidth: spacing.iconButtonLg,
-      minHeight: 44,
+      minWidth: 48,
+      minHeight: 48,
       justifyContent: "center",
     },
     headerTitle: {
@@ -339,9 +339,11 @@ const base_styles = (colors: ThemeColors) =>
     wheelText: {
       ...typography.sectionTitle,
       color: colors.onSurfaceVariant,
+      fontVariant: ["tabular-nums"],
     },
     wheelTextSelected: {
       ...typography.screenTitle,
       color: colors.onSurface,
+      fontVariant: ["tabular-nums"],
     },
   });

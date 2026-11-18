@@ -1,6 +1,7 @@
 import type { CustomerRideDetail } from '@datxe/shared';
+import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import { Typography as Text } from './components/Typography';
@@ -15,8 +16,8 @@ export function HandoverHistory({ revisions }: { revisions: { revision: number; 
       <Text>{item.report.odometer} km · {item.report.fuelLevel == null ? 'Không ghi mức nhiên liệu' : `${item.report.fuelLevel}% nhiên liệu`}</Text>
       {item.report.notes ? <Text>{item.report.notes}</Text> : null}
       <Text>Lý do yêu cầu sửa: {item.report.correctionReason}</Text>
-      {item.report.photos.map(photo => <Image key={photo.id} source={{ uri: photo.fileUrl }} style={s.image} accessibilityLabel="Ảnh biên bản phiên bản cũ" />)}
-      {item.report.correctionImages?.map(photo => <Image key={photo.publicId} source={{ uri: photo.fileUrl }} style={s.image} accessibilityLabel="Ảnh báo sai lệch" />)}
+      {item.report.photos.map(photo => <Image key={photo.id} source={{ uri: photo.fileUrl }} cachePolicy="memory" contentFit="cover" style={s.image} accessibilityLabel="Ảnh biên bản phiên bản cũ" />)}
+      {item.report.correctionImages?.map(photo => <Image key={photo.publicId} source={{ uri: photo.fileUrl }} cachePolicy="memory" contentFit="cover" style={s.image} accessibilityLabel="Ảnh báo sai lệch" />)}
     </Card>) : null}
   </View>;
 }
