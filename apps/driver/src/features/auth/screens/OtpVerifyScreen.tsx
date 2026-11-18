@@ -1,8 +1,22 @@
-import { OtpVerificationScreen } from "@datxe/ui";
+import { Button, Card, OtpVerificationScreen, ScreenWrapper, spacing, typography, Typography as Text } from "@datxe/ui";
+import { StyleSheet, View } from "react-native";
 import { useOtpVerify } from "../hooks/useOtpVerify";
+
 export default function DriverOtpVerifyScreen() {
   const { phone, router } = useOtpVerify();
-  if (!phone) return null;
+  if (!phone) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.fallback}>
+          <Card style={styles.card}>
+            <Text accessibilityRole="header" style={styles.title}>Thiếu số điện thoại xác thực</Text>
+            <Text>Phiên nhập OTP đã hết hạn hoặc thiếu số điện thoại. Vui lòng quay lại màn đăng nhập để gửi lại mã.</Text>
+            <Button label="Về màn đăng nhập" onPress={() => router.replace("/(auth)/login" as never)} />
+          </Card>
+        </View>
+      </ScreenWrapper>
+    );
+  }
   return (
     <OtpVerificationScreen
       phone={phone}
@@ -19,3 +33,9 @@ export default function DriverOtpVerifyScreen() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  fallback: { flex: 1, justifyContent: "center", padding: spacing.margin },
+  card: { gap: spacing.spaceMd },
+  title: { ...typography.sectionTitle },
+});

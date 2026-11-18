@@ -13,7 +13,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
+import { ProgressBar } from "react-native-paper";
 
 import { styles } from "../components/RegisterScreenParts";
 import { useRegister } from "../hooks/useRegister";
@@ -40,9 +41,36 @@ export default function DriverRegisterScreen() {
     verifyCode,
     submit,
   } = useRegister();
-  if (!user) return null;
+  if (!user) {
+    return (
+      <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+          onPress={() => router.canGoBack() ? router.back() : router.replace("/(auth)/login")}
+          style={themed_styles.backButton}
+        >
+          <MaterialIcons
+            color={colors.onSurface}
+            name="arrow-back"
+            size={fontSize.iconXl}
+          />
+        </Pressable>
+        <View style={themed_styles.content}>
+          <Card style={themed_styles.card}>
+            <Text accessibilityRole="header" style={themed_styles.title}>Phiên đăng ký chưa sẵn sàng</Text>
+            <Text style={themed_styles.subtitle}>
+              Không tìm thấy phiên đăng nhập hiện tại. Vui lòng đăng nhập lại để tiếp tục tạo hồ sơ tài xế.
+            </Text>
+            <Button label="Về màn đăng nhập" onPress={() => router.replace("/(auth)/login")} />
+          </Card>
+        </View>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Quay lại"
@@ -62,11 +90,16 @@ export default function DriverRegisterScreen() {
         <View style={themed_styles.iconCircle}>
           <MaterialIcons
             color={colors.primary}
-            name="local-taxi"
+            name="verified-user"
             size={fontSize.icon3xl}
           />
         </View>
-        <Text style={themed_styles.step}>Bước 1/4 · Thông tin tài khoản</Text>
+        <Text style={themed_styles.step}>Giai đoạn 1 · Tạo tài khoản</Text>
+        <ProgressBar
+          progress={0.25}
+          color={colors.primary}
+          style={{ width: "100%", marginBottom: 12, backgroundColor: colors.surfaceContainerHigh, borderRadius: 999 }}
+        />
         <Text style={themed_styles.title}>Đăng ký đối tác tài xế</Text>
         <Text style={themed_styles.subtitle}>
           Xác minh thông tin để bắt đầu hồ sơ tài xế.
@@ -149,12 +182,9 @@ export default function DriverRegisterScreen() {
             onPress={submit}
             style={themed_styles.submitButton}
           />
-          <Text style={themed_styles.note}>
-            Sau khi tạo tài khoản, bạn sẽ hoàn tất hồ sơ và tải giấy tờ lái xe
-            lên, rồi theo dõi kết quả xét duyệt.
-          </Text>
         </Card>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

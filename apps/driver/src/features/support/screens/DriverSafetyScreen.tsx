@@ -1,11 +1,13 @@
 import { DriverPage } from "@/components/DriverPage";
-import { Button, Card, Typography as Text, useThemeColors } from "@datxe/ui";
+import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from "@datxe/ui";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Linking, StyleSheet } from "react-native";
 
 const emergencyNumber = "112";
 
 export default function DriverSafetyScreen() {
+  const router = useRouter();
   const colors = useThemeColors();
   const [error, setError] = useState("");
   const openPhone = async () => {
@@ -20,10 +22,25 @@ export default function DriverSafetyScreen() {
     <DriverPage title="An toàn chuyến đi">
       <Card style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>Hỗ trợ khẩn cấp tại Việt Nam</Text>
-        <Text>Nếu đang gặp tình huống nguy cấp, liên hệ tổng đài khẩn cấp quốc gia và cho biết vị trí của bạn.</Text>
-        <Button label={`Mở điện thoại · ${emergencyNumber}`} icon="call" iconPosition="leading"
-          dimWhenDisabled={false} style={{ backgroundColor: colors.error }} contentColor={colors.onError}
-          onPress={() => void openPhone()} />
+        <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+          Nếu đang gặp tình huống nguy cấp, hãy gọi tổng đài khẩn cấp quốc gia và cung cấp vị trí hiện tại của bạn.
+        </Text>
+        <Button
+          label={`Gọi khẩn cấp · ${emergencyNumber}`}
+          icon="call"
+          iconPosition="leading"
+          dimWhenDisabled={false}
+          style={{ backgroundColor: colors.error }}
+          contentColor={colors.onError}
+          onPress={() => void openPhone()}
+        />
+        <Button
+          variant="secondary"
+          label="Mở Trung tâm hỗ trợ"
+          icon="support-agent"
+          iconPosition="leading"
+          onPress={() => router.push("/support")}
+        />
         {error ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{error}</Text> : null}
       </Card>
     </DriverPage>
@@ -31,6 +48,6 @@ export default function DriverSafetyScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 20, gap: 12 },
-  title: { fontSize: 22, fontWeight: "700" },
+  card: { padding: spacing.spaceLg, gap: spacing.px3 },
+  title: { ...typography.sectionTitle },
 });

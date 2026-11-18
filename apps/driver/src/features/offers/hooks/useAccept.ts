@@ -5,7 +5,7 @@ import { useSessionStore } from '@/lib/store';
 import { dismissOfferNotifications } from '@datxe/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { acceptDriverOffer, rejectDriverOffer } from '../api';
 
 export function useAccept() {
@@ -17,6 +17,7 @@ export function useAccept() {
   const credit = useDriverCredit();
   const query = usePendingOffer(credit.allowed);
   const [now, setNow] = useState(Date.now);
+  const actionLock = useRef(false);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(timer);
@@ -47,8 +48,10 @@ export function useAccept() {
       clearOffer(accepted);
       void client.invalidateQueries({ queryKey: ['driver', 'activeRide'] });
       void client.invalidateQueries({ queryKey: ['driver', 'session'] });
+      void client.invalidateQueries({ queryKey: ['driver', 'dailySummary'] });
       router.replace('/ride/in-progress');
     },
+    onSettled: () => { actionLock.current = false; },
   });
   const reject = useMutation({
     mutationFn: (pending: DriverOffer) => rejectDriverOffer(pending.rideId, pending.offerId),
@@ -58,6 +61,7 @@ export function useAccept() {
       if (router.canGoBack()) router.back();
       else router.replace('/(tabs)/home');
     },
+    onSettled: () => { actionLock.current = false; },
   });
 
   return {
@@ -65,8 +69,18 @@ export function useAccept() {
     error: query.error?.message || accept.error?.message || reject.error?.message ||
       (mismatch ? 'Yêu cầu chuyến này đã hết hạn hoặc không còn khả dụng.' : ''),
     busy: accept.isPending || reject.isPending,
-    accept: () => { if (offer && !accept.isPending && !reject.isPending) accept.mutate(offer); },
-    reject: () => { if (offer && !accept.isPending && !reject.isPending && offerRemainingMs(offer, query.dataUpdatedAt, Date.now()) > 0) reject.mutate(offer); },
+    accept: () => {
+      if (offer && !actionLock.current && !accept.isPending && !reject.isPending) {
+        actionLock.current = true;
+        accept.mutate(offer);
+      }
+    },
+    reject: () => {
+      if (offer && !actionLock.current && !accept.isPending && !reject.isPending && offerRemainingMs(offer, query.dataUpdatedAt, Date.now()) > 0) {
+        actionLock.current = true;
+        reject.mutate(offer);
+      }
+    },
     refresh: query.refetch,
   };
 }

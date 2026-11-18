@@ -1,9 +1,10 @@
+import { request } from "@/lib/api";
 import { useState } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getFirebaseUser } from "@datxe/shared";
+import { getFirebaseUser, getVehicleCatalog, vehicleCatalogQueryKey, type BookingVehicleType, type VehicleTransmission } from "@datxe/shared";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { getDriverDocuments, getDriverProfile, getDriverSkills, submitDocument, updateDriverLicense, updateDriverSkills, uploadDocumentImage } from "../api";
+import { extractDocumentEkyc, getDriverDocuments, getDriverProfile, getDriverSkills, submitDocument, updateDriverLicense, uploadDocumentImage } from "../api";
 import { documentExpiry, documentNumber, documentUpdate } from "../onboardingValidation";
 
 type Draft = {
@@ -11,9 +12,21 @@ type Draft = {
   licenseClass?: string;
   years?: string;
   expiry?: string;
-  vehicleType?: "CAR" | "MOTORCYCLE";
-  transmission?: "AUTO" | "MANUAL";
+  vehicleType?: BookingVehicleType;
+  transmission?: VehicleTransmission;
   images?: Record<string, string>;
+};
+
+const warningLabels: Record<string, string> = {
+  IMAGE_BLURRY: "Ảnh bị mờ hoặc rung tay. Chữ có thể khó đọc.",
+  IMAGE_GLARE: "Ảnh bị chói hoặc lóa sáng đèn.",
+  WRONG_DOCUMENT_TYPE: "Ảnh không đúng loại giấy tờ yêu cầu.",
+  DOCUMENT_SLOT_MISMATCH: "Ảnh có thể sai mặt giấy tờ (trước/sau).",
+  LOW_RESOLUTION: "Độ phân giải ảnh thấp, chữ khó đọc.",
+  ORIENTATION_UNCERTAIN: "Chưa xác định đúng chiều thẻ. Hãy chụp thẳng thẻ.",
+  LOW_KEYPOINT_CONFIDENCE: "Hãy chụp đủ 4 góc của thẻ.",
+  DETECTOR_NO_BOX: "Không tìm thấy vùng thẻ trong ảnh.",
+  CARD_QUALITY_REJECTED: "Ảnh thẻ không đạt kiểm tra chất lượng.",
 };
 
 export function useDocuments(identity: boolean) {
@@ -24,10 +37,13 @@ export function useDocuments(identity: boolean) {
   const { data: draft = {} } = useQuery<Draft>({ queryKey: key, queryFn: skipToken });
   const documents = useQuery({ queryKey: ["driver", "documents"], queryFn: getDriverDocuments });
   const profile = useQuery({ queryKey: ["driver", "profile"], queryFn: getDriverProfile });
+  const catalog = useQuery({ queryKey: vehicleCatalogQueryKey, queryFn: ({ signal }) => getVehicleCatalog(request, signal) ?? null, enabled: !identity, staleTime: 300_000 });
   const skills = useQuery({ queryKey: ["driver", "skills"], queryFn: getDriverSkills });
   const [source, setSource] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<Record<string, string[]>>({});
   const [pickError, setPickError] = useState<{ type: string; message: string } | null>(null);
   const types = identity ? ["CCCD", "CCCD_BACK", "SELFIE"] : ["DRIVER_LICENSE", "DRIVER_LICENSE_BACK"];
   const currentDocument = documents.data?.find((doc) => doc.document_type === types[0]);
@@ -42,6 +58,72 @@ export function useDocuments(identity: boolean) {
     if (uid && getFirebaseUser()?.uid === uid) client.setQueryData<Draft>(key, (current) => ({ ...current, ...fields }));
   };
 
+  const extract = async (type: string, overrideUri?: string) => {
+    const uri = overrideUri ?? images[type] ?? documents.data?.find((doc) => doc.document_type === type)?.secure_url;
+    if (!uri) return;
+    const slot = type === "DRIVER_LICENSE" ? "gplx_front"
+      : type === "DRIVER_LICENSE_BACK" ? "gplx_back"
+      : type === "CCCD" ? "cccd_front"
+      : type === "CCCD_BACK" ? "cccd_back" : null;
+    if (!slot) return;
+    setExtracting(type);
+    try {
+      const cacheKey = ["ekyc", "extract", slot, uri] as const;
+      const cached = client.getQueryData<Awaited<ReturnType<typeof extractDocumentEkyc>>>(cacheKey);
+      const result = cached ?? await extractDocumentEkyc(slot, uri);
+      if (!cached) client.setQueryData(cacheKey, result);
+      const rawWarnings = result.warnings ?? [];
+      const translated = rawWarnings.map((w) => warningLabels[w] ?? w);
+      const candidates = result.candidates ?? [];
+      const valid = candidates.filter((c) => c.parseStatus === "parsed" && c.validationStatus === "valid");
+      const getStr = (...keys: string[]) => {
+        const match = valid.find((c) => keys.includes(c.fieldKey) && typeof c.candidateValue === "string");
+        return typeof match?.candidateValue === "string" ? match.candidateValue : undefined;
+      };
+      if (type === "DRIVER_LICENSE") {
+        const updates: Partial<Draft> = {};
+        const gNum = getStr("id_number", "gplx_number");
+        const gClassRaw = valid.find((c) => ["vehicle_class", "gplx_classes"].includes(c.fieldKey))?.candidateValue;
+        const gClass = Array.isArray(gClassRaw)
+          ? String(gClassRaw[0] ?? "")
+          : typeof gClassRaw === "string"
+            ? gClassRaw.split(/[,;\s]+/)[0] ?? gClassRaw
+            : undefined;
+        const expiryCandidate = valid.find((c) => ["expiry", "expiry_date"].includes(c.fieldKey))?.candidateValue;
+        if (gNum) updates.number = gNum;
+        if (gClass) updates.licenseClass = gClass.toUpperCase();
+        if (expiryCandidate && typeof expiryCandidate === "object" && "no_expiry" in expiryCandidate) {
+          const obj = expiryCandidate as { no_expiry?: boolean; expiry_date?: string | null };
+          if (obj.no_expiry === true) {
+            updates.expiry = "";
+            translated.push("GPLX không thời hạn");
+          } else if (typeof obj.expiry_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.expiry_date)) {
+            updates.expiry = obj.expiry_date;
+          }
+        } else if (typeof expiryCandidate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(expiryCandidate)) {
+          updates.expiry = expiryCandidate;
+        }
+        if (Object.keys(updates).length) update(updates);
+      } else if (type === "CCCD") {
+        const updates: Partial<Draft> = {};
+        const cId = getStr("id_number", "cccd_id");
+        const expiryCandidate = valid.find((c) => ["expiry", "cccd_expiry_date"].includes(c.fieldKey))?.candidateValue;
+        const exp = expiryCandidate && typeof expiryCandidate === "object" && "expiry_date" in expiryCandidate
+          ? (expiryCandidate as { expiry_date?: string | null }).expiry_date
+          : typeof expiryCandidate === "string" ? expiryCandidate : undefined;
+        if (cId) updates.number = cId;
+        if (typeof exp === "string" && /^\d{4}-\d{2}-\d{2}$/.test(exp)) updates.expiry = exp;
+        if (Object.keys(updates).length) update(updates);
+      }
+      setWarnings((prev) => ({ ...prev, [type]: translated }));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Không thể đọc thông tin từ ảnh.";
+      setWarnings((prev) => ({ ...prev, [type]: [msg] }));
+    } finally {
+      setExtracting(null);
+    }
+  };
+
   const pick = async (type: string, camera: boolean) => {
     setSource(null);
     setPicking(type);
@@ -49,10 +131,15 @@ export function useDocuments(identity: boolean) {
     try {
       if (camera && !(await ImagePicker.requestCameraPermissionsAsync()).granted)
         throw new Error("Cần cấp quyền camera để chụp giấy tờ.");
-      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.85 };
+      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.95 };
       const result = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = result.assets?.[0];
-      if (!result.canceled && asset) update({ images: { ...images, [type]: asset.uri } });
+      if (!result.canceled && asset) {
+        update({ images: { ...images, [type]: asset.uri } });
+        if (type === "DRIVER_LICENSE" || type === "CCCD") {
+          void extract(type, asset.uri);
+        }
+      }
     } catch (error) {
       setPickError({ type, message: error instanceof Error ? error.message : "Không mở được ảnh." });
     } finally {
@@ -105,10 +192,7 @@ export function useDocuments(identity: boolean) {
         await updateDriverLicense({ license_number: num, license_class: normalizedClass, years_of_experience: Number(years),
           license_image_url: submitted.find((doc) => doc?.document_type === "DRIVER_LICENSE")?.secure_url ?? currentDocument?.secure_url ?? profile.data.license_image_url });
         requireAccount();
-        const next = skills.data.map(({ vehicle_type, transmission, license_class }) => ({ vehicle_type, transmission, license_class }));
-        if (!next.some((skill) => skill.vehicle_type === vehicleType && skill.transmission === transmission && skill.license_class === normalizedClass))
-          next.push({ vehicle_type: vehicleType, transmission, license_class: normalizedClass });
-        await updateDriverSkills(next);
+
       }
     },
     onSuccess: async () => {
@@ -121,8 +205,8 @@ export function useDocuments(identity: boolean) {
   });
 
   return {
-    documents, profile, skills, number, licenseClass, years, expiry, vehicleType, transmission, types, images,
-    update, source, setSource, picking, pick, pickError, uploading, save,
+    catalog: catalog.data, documents, profile, skills, number, licenseClass, years, expiry, vehicleType, transmission, types, images,
+    update, source, setSource, picking, pick, pickError, uploading, extracting, warnings, extract, save,
     error: save.error?.message || documents.error?.message || profile.error?.message || skills.error?.message,
   };
 }

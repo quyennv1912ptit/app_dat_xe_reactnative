@@ -1,4 +1,5 @@
-import { DocumentForm } from "../components/DocumentForm";
+import { Redirect } from "expo-router";
+
 export default function VerifyIdScreen() {
-  return <DocumentForm identity />;
+  return <Redirect href="/profile/verification" />;
 }

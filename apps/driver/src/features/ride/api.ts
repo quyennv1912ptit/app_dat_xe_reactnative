@@ -8,5 +8,8 @@ export const reviseDriverHandover = (id: number, phase: 'pickup' | 'dropoff', re
 export const getDriverRide=(id:number)=>request<CustomerRideDetail>('/driver/rides/'+id);
 export const confirmCashReceived=(id:number)=>request<{rideId:number;amount:number;status:NonNullable<CustomerRideDetail['payment']>['status'];paidAt:string|null}>('/driver/rides/'+id+'/payment/cash/confirm',{method:'POST'});
 
+export const rateRideCustomer = (id: number, stars: number, comment: string) =>
+  request(`/driver/rides/${id}/rating`, { method: 'POST', body: { stars, comment: comment.trim() || null } });
+
 export const cancelDriverRide = (id: number, reason: string) =>
   request<RideStatusResponse>(`/driver/rides/${id}/cancel`, { method: 'POST', body: { reason } });

@@ -88,7 +88,7 @@ const submit = async () => {
           throw cause;
         }
       }
-      router.replace('/(auth)/license-upload' as never);
+      router.replace('/profile/verification');
     } catch (cause) {
       setError(getErrorMessage(cause));
     } finally {

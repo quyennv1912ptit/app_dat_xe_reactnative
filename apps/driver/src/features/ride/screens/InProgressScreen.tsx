@@ -1,3 +1,5 @@
+import { env } from "@/config/env";
+import { GoongMap, mapBounds, type GoongMapMarker } from "@datxe/ui/goong-map";
 import { Appbar, Divider, ProgressBar } from "react-native-paper";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
@@ -10,26 +12,26 @@ import { rideStyles as s } from "@/components/rideStyles";
 import { RideCustomerCard } from "../components/RideCustomerCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RideRouteCard } from "../components/RideRouteCard";
+import { RideStatusBanner } from "../components/RideStatusBanner";
 import { StyleSheet, View } from "react-native";
-import { formatDistance, formatMoney } from "@datxe/shared";
+import { formatDistance } from "@datxe/shared";
 import {
   Button,
   Card,
+  GroupedList,
+  MoneyText,
   PaperTextInput as TextInput,
+  SettingsListItem,
   Typography as Text,
+  borderRadius,
+  spacing,
+  typography,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 
 import { useInProgress } from "../hooks/useInProgress";
-const cancellableStatuses = new Set(["DRIVER_ASSIGNED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "VEHICLE_HANDOVER"]);
-
-const phases: Partial<Record<CustomerRideDetail["status"], [number, string]>> = {
-  DRIVER_ASSIGNED: [1, "Chuẩn bị đến đón"], DRIVER_ARRIVING: [1, "Đến điểm đón"],
-  DRIVER_ARRIVED: [2, "Lập biên bản nhận xe"], VEHICLE_HANDOVER: [2, "Xác nhận nhận xe"],
-  IN_PROGRESS: [3, "Di chuyển tới điểm trả"], ARRIVED_DESTINATION: [4, "Lập biên bản trả xe"],
-  VEHICLE_RETURNED: [4, "Xác nhận trả xe"],
-};
+import { ridePresentation, type RideStop } from "../ridePresentation";
 
 export default function InProgressRideScreen() {
   const themed_s = useThemedStyles(s);
@@ -39,26 +41,34 @@ export default function InProgressRideScreen() {
     router,
     query,
     ride,
-    action,
+    model,
+    endedRide,
     progress,
-    isDropoff,
-    waitingForCustomer,
+    advance,
   } = useInProgress();
   const client = useQueryClient();
   const [confirmation, setConfirmation] = useState<{ rideId: number; userId: number } | null>(null);
   const [reason, setReason] = useState("");
-  const canCancel = Boolean(ride && cancellableStatuses.has(ride.status));
+  const canCancel = model?.canCancel === true;
+
   const cancel = useMutation({
     mutationFn: async ({ rideId, userId, reason }: { rideId: number; userId: number; reason: string }) => {
       if (useSessionStore.getState().user?.id !== userId) throw new Error("Phiên đăng nhập đã thay đổi.");
-      const current = client.getQueryData<CustomerRideDetail | null>(["driver", "activeRide"]);
-      if (current?.id !== rideId || !cancellableStatuses.has(current.status)) throw new Error("Chuyến đã đổi trạng thái và không thể hủy.");
+      const latest = client.getQueryState<CustomerRideDetail | null>(["driver", "activeRide"]);
+      if (
+        latest?.data?.id !== rideId ||
+        !ridePresentation(latest.data, latest.status === "success" && latest.fetchStatus !== "paused")?.canCancel
+      ) {
+        throw new Error("Chuyến đã đổi trạng thái và không thể hủy.");
+      }
       return cancelDriverRide(rideId, reason);
     },
     onSuccess: (_, { rideId, userId }) => {
       const store = useSessionStore.getState();
       if (store.user?.id !== userId) return;
-      client.setQueryData<CustomerRideDetail | null>(["driver", "activeRide"], (previous) => previous?.id === rideId ? null : previous);
+      client.setQueryData<CustomerRideDetail | null>(["driver", "activeRide"], (previous) =>
+        previous?.id === rideId ? null : previous,
+      );
       if (store.activeRide?.id === rideId) store.setActiveRide(null);
       void client.invalidateQueries({ queryKey: ["driver"] });
       setConfirmation(null);
@@ -66,99 +76,220 @@ export default function InProgressRideScreen() {
     },
     onError: () => { void query.refetch(); },
   });
-  const phase = ride ? phases[ride.status] : undefined;
-  const inspection = () => router.push("/ride/vehicle-inspection");
-  const needsInspection = ride?.status === "DRIVER_ARRIVED" || ride?.status === "ARRIVED_DESTINATION";
+
+  const markers: GoongMapMarker[] = [];
+  if (ride) {
+    for (const stop of ["pickup", "dropoff"] as const) {
+      const { lat, lng } = ride[stop];
+      if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        markers.push({ id: stop, coordinate: { lat, lng }, kind: stop });
+      }
+    }
+  }
+
+  const action = model?.action;
+  const inspection = (stop: RideStop) => {
+    if (ride) router.push({ pathname: "/ride/vehicle-inspection", params: { rideId: String(ride.id), stop } });
+  };
+  const viewableHandovers = model?.handovers.filter((item) => item.canView) ?? [];
+
+  const footerContent = action ? (
+    <Button
+      label={action.label}
+      style={styles.primaryAction}
+      loading={progress.isPending}
+      loadingLabel="Đang cập nhật…"
+      disabled={cancel.isPending || progress.isPending}
+      onPress={() => (action.kind === "inspection" ? inspection(action.stop) : advance())}
+    />
+  ) : model?.disabledPrimaryReason ? (
+    <View style={styles.waitingFooter}>
+      <Text style={themed_s.label} accessibilityLiveRegion="polite">
+        {model.disabledPrimaryReason}
+      </Text>
+      <Button
+        variant="secondary"
+        label={model.waitingForCustomer ? "Kiểm tra xác nhận của khách" : "Làm mới trạng thái chuyến"}
+        loading={query.isFetching}
+        onPress={() => void query.refetch()}
+      />
+    </View>
+  ) : undefined;
+
   return (
-    <DriverPage title="Chuyến đang thực hiện" appearance="ride" loading={query.isLoading}
+    <DriverPage
+      title={model?.title ?? (endedRide ? "Chuyến đã kết thúc" : "Chuyến hiện tại")}
+      appearance="ride"
+      loading={query.isLoading}
       headerAction={ride ? (
-        <Appbar.Action icon="shield-outline" style={styles.headerAction}
-          accessibilityLabel="An toàn chuyến đi" onPress={() => router.push("/safety")} />
+        <Appbar.Action
+          icon="shield-outline"
+          style={styles.headerAction}
+          accessibilityLabel="An toàn chuyến đi"
+          onPress={() => router.push("/safety")}
+        />
       ) : undefined}
-      headerContent={phase ? (
+      headerContent={model ? (
         <View style={styles.progress}>
           <View style={styles.progressLabels}>
-            <Text style={[themed_s.label, styles.step]}>Bước {phase[0]}/4</Text>
-            <Text style={[themed_s.label, styles.stepDescription]}>{phase[1]}</Text>
+            <Text style={[themed_s.label, styles.step]}>Bước {model.step}/4</Text>
           </View>
           <ProgressBar
-            progress={phase[0] / 4}
+            progress={model.step / 4}
             color={colors.primary}
             style={[styles.progressBar, { backgroundColor: colors.surfaceContainerHigh }]}
-            accessibilityLabel={`Bước ${phase[0]} trên 4`}
+            accessibilityLabel={`Bước ${model.step} trên 4`}
           />
         </View>
       ) : undefined}
       error={query.error?.message || progress.error?.message}
       retry={query.error ? query.refetch : undefined}
-      footer={ride && (action || needsInspection) ? (
-        <Button
-          label={needsInspection ? (isDropoff ? "Lập biên bản trả xe" : "Lập biên bản nhận xe") : action?.[0] ?? ""}
-          style={styles.primaryAction}
-          loading={progress.isPending}
-          loadingLabel="Đang cập nhật…"
-          disabled={cancel.isPending}
-          onPress={needsInspection ? inspection : () => progress.mutate()}
-        />
-      ) : undefined}
+      scrollResetKey={
+        ride
+          ? `${ride.id}:${ride.status}:${String(model?.waitingForCustomer ?? false)}`
+          : endedRide
+            ? `ended:${endedRide.id}`
+            : undefined
+      }
+      footer={footerContent}
     >
-        {ride ? (
-          <>
-            <View style={styles.tripHeader}>
-              <Text style={themed_s.label}>Chuyến #{ride.id}</Text>
-              <StatusBadge kind="ride" value={ride.status} contextLabel="Trạng thái chuyến" />
+      {ride && model ? (
+        <>
+          <View style={styles.tripHeader}>
+            <Text style={themed_s.label}>Chuyến #{ride.id}</Text>
+            <StatusBadge kind="ride" value={ride.status} contextLabel="Trạng thái chuyến" />
+          </View>
+
+          <RideStatusBanner banner={model.statusBanner} />
+
+          {model.showMap && markers[0] ? (
+            <View style={styles.map}>
+              <GoongMap
+                mapKey={env.goongMapKey}
+                center={markers[0].coordinate}
+                bounds={mapBounds([...markers.map((marker) => marker.coordinate), ...(ride.route?.coordinates ?? [])])}
+                markers={markers}
+                route={ride.route?.coordinates}
+                interactive={false}
+              />
             </View>
-            <RideRouteCard ride={ride} navigationStop={isDropoff ? "dropoff" : "pickup"}>
-              <Divider style={{ backgroundColor: colors.outlineVariant }} />
-              <View style={styles.routeSummary}>
-                <View style={styles.fare}>
-                  <Text style={themed_s.label}>Cước dự kiến</Text>
-                  <Text style={styles.fareAmount}>{formatMoney(ride.estimatedFare)}</Text>
-                </View>
-                {ride.route ? (
-                  <Text style={[themed_s.metric, styles.routeMetrics]}>
-                    {Math.ceil(ride.route.durationSeconds / 60)} phút · {formatDistance(ride.route.distanceMeters / 1000)}
+          ) : null}
+
+          <RideRouteCard ride={ride} navigationStop={model.navigation} routeMode={model.routeMode}>
+            <Divider style={{ backgroundColor: colors.outlineVariant }} />
+            <View style={styles.routeSummary}>
+              <View style={styles.fare}>
+                <Text style={themed_s.label}>Cước dự kiến</Text>
+                <MoneyText value={ride.estimatedFare} variant="headline" style={styles.fareAmount} />
+                {ride.paymentMethod ? (
+                  <Text style={themed_s.label}>
+                    {ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}
                   </Text>
                 ) : null}
+                {model.vehicleSummary ? (
+                  <Text style={themed_s.label}>{model.vehicleSummary}</Text>
+                ) : null}
               </View>
-            </RideRouteCard>
-            {waitingForCustomer ? (
-              <Card style={themed_s.card}>
-                <Text style={themed_s.text}>Khách cần kiểm tra và xác nhận biên bản trước khi bạn tiếp tục.</Text>
-                <Button variant="secondary" label="Xem biên bản đang chờ" onPress={inspection} />
-              </Card>
+              {ride.route ? (
+                <Text style={[themed_s.metric, styles.routeMetrics]}>
+                  {Math.ceil(ride.route.durationSeconds / 60)} phút · {formatDistance(ride.route.distanceMeters / 1000)}
+                </Text>
+              ) : null}
+            </View>
+          </RideRouteCard>
+
+          <RideCustomerCard key={ride.id} ride={ride} />
+
+          <GroupedList title="Thao tác chuyến đi">
+            {viewableHandovers.map((item) => (
+              <SettingsListItem
+                key={item.stop}
+                title={item.stop === "pickup" ? "Xem biên bản nhận xe" : "Xem biên bản trả xe"}
+                icon="assignment"
+                onPress={() => inspection(item.stop)}
+              />
+            ))}
+            <SettingsListItem
+              title="Làm mới trạng thái chuyến"
+              icon="refresh"
+              disabled={query.isFetching}
+              onPress={() => void query.refetch()}
+            />
+            <SettingsListItem
+              title="Trợ giúp về chuyến này"
+              icon="help-outline"
+              onPress={() => router.push({ pathname: "/support", params: { rideId: String(ride.id) } })}
+            />
+            {canCancel ? (
+              <SettingsListItem
+                title="Hủy chuyến"
+                icon="cancel"
+                destructive
+                disabled={progress.isPending || cancel.isPending}
+                onPress={() => {
+                  const userId = useSessionStore.getState().user?.id;
+                  if (!userId) return;
+                  cancel.reset();
+                  setReason("");
+                  setConfirmation({ rideId: ride.id, userId });
+                }}
+              />
             ) : null}
-            <RideCustomerCard key={ride.id} ride={ride} />
-            {!needsInspection && !waitingForCustomer ? <Button variant="ghost" label="Xem biên bản bàn giao / hoàn trả" onPress={inspection} /> : null}
-            <Button variant="ghost" label="Làm mới trạng thái chuyến" onPress={() => void query.refetch()} />
-            <Button variant="secondary" label="Trợ giúp về chuyến này" icon="help-outline" iconPosition="leading"
-              onPress={() => router.push({ pathname: "/support", params: { rideId: String(ride.id) } })} />
-            {canCancel ? <Button variant="ghost" icon="cancel" iconPosition="leading" label="Hủy chuyến" contentColor={colors.error}
-              disabled={progress.isPending || cancel.isPending}
-              onPress={() => {
-                const userId = useSessionStore.getState().user?.id;
-                if (!userId) return;
-                cancel.reset();
-                setReason("");
-                setConfirmation({ rideId: ride.id, userId });
-              }} /> : null}
-          </>
-        ) : !query.isLoading ? (
-          <Card style={themed_s.card}>
-            <Text>Bạn chưa có chuyến đang hoạt động.</Text>
-            <Button variant="secondary" label="Về trang chủ" onPress={() => router.replace("/(tabs)/home")} />
-          </Card>
-        ) : null}
-      <DriverConfirmationDialog visible={Boolean(confirmation)} busy={cancel.isPending}
+          </GroupedList>
+        </>
+      ) : query.isSuccess ? (
+        <Card style={themed_s.card}>
+          {endedRide ? (
+            <>
+              <View style={styles.tripHeader}>
+                <Text style={themed_s.title}>Chuyến #{endedRide.id} đã kết thúc</Text>
+                <StatusBadge kind="ride" value={endedRide.status} contextLabel="Trạng thái chuyến" />
+              </View>
+              <Text style={themed_s.text}>
+                {endedRide.cancelledByRole === "CUSTOMER"
+                  ? "Khách hàng đã hủy chuyến này."
+                  : endedRide.cancelledByRole === "SYSTEM"
+                    ? "Hệ thống đã kết thúc chuyến này."
+                    : "Chuyến đi đã được đóng."}
+                {endedRide.cancelReason ? ` Lý do: ${endedRide.cancelReason}` : ""}
+              </Text>
+              <Button
+                label="Xem chi tiết chuyến"
+                onPress={() => router.replace({ pathname: "/ride/complete", params: { rideId: String(endedRide.id) } })}
+              />
+              <Button variant="secondary" label="Về trang chủ" onPress={() => router.replace("/(tabs)/home")} />
+            </>
+          ) : (
+            <>
+              <Text>Bạn chưa có chuyến đang hoạt động.</Text>
+              <Button variant="secondary" label="Về trang chủ" onPress={() => router.replace("/(tabs)/home")} />
+            </>
+          )}
+        </Card>
+      ) : null}
+
+      <DriverConfirmationDialog
+        visible={Boolean(confirmation)}
+        busy={cancel.isPending}
         title="Hủy chuyến đã nhận?"
         description="Khách sẽ được thông báo. Nếu còn lượt tìm lại trước khi tới điểm đón, hệ thống sẽ tìm tài xế khác."
-        confirmLabel="Xác nhận hủy chuyến" dismissLabel="Tiếp tục chuyến"
+        confirmLabel="Xác nhận hủy chuyến"
+        dismissLabel="Tiếp tục chuyến"
         disabled={!reason.trim() || !canCancel || ride?.id !== confirmation?.rideId}
         error={cancel.error?.message}
         onDismiss={() => setConfirmation(null)}
-        onConfirm={() => { if (confirmation) cancel.mutate({ ...confirmation, reason: reason.trim() }); }}>
-        <TextInput label="Lý do hủy" mode="flat" underlineColor={colors.transparent} multiline
-          maxLength={255} draftValue={reason} onChangeText={setReason} editable={!cancel.isPending} />
+        onConfirm={() => { if (confirmation) cancel.mutate({ ...confirmation, reason: reason.trim() }); }}
+      >
+        <TextInput
+          label="Lý do hủy"
+          mode="flat"
+          underlineColor={colors.transparent}
+          multiline
+          maxLength={255}
+          draftValue={reason}
+          onChangeText={setReason}
+          editable={!cancel.isPending}
+        />
         <Text style={themed_s.label}>{reason.length}/255 ký tự</Text>
       </DriverConfirmationDialog>
     </DriverPage>
@@ -166,16 +297,17 @@ export default function InProgressRideScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerAction: { width: 48, height: 48, borderRadius: 24 },
-  progress: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, gap: 8 },
-  progressLabels: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  step: { fontWeight: "700" },
-  stepDescription: { flexShrink: 1, textAlign: "right" },
-  progressBar: { height: 3, borderRadius: 999 },
-  tripHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  routeSummary: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  fare: { gap: 2 },
-  fareAmount: { fontSize: 28, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  map: { height: 200, borderRadius: borderRadius.default, overflow: "hidden" },
+  headerAction: { width: 48, height: 48, borderRadius: 24, margin: 0 },
+  progress: { paddingHorizontal: spacing.spaceMd, paddingTop: spacing.spaceXs, paddingBottom: spacing.spaceSm, gap: spacing.spaceSm },
+  progressLabels: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.px3 },
+  step: { ...typography.label },
+  progressBar: { height: 3, borderRadius: borderRadius.full },
+  tripHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.spaceSm },
+  routeSummary: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.spaceSm },
+  fare: { gap: spacing.xxs, flex: 1, minWidth: 160 },
+  fareAmount: { ...typography.moneyDisplay },
   routeMetrics: { flexShrink: 1 },
   primaryAction: { minHeight: 52, justifyContent: "center" },
+  waitingFooter: { gap: spacing.spaceSm },
 });

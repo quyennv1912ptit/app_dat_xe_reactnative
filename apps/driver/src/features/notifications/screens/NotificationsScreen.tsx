@@ -9,100 +9,180 @@ import { rideStyles as s } from "@/components/rideStyles";
 import {
   Button,
   Card,
-  GroupedList,
-  Typography as Text,
+  FilterChip,
+  SectionHeading,
   SettingsListItem,
+  Typography as Text,
+  spacing,
+  typography,
   useThemeColors,
   useThemedStyles,
   useTranslation,
 } from "@datxe/ui";
-import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { useNotifications } from "../hooks/useNotifications";
-export default function NotificationsScreen() {
+
+type NotificationRow =
+  | { key: string; kind: "header"; date: string }
+  | { key: string; kind: "item"; item: CustomerNotification };
+
+const NotificationCard = memo(function NotificationCard({
+  item,
+  disabled,
+  onPress,
+}: {
+  item: CustomerNotification;
+  disabled: boolean;
+  onPress: (item: CustomerNotification) => void;
+}) {
   const t = useTranslation();
+  const colors = useThemeColors();
+  const text = getNotificationText(item.type, item.payload, t);
+  const timeText = new Date(item.createdAt).toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
+  const unread = !item.readAt;
+  return (
+    <Card style={styles.rowCard}>
+      <SettingsListItem
+        title={unread ? `${text.title} · Chưa đọc` : text.title}
+        description={`${text.description}\n${timeText}`}
+        icon={unread ? "notifications" : "notifications-none"}
+        disabled={disabled}
+        right={unread ? (
+          <View
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.unreadDot, { backgroundColor: colors.primary }]}
+          />
+        ) : undefined}
+        onPress={() => onPress(item)}
+      />
+    </Card>
+  );
+});
+
+export default function NotificationsScreen() {
   const themed_s = useThemedStyles(s);
   const { query: q, mark } = useNotifications();
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const allItems = q.data ?? [];
-  const items = unreadOnly ? allItems.filter((item) => !item.readAt) : allItems;
+  const allItems = useMemo(() => q.data ?? [], [q.data]);
+  const items = useMemo(
+    () => (unreadOnly ? allItems.filter((item) => !item.readAt) : allItems),
+    [allItems, unreadOnly],
+  );
   const { data: count } = useQuery({ queryKey: ["driver", "notifications", "count"], queryFn: driverApi.notificationCount });
   const unread = count?.unread_count ?? allItems.filter((item) => !item.readAt).length;
-  const groups = new Map<string, CustomerNotification[]>();
-  for (const item of items) {
-    const date = new Date(item.createdAt).toLocaleDateString(getLocale());
-    const group = groups.get(date);
-    if (group) group.push(item);
-    else groups.set(date, [item]);
-  }
+  const rows = useMemo<NotificationRow[]>(() => {
+    const groups = new Map<string, CustomerNotification[]>();
+    for (const item of items) {
+      const date = new Date(item.createdAt).toLocaleDateString(getLocale());
+      const group = groups.get(date);
+      if (group) group.push(item);
+      else groups.set(date, [item]);
+    }
+    const flattened: NotificationRow[] = [];
+    for (const [date, group] of groups) {
+      flattened.push({ key: `header:${date}`, kind: "header", date });
+      for (const item of group) {
+        flattened.push({ key: `item:${item.id}`, kind: "item", item });
+      }
+    }
+    return flattened;
+  }, [items]);
+
   const router = useRouter();
-  const colors = useThemeColors();
+  const [notice, setNotice] = useState("");
   const open = useMutation({
     mutationFn: async ({ item, userId }: { item: CustomerNotification; userId: number }) => {
       if (useSessionStore.getState().user?.id !== userId) throw new Error("Phiên đăng nhập đã thay đổi.");
       return resolveDriverNotification({ type: item.type, payload: item.payload, messageId: item.messageId });
     },
   });
-  const openItem = (item: CustomerNotification) => {
+  const openItem = useCallback((item: CustomerNotification) => {
+    setNotice("");
     const userId = useSessionStore.getState().user?.id;
     if (!userId) return;
     if (!item.readAt) mark.mutate(item.id);
-    open.mutate({ item, userId }, { onSuccess: ({ notice, ...destination }) => {
+    open.mutate({ item, userId }, { onSuccess: ({ notice: nextNotice, ...destination }) => {
       if (useSessionStore.getState().user?.id !== userId) return;
-      if (notice) setNotice(notice);
+      if (nextNotice) setNotice(nextNotice);
       else if (destination.pathname !== "/(tabs)/notifications") router.push(destination as Href);
     } });
-  };
-  const [notice, setNotice] = useState("");
+  }, [mark, open, router]);
+
+  const renderItem = useCallback(({ item: row }: { item: NotificationRow }) => {
+    if (row.kind === "header") return <SectionHeading title={row.date} />;
+    return <NotificationCard item={row.item} disabled={open.isPending} onPress={openItem} />;
+  }, [open.isPending, openItem]);
+
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.toolbar}>
+        <View style={styles.chips}>
+          <FilterChip
+            label="Tất cả"
+            selected={!unreadOnly}
+            onPress={() => setUnreadOnly(false)}
+            style={styles.chip}
+          />
+          <FilterChip
+            label={unread ? `Chưa đọc (${unread})` : "Chưa đọc"}
+            selected={unreadOnly}
+            onPress={() => setUnreadOnly(true)}
+            style={styles.chip}
+          />
+        </View>
+        {unread ? (
+          <Button
+            variant="ghost"
+            style={styles.markAll}
+            disabled={mark.isPending}
+            label="Đánh dấu đã đọc hết"
+            onPress={() => mark.mutate(null)}
+          />
+        ) : null}
+      </View>
+      {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert" style={typography.bodyMd}>{notice}</Text></Card> : null}
+    </View>
+  );
+
+  const empty = !q.isLoading && !q.error ? (
+    <Card style={themed_s.card}>
+      <Text style={themed_s.text}>{unreadOnly ? "Không còn thông báo chưa đọc." : "Chưa có thông báo."}</Text>
+    </Card>
+  ) : null;
+
   return (
     <DriverPage
       title="Thông báo"
       tabs
+      scroll={false}
       loading={q.isLoading}
       error={q.error?.message || mark.error?.message || open.error?.message}
       retry={q.error ? q.refetch : undefined}
     >
-      {unread ? (
-        <Card style={themed_s.card}>
-          <Text style={themed_s.text}>{unread} {t("thông báo chưa đọc")}</Text>
-          <Button
-            variant="ghost"
-            disabled={mark.isPending}
-            label="Đánh dấu tất cả đã đọc"
-            onPress={() => mark.mutate(null)}
-          />
-        </Card>
-      ) : null}
-      {allItems.length || unreadOnly ? (
-        <Button variant="secondary" label={unreadOnly ? "Xem tất cả thông báo" : "Chỉ xem chưa đọc"}
-          onPress={() => setUnreadOnly(!unreadOnly)} />
-      ) : null}
-      {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert">{notice}</Text></Card> : null}
-      {[...groups].map(([date, group]) => (
-        <GroupedList key={date} title={date}>
-          {group.map((item) => {
-            const text = getNotificationText(item.type, item.payload, t);
-            return (
-              <SettingsListItem
-                key={item.id}
-                title={text.title}
-                description={`${text.description}\n${new Date(item.createdAt).toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}`}
-                icon={item.readAt ? "notifications-none" : "notifications"}
-                disabled={open.isPending}
-                right={item.readAt ? undefined : <View accessibilityLabel="Chưa đọc" style={[styles.unreadDot, { backgroundColor: colors.onSurfaceVariant }]} />}
-                onPress={() => { setNotice(""); openItem(item); }}
-              />
-            );
-          })}
-        </GroupedList>
-      ))}
-      {!q.isLoading && !q.error && !items.length ? (
-        <Card style={themed_s.card}>
-          <Text style={themed_s.text}>{unreadOnly ? "Không còn thông báo chưa đọc." : "Chưa có thông báo."}</Text>
-        </Card>
-      ) : null}
+      <FlatList
+        data={rows}
+        keyExtractor={(row) => row.key}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty ?? undefined}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />
+        }
+      />
     </DriverPage>
   );
 }
 
-const styles = StyleSheet.create({ unreadDot: { width: 8, height: 8, borderRadius: 999 } });
+const styles = StyleSheet.create({
+  listContent: { padding: spacing.spaceMd, gap: spacing.spaceSm + spacing.xxs, paddingBottom: spacing.spaceXl },
+  header: { gap: spacing.spaceSm },
+  toolbar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.spaceSm },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.spaceSm },
+  chip: { minHeight: 48, justifyContent: "center" },
+  markAll: { width: "auto" },
+  rowCard: { padding: 0 },
+  unreadDot: { width: 8, height: 8, borderRadius: 999 },
+});

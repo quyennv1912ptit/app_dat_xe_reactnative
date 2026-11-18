@@ -2,7 +2,7 @@ import { DriverPage } from "@/components/DriverPage";
 import { GroupedList, SettingsListItem, type ThemeMode } from "@datxe/ui";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 import { RadioButton } from "react-native-paper";
 import { useDriverSettings } from "@/lib/settings/DriverSettingsProvider";
 
@@ -28,7 +28,7 @@ export default function DriverSettingsScreen() {
     <DriverPage title="Cài đặt" error={error}>
       <GroupedList title="Giao diện">
         {appearances.map(({ value, label }) => (
-          <RadioButton.Item key={value} value={value} label={label}
+          <RadioButton.Item key={value} value={value} label={label} style={styles.radioItem}
             status={mode === value ? "checked" : "unchecked"} disabled={saving}
             onPress={() => void selectMode(value)} />
         ))}
@@ -47,3 +47,7 @@ export default function DriverSettingsScreen() {
     </DriverPage>
   );
 }
+
+const styles = StyleSheet.create({
+  radioItem: { minHeight: 48 },
+});
