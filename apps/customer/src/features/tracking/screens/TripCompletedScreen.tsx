@@ -26,7 +26,6 @@ export default function TripCompletedScreen() {
   const styles = useThemedStyles(base_styles);
 
   const {
-    router,
     ride,
     stars,
     setStars,
@@ -37,6 +36,8 @@ export default function TripCompletedScreen() {
     hasRatingDetail,
     checkingRating,
     error,
+    canGoBack,
+    leave,
     refresh,
     finish,
   } = useTripCompleted();
@@ -46,9 +47,9 @@ export default function TripCompletedScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
         title={i18nT("Hoàn thành chuyến")}
-        backIcon="home"
-        backAccessibilityLabel={i18nT("Về trang chủ")}
-        onBack={() => router.replace("/(tabs)/home")}
+        backIcon={canGoBack ? undefined : "home"}
+        backAccessibilityLabel={i18nT(canGoBack ? "Quay lại" : "Về trang chủ")}
+        onBack={leave}
       />
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -102,7 +103,7 @@ export default function TripCompletedScreen() {
                         key={value}
                         disabled={alreadyRated || saving}
                         accessibilityRole="radio"
-                        accessibilityState={{ selected: value === stars, disabled: alreadyRated }}
+                        accessibilityState={{ selected: value === stars, checked: value === stars, disabled: alreadyRated }}
                         accessibilityLabel={i18nT("{0} sao", { 0: value })}
                         style={[customerType.target, styles.star]}
                         onPress={() => {
@@ -173,7 +174,15 @@ export default function TripCompletedScreen() {
             style={alreadyRated ? styles.primary : styles.skip}
           >
             <Text style={alreadyRated ? styles.primaryText : styles.skipText}>
-              {i18nT(alreadyRated ? "Về trang chủ" : "Bỏ qua và về trang chủ")}
+              {i18nT(
+                canGoBack
+                  ? alreadyRated
+                    ? "Quay lại"
+                    : "Bỏ qua và quay lại"
+                  : alreadyRated
+                    ? "Về trang chủ"
+                    : "Bỏ qua và về trang chủ",
+              )}
             </Text>
           </Pressable>
         </View>

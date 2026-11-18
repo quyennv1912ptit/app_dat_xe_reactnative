@@ -24,6 +24,7 @@ export function useVehicleInspection() {
   const synchronized = !query.isError && !query.isPaused;
   const presentation = validStop ? inspectionPresentation(ride, phase, synchronized) : null;
   const existing = presentation?.report;
+  const pickupOdometer = phase === 'dropoff' ? ride?.handoverReports?.find((item) => item.phase === 'PICKUP')?.odometer : undefined;
   const editable = presentation?.canEditForm === true;
   const canSubmitOnline = presentation?.canSubmit === true;
   const scope = String(ride?.id) + ':' + phase + ':' + (existing?.revision ?? 1) + ':' + (existing?.correctionReason ?? '');
@@ -123,6 +124,9 @@ export function useVehicleInspection() {
       if (!odometer.trim() || !Number.isSafeInteger(Number(odometer)) || Number(odometer) < 0) {
         throw new Error('Nhập số km đồng hồ hợp lệ.');
       }
+      if (pickupOdometer != null && Number(odometer) < pickupOdometer) {
+        throw new Error('Số km trả xe phải lớn hơn hoặc bằng lúc nhận xe.');
+      }
       if (fuelLevel && (!Number.isInteger(Number(fuelLevel)) || Number(fuelLevel) < 0 || Number(fuelLevel) > 100)) {
         throw new Error('Mức nhiên liệu phải là số nguyên từ 0 đến 100%.');
       }
@@ -180,6 +184,7 @@ export function useVehicleInspection() {
     send,
     editable,
     canSubmitOnline,
+    pickupOdometer,
     revisions,
     loading: query.isLoading,
     error: query.error?.message || submit.error?.message,

@@ -81,8 +81,19 @@ function ActiveRideSafety({ ride }: { ride: CustomerRideDetail }) {
     <Card style={styles.card}>
       <Text accessibilityRole="header" style={customerType.heading}>{t(rideStatusLabel[ride.status] ?? "Đang cập nhật trạng thái")}</Text>
       <RideEndpoints pickup={ride.pickupAddress} dropoff={ride.dropoffAddress} />
-      <Button variant="secondary" label="Theo dõi chuyến"
-        onPress={() => router.push({ pathname: "/ride/tracking", params: { rideId: String(ride.id) } })} />
+      <Button
+        variant="secondary"
+        label="Theo dõi chuyến"
+        onPress={() =>
+          router.push({
+            pathname:
+              ride.status === "PENDING" || ride.status === "SEARCHING"
+                ? "/ride/find-driver"
+                : "/ride/tracking",
+            params: { rideId: String(ride.id) },
+          })
+        }
+      />
       {ride.driverId && chatStatuses.includes(ride.status) ? (
         <Button variant="secondary" label="Nhắn tin với tài xế" onPress={() => router.push({ pathname: "/chat", params: { rideId: String(ride.id) } })} />
       ) : null}

@@ -144,7 +144,10 @@ export default function RideDetailScreen() {
               <Button
                 onPress={() =>
                   router.push({
-                    pathname: "/ride/tracking",
+                    pathname:
+                      ride.status === "PENDING" || ride.status === "SEARCHING"
+                        ? "/ride/find-driver"
+                        : "/ride/tracking",
                     params: { rideId: String(ride.id) },
                   })
                 }
@@ -155,6 +158,7 @@ export default function RideDetailScreen() {
             ) : null}
             {ride.driverId && chatStatuses.includes(ride.status) ? (
               <Pressable
+                accessibilityRole="button"
                 onPress={() =>
                   router.push({
                     pathname: "/chat",

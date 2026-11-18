@@ -13,7 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 
 type Props = {
   destination: RideCoordinates;
@@ -87,14 +87,28 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
   const [voiceId, setVoiceId] = useState<string | undefined>(undefined);
   const announced = useRef<Set<number>>(new Set());
   const announcedAhead = useRef<Set<string>>(new Set());
+  const lastSpokenStepAt = useRef(0);
   // Route mới (re-route) phải đọc lại từ đầu.
-  useEffect(() => { announced.current.clear(); announcedAhead.current.clear(); }, [directions]);
-  const voiceMutedRef = useRef(false);
+  useEffect(() => {
+    announced.current.clear();
+    announcedAhead.current.clear();
+    lastSpokenStepAt.current = 0;
+  }, [directions]);
   const overviewShown = useRef(false);
   const mapStyle = env.goongStyleUrl;
 
-  useEffect(() => { voiceMutedRef.current = voiceMuted; }, [voiceMuted]);
-  useEffect(() => () => { void Speech.stop(); }, []);
+  useEffect(() => {
+    if (voiceMuted) void Speech.stop();
+  }, [voiceMuted]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') void Speech.stop();
+    });
+    return () => {
+      subscription.remove();
+      void Speech.stop();
+    };
+  }, []);
 
   // Chọn giọng đọc tiếng Việt có sẵn trên thiết bị.
   useEffect(() => {
@@ -162,46 +176,45 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
     return steps.length - 1;
   }, [scaledProgress, steps]);
 
+  // Điều phối một lượt phát giọng nói duy nhất mỗi bước/ngưỡng, tránh tự hủy lời nhắc cùng render.
   useEffect(() => {
-    if (steps.length === 0) return;
-    if (!announced.current.has(stepIndex)) {
+    if (!current || steps.length === 0 || voiceMuted) return;
+    const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
+    const remaining = Math.max(0, stepEnd - scaledProgress);
+    const next = steps[stepIndex + 1];
+
+    if (next && remaining <= 20 && !announcedAhead.current.has(`${stepIndex}:now`)) {
+      announcedAhead.current.add(`${stepIndex}:now`);
       announced.current.add(stepIndex);
-      const text = localizeInstruction(steps[stepIndex]?.instruction ?? '').trim();
-      if (text && !voiceMutedRef.current) {
+      const text = `Bây giờ, ${localizeInstruction(next.instruction).trim()}`;
+      if (text.trim()) {
         void Speech.stop();
         Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
       }
+      return;
     }
-  }, [stepIndex, steps, voiceId]);
 
-  // Báo trước chặng kế ("Sau 300/100/30 m, ...") giống app dẫn đường.
-  useEffect(() => {
-    if (steps.length === 0 || voiceMutedRef.current) return;
-    const next = steps[stepIndex + 1];
-    if (!next) return;
-    const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
-    const remaining = Math.max(0, stepEnd - scaledProgress);
+    if (!announced.current.has(stepIndex)) {
+      const text = localizeInstruction(steps[stepIndex]?.instruction ?? '').trim();
+      if (text) {
+        announced.current.add(stepIndex);
+        lastSpokenStepAt.current = Date.now();
+        void Speech.stop();
+        Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
+      }
+      return;
+    }
+
+    if (!next || Date.now() - lastSpokenStepAt.current < 3500) return;
     const threshold = [300, 100, 30].find(value => remaining <= value && !announcedAhead.current.has(`${stepIndex}:${value}`));
     if (threshold === undefined) return;
-    announcedAhead.current.add(`${stepIndex}:${threshold}`);
+    for (const candidate of [300, 100, 30]) {
+      if (candidate >= threshold) announcedAhead.current.add(`${stepIndex}:${candidate}`);
+    }
     const text = `Sau ${formatDistance(remaining)}, ${localizeInstruction(next.instruction).trim()}`;
     void Speech.stop();
     Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
-  }, [scaledProgress, stepIndex, steps, voiceId]);
-
-  // Nhắc "Bây giờ, ..." khi tới sát chỗ rẽ (< 20 m).
-  useEffect(() => {
-    if (steps.length === 0 || voiceMutedRef.current) return;
-    const next = steps[stepIndex + 1];
-    if (!next) return;
-    const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
-    const remaining = Math.max(0, stepEnd - scaledProgress);
-    if (remaining > 20 || announcedAhead.current.has(`${stepIndex}:now`)) return;
-    announcedAhead.current.add(`${stepIndex}:now`);
-    const text = `Bây giờ, ${localizeInstruction(next.instruction).trim()}`;
-    void Speech.stop();
-    Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
-  }, [scaledProgress, stepIndex, steps, voiceId]);
+  }, [current, scaledProgress, stepIndex, steps, voiceId, voiceMuted]);
 
   useEffect(() => {
     if (!current) return;
@@ -211,12 +224,12 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
       const lats = coordinates.map(point => point.lat);
       camera.current?.fitBounds(
         [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
-        { padding: { top: 120, bottom: 180, left: 40, right: 40 }, duration: 500 },
+        { padding: { top: (viewport?.top ?? 80) + 120, bottom: (viewport?.bottom ?? 140) + 40, left: 40, right: 40 }, duration: 500 },
       );
       return;
     }
     camera.current?.jumpTo({ center: [current.lng, current.lat], zoom: 17 });
-  }, [current, coordinates]);
+  }, [current, coordinates, viewport?.top, viewport?.bottom]);
 
   // Tự cập nhật tuyến đường: lệch route > 40m, hoặc đã đi > 25m sau mỗi 20 giây.
   const lastRefresh = useRef<{ at: number; position: RideCoordinates } | null>(null);
@@ -292,50 +305,52 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
           }} />
         </GeoJSONSource>
       </Map>
-      <View style={[styles.maneuver, { top: (viewport?.top ?? 0) + spacing.spaceSm }]}>
-        <View style={styles.maneuverRow}>
-          <Text style={styles.maneuverArrow}>{arrowFor(displayInstruction)}</Text>
-          <View style={styles.roadBadge}>
-            <Text style={styles.roadBadgeText} numberOfLines={1}>{road}</Text>
+      <View pointerEvents="box-none" style={[styles.topOverlay, { top: (viewport?.top ?? 0) + spacing.spaceSm }]}>
+        <View style={styles.maneuver}>
+          <View style={styles.maneuverRow}>
+            <Text style={styles.maneuverArrow}>{arrowFor(displayInstruction)}</Text>
+            <View style={styles.roadBadge}>
+              <Text style={styles.roadBadgeText} numberOfLines={1}>{road}</Text>
+            </View>
           </View>
+          <Text style={styles.maneuverInstruction} numberOfLines={2}>{displayInstruction}</Text>
+          <Text style={styles.maneuverDistance}>{step ? formatDistance(stepRemaining) : ''}</Text>
+          {nextRoad ? (
+            <>
+              <View style={styles.maneuverDivider} />
+              <Text style={styles.thenText} numberOfLines={1}>Sau đó {nextRoad}</Text>
+            </>
+          ) : null}
         </View>
-        <Text style={styles.maneuverInstruction} numberOfLines={2}>{displayInstruction}</Text>
-        <Text style={styles.maneuverDistance}>{step ? formatDistance(stepRemaining) : ''}</Text>
-        {nextRoad ? (
-          <>
-            <View style={styles.maneuverDivider} />
-            <Text style={styles.thenText} numberOfLines={1}>Sau đó {nextRoad}</Text>
-          </>
-        ) : null}
-      </View>
-      <View style={[styles.mapControls, { top: (viewport?.top ?? 0) + 144 }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={voiceMuted ? 'Bật giọng chỉ đường' : 'Tắt giọng chỉ đường'}
-          style={styles.mapControl}
-          onPress={() => { const next = !voiceMuted; setVoiceMuted(next); if (next) void Speech.stop(); }}
-        >
-          <MaterialIcons name={voiceMuted ? 'volume-off' : 'volume-up'} size={22} color={colors.onSurface} />
-        </Pressable>
-        {onRefresh ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Cập nhật tuyến đường" style={styles.mapControl}
-            onPress={() => { overviewShown.current = false; onRefresh(); }}>
-            <MaterialIcons name="refresh" size={22} color={colors.onSurface} />
+        <View style={styles.mapControls}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voiceMuted ? 'Bật giọng chỉ đường' : 'Tắt giọng chỉ đường'}
+            style={styles.mapControl}
+            onPress={() => { const next = !voiceMuted; setVoiceMuted(next); if (next) void Speech.stop(); }}
+          >
+            <MaterialIcons name={voiceMuted ? 'volume-off' : 'volume-up'} size={22} color={colors.onSurface} />
           </Pressable>
-        ) : null}
-        <Pressable accessibilityRole="button" accessibilityLabel="Xem toàn bộ lộ trình" style={styles.mapControl}
-          onPress={() => {
-            if (coordinates.length < 2) return;
-            const lngs = coordinates.map(point => point.lng);
-            const lats = coordinates.map(point => point.lat);
-            camera.current?.fitBounds(
-              [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
-              { padding: { top: (viewport?.top ?? 80) + 80, bottom: (viewport?.bottom ?? 140) + 40, left: 40, right: 40 }, duration: 400 },
-            );
-          }}
-        >
-          <MaterialIcons name="alt-route" size={22} color={colors.onSurface} />
-        </Pressable>
+          {onRefresh ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Cập nhật tuyến đường" style={styles.mapControl}
+              onPress={() => { overviewShown.current = false; onRefresh(); }}>
+              <MaterialIcons name="refresh" size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Xem toàn bộ lộ trình" style={styles.mapControl}
+            onPress={() => {
+              if (coordinates.length < 2) return;
+              const lngs = coordinates.map(point => point.lng);
+              const lats = coordinates.map(point => point.lat);
+              camera.current?.fitBounds(
+                [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
+                { padding: { top: (viewport?.top ?? 80) + 120, bottom: (viewport?.bottom ?? 140) + 40, left: 40, right: 40 }, duration: 400 },
+              );
+            }}
+          >
+            <MaterialIcons name="alt-route" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -344,7 +359,8 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
 const themedStyles = (c: ThemeColors) => StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background, gap: spacing.px3, padding: spacing.spaceLg },
   emptyText: { ...typography.bodySecondary, color: c.onSurfaceVariant, textAlign: 'center' },
-  maneuver: { position: 'absolute', left: spacing.margin, right: spacing.margin, paddingHorizontal: spacing.spaceMd, paddingVertical: spacing.px3, borderRadius: borderRadius.default, backgroundColor: c.primary, gap: spacing.xxs },
+  topOverlay: { position: 'absolute', left: spacing.margin, right: spacing.margin, gap: spacing.spaceSm },
+  maneuver: { paddingHorizontal: spacing.spaceMd, paddingVertical: spacing.px3, borderRadius: borderRadius.default, backgroundColor: c.primary, gap: spacing.xxs },
   maneuverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.spaceSm },
   maneuverArrow: { ...typography.sectionTitle, color: c.onPrimary },
   roadBadge: { flexShrink: 1, backgroundColor: c.surfaceContainerLowest, borderRadius: borderRadius.sm, paddingHorizontal: spacing.spaceSm, paddingVertical: spacing.xxs },
@@ -353,6 +369,6 @@ const themedStyles = (c: ThemeColors) => StyleSheet.create({
   maneuverDistance: { ...typography.label, color: c.onPrimary, marginLeft: spacing.spaceLg, fontVariant: ['tabular-nums'] },
   maneuverDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.outlineVariant, marginTop: spacing.xxs },
   thenText: { ...typography.bodySecondary, color: c.onPrimary, marginTop: spacing.xxs },
-  mapControls: { position: 'absolute', right: spacing.margin, gap: spacing.spaceSm },
+  mapControls: { alignSelf: 'flex-end', gap: spacing.spaceSm },
   mapControl: { width: 48, height: 48, borderRadius: borderRadius.full, backgroundColor: c.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center' },
 });

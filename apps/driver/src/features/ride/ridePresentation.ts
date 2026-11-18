@@ -473,7 +473,7 @@ export function completePresentation(ride: CustomerRideDetail | null | undefined
     payment?.method === "CASH" &&
     payment.status === "PENDING" &&
     Number.isFinite(payment.amount) &&
-    payment.amount >= 0
+    payment.amount > 0
       ? payment.amount
       : undefined;
   const canConfirmCash = cashToCollect !== undefined;
@@ -489,17 +489,29 @@ export function completePresentation(ride: CustomerRideDetail | null | undefined
       };
     } else if (payment.method === "CASH") {
       if (payment.status === "PAID") {
-        paymentBanner = {
-          tone: "success",
-          title: "Tiền mặt đã thu đủ",
-          message: "Giao dịch tiền mặt cho chuyến này đã được xác nhận.",
-        };
+        paymentBanner = payment.amount === 0
+          ? {
+              tone: "success",
+              title: "Khách được miễn phí (Voucher 0 đ)",
+              message: "Không cần thu tiền mặt từ khách. Thu nhập chuyến đã được cộng vào ví.",
+            }
+          : {
+              tone: "success",
+              title: "Tiền mặt đã thu đủ",
+              message: "Giao dịch tiền mặt cho chuyến này đã được xác nhận.",
+            };
       } else if (payment.status === "PENDING") {
-        paymentBanner = {
-          tone: "warning",
-          title: "Chờ xác nhận thu tiền mặt",
-          message: "Chỉ bấm xác nhận sau khi đã nhận đủ tiền mặt trực tiếp từ khách.",
-        };
+        paymentBanner = payment.amount === 0
+          ? {
+              tone: "warning",
+              title: "Chờ hoàn tất thanh toán 0 đ",
+              message: "Không cần thu tiền mặt từ khách. Hãy làm mới trạng thái chuyến.",
+            }
+          : {
+              tone: "warning",
+              title: "Chờ xác nhận thu tiền mặt",
+              message: "Chỉ bấm xác nhận sau khi đã nhận đủ tiền mặt trực tiếp từ khách.",
+            };
       } else if (payment.status === "FAILED") {
         paymentBanner = {
           tone: "error",

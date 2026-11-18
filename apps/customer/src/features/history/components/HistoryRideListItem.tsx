@@ -105,21 +105,8 @@ export function HistoryRideListItem({
         />
       </View>
     </Pressable>
-    {ride.status === "COMPLETED" && onRate ? (
-      ride.hasRated ? (
-        <Button
-          label={
-            ride.myRatingStars
-              ? i18nT("Đã đánh giá ({0}/5 sao)", { 0: ride.myRatingStars })
-              : i18nT("Đã đánh giá chuyến đi")
-          }
-          icon="check-circle"
-          variant="ghost"
-          onPress={onRate}
-        />
-      ) : (
-        <Button label={i18nT("Đánh giá chuyến đi")} icon="star" variant="secondary" onPress={onRate} />
-      )
+    {ride.status === "COMPLETED" && onRate && !ride.hasRated ? (
+      <Button label={i18nT("Đánh giá chuyến đi")} icon="star" variant="secondary" onPress={onRate} />
     ) : null}
     </View>
   );

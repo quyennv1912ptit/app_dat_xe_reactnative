@@ -54,7 +54,7 @@ export default function CompleteRideScreen() {
 
   const themed_s = useThemedStyles(s);
   const colors = useThemeColors();
-  const { query: q, myRating, cash, router, valid } = useComplete();
+  const { query: q, myRating, cash, confirmCash, router, valid } = useComplete();
   const ride = q.data;
   const model = completePresentation(ride);
   const payment = ride?.payment;
@@ -104,7 +104,7 @@ export default function CompleteRideScreen() {
           </>
         ) : (
           <>
-            {receivedStars && Number.isFinite(receivedStars) && receivedStars > 0 ? (
+            {receivedStars != null && Number.isFinite(receivedStars) && receivedStars > 0 ? (
               <Card style={themed_s.card}>
                 <Text accessibilityRole="header" style={themed_s.title}>
                   Đánh giá ẩn danh từ khách hàng ({receivedStars}/5 sao)
@@ -125,13 +125,13 @@ export default function CompleteRideScreen() {
             ) : null}
             <Card style={[styles.receiptCard, { backgroundColor: colors.rideSurface }]}>
               <View style={styles.summaryHeader}>
-                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Biên lai chuyến #{ride.id}</Text>
+                <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>Biên lai chuyến #{ride.id}</Text>
                 <StatusBadge kind="ride" value={ride.status} contextLabel="Trạng thái chuyến" />
               </View>
 
               {ride.status === "COMPLETED" ? (
                 <View style={styles.heroAmount}>
-                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+                  <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>
                     {earnings ? "Thu nhập sau chiết khấu" : ride.finalFare === null ? "Cước dự kiến" : "Cước chuyến đi"}
                   </Text>
                   <MoneyText
@@ -145,7 +145,7 @@ export default function CompleteRideScreen() {
                   ) : null}
                 </View>
               ) : (
-                <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+                <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
                   Chuyến đã hủy · Không phát sinh thu cước hay thanh toán.
                 </Text>
               )}
@@ -160,11 +160,25 @@ export default function CompleteRideScreen() {
                     valueColor={colors.onSurfaceVariant}
                   />
                 ) : (
-                  <ReceiptRow
-                    label={ride.finalFare === null ? "Cước khách trả dự kiến" : "Tổng cước chuyến"}
-                    value={formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare, { nonBreaking: true })}
-                    strong
-                  />
+                  <>
+                    {(ride.discountAmount ?? 0) > 0 ? (
+                      <>
+                        <ReceiptRow
+                          label="Giá cước gốc"
+                          value={formatMoney(ride.estimatedFare, { nonBreaking: true })}
+                        />
+                        <ReceiptRow
+                          label="Ưu đãi khách dùng"
+                          value={`-${formatMoney(ride.discountAmount ?? 0, { nonBreaking: true })}`}
+                        />
+                      </>
+                    ) : null}
+                    <ReceiptRow
+                      label={(ride.discountAmount ?? 0) > 0 ? "Khách thanh toán" : ride.finalFare === null ? "Cước khách trả dự kiến" : "Tổng cước chuyến"}
+                      value={formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare, { nonBreaking: true })}
+                      strong
+                    />
+                  </>
                 )}
                 {earnings && ride.status === "COMPLETED" ? (
                   <ReceiptRow label="Chiết khấu" value={`-${formatMoney(earnings.commissionAmount, { nonBreaking: true })}`} />
@@ -190,9 +204,13 @@ export default function CompleteRideScreen() {
                 <>
                   {model.paymentBanner ? <RideStatusBanner banner={model.paymentBanner} /> : null}
                   {earnings ? (
-                    <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+                    <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>
                       {earnings.creditedToCash
-                        ? "Đã cộng vào ví tiền mặt."
+                        ? payment?.method === "CASH" && !earnings.paid
+                          ? "Khoản bù voucher đã cộng vào ví; vui lòng thu phần tiền mặt còn lại từ khách."
+                          : payment?.method === "CASH"
+                            ? "Tiền chuyến và khoản bù voucher đã được quyết toán."
+                            : "Đã cộng vào ví tiền mặt."
                         : earnings.paid
                           ? "Tiền khách đã trả trực tiếp; chiết khấu đã trừ từ ví tín dụng."
                           : "Chờ thu tiền khách. Chiết khấu đã trừ từ ví tín dụng."}
@@ -280,7 +298,7 @@ export default function CompleteRideScreen() {
               dismissLabel="Quay lại"
               error={cash.error?.message}
               onDismiss={() => setConfirmation(null)}
-              onConfirm={() => { if (confirming) cash.mutate(undefined, { onSuccess: () => setConfirmation(null) }); }}
+              onConfirm={() => { if (confirming) confirmCash(() => setConfirmation(null)); }}
             />
           </>
         )

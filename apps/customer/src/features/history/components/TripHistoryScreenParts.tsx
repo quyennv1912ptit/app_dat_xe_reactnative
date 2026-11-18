@@ -84,8 +84,7 @@ export const styles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      flexGrow: 1,
-      flexBasis: 140,
+      flexShrink: 1,
       minWidth: 0,
     },
     rideTitle: {

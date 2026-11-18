@@ -31,7 +31,8 @@ export default function VehicleInspectionScreen() {
   const reviewing = !h.editable ? h.existing : undefined;
   const fieldStyle = [styles.field, { backgroundColor: colors.rideInset }];
   const missing = requiredHandoverAngles.filter(([angle]) => !h.photos.some((photo) => photo.angle === angle));
-  const odometerValid = /^\d+$/.test(h.odometer.trim()) && Number.isSafeInteger(Number(h.odometer));
+  const odometerBelowPickup = h.pickupOdometer != null && /^\d+$/.test(h.odometer.trim()) && Number(h.odometer) < h.pickupOdometer;
+  const odometerValid = /^\d+$/.test(h.odometer.trim()) && Number.isSafeInteger(Number(h.odometer)) && !odometerBelowPickup;
   const fuelValid = !h.fuelLevel || (/^\d+$/.test(h.fuelLevel) && Number(h.fuelLevel) <= 100);
   const [reviewKey, setReviewKey] = useState<string | null>(null);
   const nextRevision = model?.nextRevision ?? 1;
@@ -44,7 +45,7 @@ export default function VehicleInspectionScreen() {
     : missing.length
       ? `Còn thiếu ${missing.length} ảnh bắt buộc`
       : !odometerValid || !fuelValid
-        ? "Kiểm tra số km và mức nhiên liệu"
+        ? (odometerBelowPickup ? "Số km trả xe phải lớn hơn hoặc bằng lúc nhận xe" : "Kiểm tra số km và mức nhiên liệu")
         : !h.canSubmitOnline && model?.submitDisabledReason
           ? model.submitDisabledReason
           : `Sẵn sàng gửi phiên bản ${nextRevision}`;
@@ -141,7 +142,16 @@ export default function VehicleInspectionScreen() {
               keyboardType="number-pad"
               style={fieldStyle}
               placeholder="Ví dụ 12500"
+              error={!odometerValid && h.odometer.trim().length > 0}
             />
+            {h.pickupOdometer != null ? (
+              <Text style={themed_s.label}>Số ODO lúc nhận xe: {h.pickupOdometer} km</Text>
+            ) : null}
+            {odometerBelowPickup ? (
+              <Text accessibilityRole="alert" style={[themed_s.label, { color: colors.error }]}>
+                Số km trả xe phải lớn hơn hoặc bằng lúc nhận xe ({h.pickupOdometer} km).
+              </Text>
+            ) : null}
             <TextInput
               mode="flat"
               underlineColor={colors.transparent}

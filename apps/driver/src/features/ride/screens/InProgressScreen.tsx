@@ -6,7 +6,7 @@ import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog"
 import { useSessionStore } from "@/lib/store";
 import { formatScheduledPickup } from "@/lib/scheduledPickup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CustomerRideDetail } from "@datxe/shared";
 import { cancelDriverRide } from "../api";
 import { rideStyles as s } from "@/components/rideStyles";
@@ -53,6 +53,7 @@ export default function InProgressRideScreen() {
   const client = useQueryClient();
   const [confirmation, setConfirmation] = useState<{ rideId: number; userId: number } | null>(null);
   const [reason, setReason] = useState("");
+  const cancelLock = useRef(false);
   const canCancel = model?.canCancel === true;
 
   const cancel = useMutation({
@@ -79,6 +80,7 @@ export default function InProgressRideScreen() {
       router.replace("/(tabs)/home");
     },
     onError: () => { void query.refetch(); },
+    onSettled: () => { cancelLock.current = false; },
   });
 
   const markers: GoongMapMarker[] = [];
@@ -299,7 +301,11 @@ export default function InProgressRideScreen() {
         disabled={!reason.trim() || !canCancel || ride?.id !== confirmation?.rideId}
         error={cancel.error?.message}
         onDismiss={() => setConfirmation(null)}
-        onConfirm={() => { if (confirmation) cancel.mutate({ ...confirmation, reason: reason.trim() }); }}
+        onConfirm={() => {
+          if (!confirmation || cancelLock.current || cancel.isPending) return;
+          cancelLock.current = true;
+          cancel.mutate({ ...confirmation, reason: reason.trim() });
+        }}
       >
         <TextInput
           label="Lý do hủy"

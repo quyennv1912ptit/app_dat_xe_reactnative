@@ -1,30 +1,24 @@
 import { DriverDirectionsMap } from '@/components/DriverDirectionsMap';
 import { DriverPage } from '@/components/DriverPage';
-import { env } from '@/config/env';
 import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from '@datxe/ui';
-import { GoongMap, MapSheetLayout, mapBounds, type GoongMapMarker } from '@datxe/ui/goong-map';
+import { MapSheetLayout } from '@datxe/ui/goong-map';
 import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useRideDirections } from '../hooks/useRideDirections';
 
-const fallbackCenter = { lat: 21.0285, lng: 105.8542 };
 const distance = (meters: number) => meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`;
 
 export default function RideDirectionsScreen() {
   const h = useRideDirections();
   const colors = useThemeColors();
-  const markers: GoongMapMarker[] = [];
-  if (h.origin) markers.push({ id: 'driver', coordinate: h.origin, kind: 'driver' });
-  if (h.destination) markers.push({ id: 'stop', coordinate: h.destination, kind: h.stop === 'pickup' ? 'pickup' : 'dropoff' });
-  const bounds = mapBounds([...markers.map(marker => marker.coordinate), ...(h.directions?.coordinates ?? [])]);
   const title = h.stop === 'pickup' ? 'Chỉ đường đến điểm đón' : 'Chỉ đường đến điểm trả';
   if (!h.destination && h.error) {
     return (
       <DriverPage title={title}>
         <Card style={styles.card}>
-          <Text accessibilityRole="alert" style={typography.bodyMd}>{h.error}</Text>
-          <Button label="Thử lại" variant="secondary" onPress={h.refresh} />
+          <Text accessibilityRole="alert" style={typography.body}>{h.error}</Text>
+          {h.canRetry ? <Button label="Thử lại" variant="secondary" onPress={h.refresh} /> : null}
           <Button label={h.fallback.label} onPress={() => h.router.replace(h.fallback.route)} />
         </Card>
       </DriverPage>
@@ -33,6 +27,7 @@ export default function RideDirectionsScreen() {
   return (
     <MapSheetLayout
       title={title}
+      initialSnap={0}
       onBack={() => h.router.canGoBack() ? h.router.back() : h.router.replace('/ride/in-progress')}
       renderMap={viewport => h.destination ? (
         <DriverDirectionsMap
@@ -43,14 +38,9 @@ export default function RideDirectionsScreen() {
           onRefresh={h.refresh}
         />
       ) : (
-        <GoongMap
-          mapKey={env.goongMapKey}
-          viewport={viewport}
-          center={h.origin ?? h.destination ?? fallbackCenter}
-          bounds={bounds}
-          markers={markers}
-          route={h.directions?.coordinates}
-        />
+        <View style={[styles.loadingMap, { backgroundColor: colors.background }]}>
+          <ActivityIndicator accessibilityLabel="Đang tải chỉ đường" color={colors.primary} />
+        </View>
       )}
       footer={(
         <>
@@ -72,11 +62,11 @@ export default function RideDirectionsScreen() {
     >
       <Card style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>{h.address || title}</Text>
-        <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+        <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
           Chỉ xem bản đồ và thao tác khi dừng xe an toàn.
         </Text>
         {h.error ? (
-          <Text accessibilityRole="alert" style={[typography.bodyMd, { color: colors.error }]}>{h.error}</Text>
+          <Text accessibilityRole="alert" style={[typography.bodySecondary, { color: colors.error }]}>{h.error}</Text>
         ) : h.loading && !h.directions ? (
           <ActivityIndicator color={colors.primary} />
         ) : null}
@@ -99,6 +89,7 @@ export default function RideDirectionsScreen() {
 
 const styles = StyleSheet.create({
   card: { padding: spacing.spaceMd, gap: spacing.px3 },
+  loadingMap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { ...typography.cardTitle },
   metric: { ...typography.screenTitle, fontVariant: ['tabular-nums'], textAlign: 'center' },
   step: { flexDirection: 'row', alignItems: 'center', gap: spacing.px3, paddingVertical: spacing.spaceSm },

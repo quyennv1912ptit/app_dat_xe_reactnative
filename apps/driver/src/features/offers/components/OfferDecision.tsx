@@ -20,9 +20,10 @@ function legEstimate(km?: number | null, minutes?: number | null) {
   return metrics.join(' • ') || 'Chưa có ước tính';
 }
 
-function Stop({ kind, address, km, minutes }: {
+function Stop({ kind, address, note, km, minutes }: {
   kind: 'pickup' | 'dropoff';
   address: string;
+  note?: string | null;
   km?: number | null;
   minutes?: number | null;
 }) {
@@ -30,7 +31,7 @@ function Stop({ kind, address, km, minutes }: {
   const label = pickup ? 'Điểm đón' : 'Điểm trả';
   const estimate = legEstimate(km, minutes);
   return (
-    <View accessible accessibilityLabel={`${label}, ${address || 'Chưa có địa chỉ'}, ${estimate}`} style={styles.stop}>
+    <View accessible accessibilityLabel={`${label}, ${address || 'Chưa có địa chỉ'}${note ? `, ${note}` : ''}, ${estimate}`} style={styles.stop}>
       <View style={styles.rail}>
         <View style={[styles.dot, { backgroundColor: pickup ? palette.red : palette.emerald }]} />
         {pickup ? (
@@ -42,6 +43,7 @@ function Stop({ kind, address, km, minutes }: {
       <View style={styles.stopText}>
         <Text style={styles.estimate}>{label}</Text>
         <Text style={styles.address}>{address || "Chưa có địa chỉ"}</Text>
+        {note ? <Text style={styles.note}>Ghi chú điểm đón: {note}</Text> : null}
         <Text style={styles.estimate}>{estimate}</Text>
       </View>
     </View>
@@ -59,7 +61,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
   const earning = offer.driverEarning;
   const roundedEarning = Math.round(earning / EARNING_DISPLAY_STEP_VND) * EARNING_DISPLAY_STEP_VND;
   const payment = offer.paymentMethod === 'CASH'
-    ? { icon: 'payments' as const, label: 'Thu tiền mặt' }
+    ? { icon: 'payments' as const, label: offer.fareEstimate === 0 ? 'Thu tiền mặt (0 đ)' : 'Thu tiền mặt' }
     : offer.paymentMethod === 'WALLET'
       ? {
           icon: 'account-balance-wallet' as const,
@@ -94,8 +96,9 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
       {pickupTime ? <Text style={styles.pickupTime}>{pickupTime}</Text> : null}
       <Text style={styles.summary}>{total ? `Tổng cộng: ${total}` : 'Chưa đủ dữ liệu tổng hành trình'}</Text>
       <Text style={styles.summary}>Khách hàng: {offer.customer.displayName} · {offer.customer.rating == null ? 'Chưa có đánh giá' : `${offer.customer.rating.toFixed(1)}/5`}</Text>
+      {offer.note?.trim() ? <Text style={styles.note}>Ghi chú của khách: {offer.note.trim()}</Text> : null}
       <View style={styles.timeline}>
-        <Stop kind="pickup" address={offer.pickup.address} km={offer.distanceToPickupKm} minutes={offer.etaToPickupMin} />
+        <Stop kind="pickup" address={offer.pickup.address} note={offer.pickupNote?.trim()} km={offer.distanceToPickupKm} minutes={offer.etaToPickupMin} />
         <Stop kind="dropoff" address={offer.dropoff.address} km={offer.tripDistanceKm} minutes={offer.estDurationMin} />
       </View>
     </>
@@ -126,5 +129,6 @@ const styles = StyleSheet.create({
   dash: { flex: 1, backgroundColor: palette.muted },
   stopText: { flex: 1, gap: 2, paddingBottom: 8 },
   address: { ...typography.cardTitle, color: palette.text },
+  note: { ...typography.bodySecondary, color: palette.text },
   estimate: { ...typography.bodySecondary, color: palette.muted, fontVariant: ['tabular-nums'] },
 });

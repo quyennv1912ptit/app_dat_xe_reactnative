@@ -70,6 +70,11 @@ export function useRideDirections() {
     : ride.data
       ? { route: '/ride/in-progress' as const, label: 'Về chuyến đang thực hiện' }
       : { route: '/(tabs)/home' as const, label: 'Về trang chủ' };
+  const canRetry = Boolean(
+    rideId &&
+      stop &&
+      (ride.isError || ride.isPaused || origin.isError || directions.isError),
+  );
   const refresh = () => {
     if (ride.isError || !destination) { if (rideId && stop) void ride.refetch(); }
     else if (origin.isError || !origin.data) void origin.refetch();
@@ -80,6 +85,6 @@ export function useRideDirections() {
     router, stop, destination, origin: destination ? origin.data : undefined, directions: destination ? directions.data : undefined,
     address: stop === 'pickup' ? ride.data?.pickupAddress : ride.data?.dropoffAddress,
     loading: ride.isLoading || origin.isFetching || directions.isFetching,
-    error, fallback, refresh,
+    canRetry, error, fallback, refresh,
   };
 }

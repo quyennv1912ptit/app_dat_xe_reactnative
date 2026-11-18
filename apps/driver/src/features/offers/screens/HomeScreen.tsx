@@ -105,35 +105,6 @@ export default function DriverHomeScreen() {
     <DriverPage
       title="Trang chủ tài xế"
       tabs
-      intro={(
-        <>
-        <HomeDriverHeader summary={h.summary.data} name={h.session.data?.fullName} loading={h.summary.isLoading} error={h.summary.isError} onRetry={() => void h.summary.refetch()} onProfile={() => h.router.navigate("/(tabs)/profile")} />
-        <HomeOperationalStatus
-          online={online}
-          active={Boolean(h.active.data)}
-          loading={checking}
-          onlineVehicle={activeOnlineVehicle}
-          acceptedVehicleTypes={vehicleTypes}
-          selectedVehicle={selected ?? null}
-          onSelectVehicle={(value) => setVehicle(value)}
-          vehicleDetail={selectedDetail}
-          blocker={blocker}
-          onDiagnostics={() => h.router.push("/settings/reception")}
-        >
-          {!h.active.data && h.credit.data && !h.credit.data.canReceive ? (
-            <Text style={themed_s.text}>Ví tín dụng: {formatMoney(h.credit.data.creditBalance)} · Hạn mức: {formatMoney(h.credit.data.minimumCredit)}. Cần nạp thêm {formatMoney(h.credit.data.shortfall)} để nhận chuyến.</Text>
-          ) : null}
-          {!h.active.data && online ? (
-            <Button variant="secondary" label="Tạm ngừng nhận chuyến"
-              onPress={() => h.availability.mutate({ online: false })} />
-          ) : !h.active.data && status === "OFFLINE" && !blocker ? (
-            <Button label="Bật nhận chuyến" disabled={!selected || !h.credit.allowed}
-              onPress={() => { if (selected) h.availability.mutate({ online: true, vehicle_type: selected }); }} />
-          ) : null}
-        </HomeOperationalStatus>
-        <MyDriverReviews collapsible />
-        </>
-      )}
       loading={h.session.isLoading || h.active.isLoading}
       error={
         h.session.error?.message ||
@@ -201,6 +172,31 @@ export default function DriverHomeScreen() {
         </Card>
       ) : null}
 
+      <HomeOperationalStatus
+        online={online}
+        active={Boolean(h.active.data)}
+        loading={checking}
+        onlineVehicle={activeOnlineVehicle}
+        acceptedVehicleTypes={vehicleTypes}
+        selectedVehicle={selected ?? null}
+        onSelectVehicle={(value) => setVehicle(value)}
+        vehicleDetail={selectedDetail}
+        blocker={blocker}
+        onDiagnostics={() => h.router.push("/settings/reception")}
+      >
+        {!h.active.data && h.credit.data && !h.credit.data.canReceive ? (
+          <Text style={themed_s.text}>Ví tín dụng: {formatMoney(h.credit.data.creditBalance)} · Hạn mức: {formatMoney(h.credit.data.minimumCredit)}. Cần nạp thêm {formatMoney(h.credit.data.shortfall)} để nhận chuyến.</Text>
+        ) : null}
+        {!h.active.data && online ? (
+          <Button variant="secondary" label="Tạm ngừng nhận chuyến"
+            onPress={() => h.availability.mutate({ online: false })} />
+        ) : !h.active.data && status === "OFFLINE" && !blocker ? (
+          <Button label="Bật nhận chuyến" disabled={!selected || !h.credit.allowed}
+            onPress={() => { if (selected) h.availability.mutate({ online: true, vehicle_type: selected }); }} />
+        ) : null}
+      </HomeOperationalStatus>
+      <HomeDriverHeader summary={h.summary.data} name={h.session.data?.fullName} loading={h.summary.isLoading} error={h.summary.isError} onRetry={() => void h.summary.refetch()} onProfile={() => h.router.navigate("/(tabs)/profile")} />
+      <MyDriverReviews collapsible />
     </DriverPage>
   );
 }

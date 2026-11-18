@@ -46,10 +46,16 @@ export function useTripCompleted() {
     ? i18nT('Không có mã chuyến để tải hóa đơn và gửi đánh giá.')
     : query.error?.message ?? (query.isSuccess && !ride ? i18nT('Không tìm thấy chuyến đi.') : '');
 
+  const canGoBack = typeof router.canGoBack === 'function' && router.canGoBack();
+  const leave = () => {
+    if (canGoBack) router.back();
+    else router.replace('/(tabs)/home');
+  };
+
   const finish = async (skipRating = false) => {
     if (saving) return;
     if (!rideId || skipRating || alreadyRated) {
-      router.replace('/(tabs)/home');
+      leave();
       return;
     }
     setSaving(true);
@@ -61,7 +67,7 @@ export function useTripCompleted() {
         existingRatingQuery.refetch(),
       ]);
       localizedAlert(i18nT('Cảm ơn bạn!'), i18nT('Đánh giá ẩn danh của bạn đã được ghi nhận.'));
-      router.replace('/(tabs)/home');
+      leave();
     } catch (err) {
       if (err instanceof AuthApiError && err.code === 'RATING_ALREADY_EXISTS') {
         setSubmittedRating(true);
@@ -70,7 +76,7 @@ export function useTripCompleted() {
           existingRatingQuery.refetch(),
         ]);
         localizedAlert(i18nT('Đánh giá chuyến đi'), i18nT('Bạn đã đánh giá chuyến đi này rồi.'));
-        router.replace('/(tabs)/home');
+        leave();
         return;
       }
       localizedAlert(
@@ -94,6 +100,8 @@ export function useTripCompleted() {
     hasRatingDetail: Boolean(lockedStars),
     checkingRating: existingRatingQuery.isLoading,
     error,
+    canGoBack,
+    leave,
     refresh,
     finish,
   };
