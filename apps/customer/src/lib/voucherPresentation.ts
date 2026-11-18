@@ -21,18 +21,46 @@ export function getVoucherPresentation(voucher: CustomerVoucher) {
     };
   }
   if (voucher.code) {
+    const title = voucher.campaignTitle?.trim();
     return {
-      title: i18nT(voucher.code),
-      badge: i18nT("Mã công khai"),
+      title: title || i18nT(voucher.code),
+      badge: title ? voucher.code : i18nT("Mã công khai"),
       description: voucher.description || null,
       isCampaign: false,
     };
   }
-  const isWelcome = voucher.source === "SYSTEM_REWARD" && (voucher.milestone ?? 0) === 0;
+  const customTitle = voucher.campaignTitle?.trim();
+  const customDesc = voucher.description?.trim();
+  const milestone = voucher.milestone ?? 0;
+  if (customTitle) {
+    return {
+      title: customTitle,
+      badge: i18nT("Ưu đãi dành riêng cho bạn"),
+      description: customDesc || null,
+      isCampaign: false,
+    };
+  }
+  if (milestone > 0) {
+    return {
+      title: i18nT("Ưu đãi mốc {0} chuyến", { "0": milestone }),
+      badge: i18nT("Ưu đãi hệ thống"),
+      description: customDesc || null,
+      isCampaign: false,
+    };
+  }
+  if (customDesc) {
+    return {
+      title: i18nT("Ưu đãi dành riêng cho bạn"),
+      badge: i18nT("Ưu đãi cá nhân"),
+      description: customDesc,
+      isCampaign: false,
+    };
+  }
+  const isWelcome = voucher.source === "SYSTEM_REWARD" && milestone === 0;
   return {
     title: isWelcome ? i18nT("Voucher chào mừng thành viên mới") : i18nT("Ưu đãi dành riêng cho bạn"),
     badge: isWelcome ? i18nT("Quà chào mừng") : i18nT("Ưu đãi hệ thống"),
-    description: voucher.description || (isWelcome ? i18nT("Áp dụng cho chuyến đi đầu tiên của bạn") : null),
+    description: isWelcome ? i18nT("Áp dụng cho chuyến đi đầu tiên của bạn") : null,
     isCampaign: false,
   };
 }

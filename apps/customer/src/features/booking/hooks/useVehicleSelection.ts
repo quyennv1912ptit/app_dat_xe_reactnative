@@ -48,6 +48,7 @@ export function useVehicleSelection() {
       await Promise.all([
         client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
         client.invalidateQueries({ queryKey: ['customer', 'voucherCampaigns'] }),
+        client.invalidateQueries({ queryKey: ['customer', 'getCustomerVoucherCampaigns'] }),
       ]);
       const info = getVoucherPresentation(claimed);
       localizedAlert(i18nT('Đã nhận voucher {0}', { '0': info.title }), i18nT('{0} · Đã thêm vào danh sách ưu đãi của bạn.', { '0': info.badge }));

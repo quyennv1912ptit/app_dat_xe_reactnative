@@ -246,3 +246,21 @@ test('phase 11.1.2 GuidedCaptureScreen integrates with VerificationScreen for CC
   assert.match(screen, /slot\[0\] !== 'selfie'/);
   assert.match(screen, /inspectCapturedWithServer/);
 });
+
+test('rejected driver application without verified baseline can initiate a new verification request', () => {
+  const { readFileSync } = require('node:fs');
+  const { join } = require('node:path');
+  const read = name => readFileSync(join(__dirname, '../apps/driver/src', name), 'utf8');
+
+  const screen = read('features/verification/VerificationScreen.tsx');
+  assert.match(screen, /app\.status === 'REJECTED' && !pending/);
+  assert.match(screen, /label="Tạo yêu cầu hồ sơ mới"/);
+  assert.match(screen, /onPress=\{\(\) => void run\('Đang tạo yêu cầu hồ sơ mới…', startReverify\)\}/);
+  assert.match(screen, /Lý do từ chối: \{app\.reason\}/);
+  assert.match(screen, /app\.status === 'DRAFT' && app\.approvedRevision != null && !app\.identityHold/);
+
+  const approval = read('features/auth/screens/ApprovalStatusScreen.tsx');
+  assert.match(approval, /const rejected = v\.data\?\.verification_status === "REJECTED"/);
+  assert.match(approval, /rejected && managed \? "Hồ sơ eKYC chưa được duyệt"/);
+  assert.match(approval, /rejected \? "Tạo yêu cầu hồ sơ mới"/);
+});

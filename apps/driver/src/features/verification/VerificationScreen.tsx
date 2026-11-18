@@ -494,7 +494,10 @@ function Workflow({ uid }: { uid: string }) {
   }
 
   function applyConfirmedToForm(confirmed?: Record<string, unknown>) {
-    if (!confirmed) return;
+    if (!confirmed) {
+      updateForm({ values: {}, noExpiry: false, origins: {} });
+      return;
+    }
     const nextValues: Fields = {};
     for (const [key] of fields) {
       const value = confirmed[key];
@@ -523,7 +526,11 @@ function Workflow({ uid }: { uid: string }) {
     Object.values(livePreviews.current).forEach(p => removeCache(p.uri));
     livePreviews.current = {};
     setPreviews({});
+    setAck({});
+    setConsent(false);
+    setFaceConsent(false);
     setConfirm(false);
+    setCompareGroup(null);
     setShowHistory(false);
     applyConfirmedToForm(updated.document?.confirmed ?? updated.approvedDocument?.confirmed);
     accept(updated);
@@ -972,7 +979,18 @@ function Workflow({ uid }: { uid: string }) {
                 ? 'Đang cập nhật giấy tờ mới'
                 : (statusLabels[app.status] ?? app.status)}
             </Text>
-            {app.reason ? <Text style={styles.bodyText}>{app.reason}</Text> : null}
+            {app.reason ? (
+              app.status === 'REJECTED' ? (
+                <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]} accessibilityRole="alert">
+                  <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
+                  <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>
+                    Lý do từ chối: {app.reason}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.bodyText}>{app.reason}</Text>
+              )
+            ) : null}
             {app.identityLocked ? (
               <View style={[styles.infoBanner, { backgroundColor: colors.surfaceContainerHigh }]}>
                 <MaterialIcons name="lock-outline" size={20} color={colors.primary} importantForAccessibility="no" />
@@ -995,7 +1013,19 @@ function Workflow({ uid }: { uid: string }) {
                   else setStage('CONFIRM_FIELDS');
                 }} />
             ) : null}
-            {app.status === 'DRAFT' && app.approvedRevision != null ? (
+            {app.status === 'REJECTED' && !pending ? (
+              <>
+                <Text style={styles.mutedText}>
+                  Bạn có thể cập nhật lại ảnh giấy tờ, chỉnh sửa thông tin và gửi yêu cầu xét duyệt mới.
+                </Text>
+                <Button
+                  label="Tạo yêu cầu hồ sơ mới"
+                  disabled={Boolean(busy) || picking}
+                  onPress={() => void run('Đang tạo yêu cầu hồ sơ mới…', startReverify)}
+                />
+              </>
+            ) : null}
+            {app.status === 'DRAFT' && app.approvedRevision != null && !app.identityHold ? (
               <Button variant="ghost" label="Hủy cập nhật · Quay lại hồ sơ đã xác minh" disabled={Boolean(busy)}
                 onPress={() => void run('Đang khôi phục trạng thái…', cancelReverify)} />
             ) : null}
@@ -1048,11 +1078,24 @@ function Workflow({ uid }: { uid: string }) {
                 </View>
               ) : null}
 
-              {app.status === 'REJECTED' && !app.identityHold ? (
-                <View style={[styles.alertBox, { backgroundColor: colors.warningContainer }]}>
-                  <MaterialIcons name="info-outline" size={20} color={colors.onWarningContainer} importantForAccessibility="no" />
-                  <Text style={[styles.alertText, { color: colors.onWarningContainer }]}>
-                    Lần cập nhật gần nhất chưa được duyệt{app.reason ? ': ' + app.reason : '.'} Hồ sơ đã xác minh trước đó vẫn còn hiệu lực.
+              {app.status === 'REJECTED' ? (
+                <View
+                  style={[
+                    styles.alertBox,
+                    { backgroundColor: app.identityHold ? colors.errorContainer : colors.warningContainer },
+                  ]}
+                  accessibilityRole="alert"
+                >
+                  <MaterialIcons
+                    name={app.identityHold ? 'error-outline' : 'info-outline'}
+                    size={20}
+                    color={app.identityHold ? colors.onErrorContainer : colors.onWarningContainer}
+                    importantForAccessibility="no"
+                  />
+                  <Text style={[styles.alertText, { color: app.identityHold ? colors.onErrorContainer : colors.onWarningContainer }]}>
+                    {app.identityHold
+                      ? `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'}`
+                      : `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'} Hồ sơ đã xác minh trước đó vẫn còn hiệu lực.`}
                   </Text>
                 </View>
               ) : null}
