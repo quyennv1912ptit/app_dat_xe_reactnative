@@ -276,3 +276,15 @@ test('payment change notifications open the current invoice for either account r
   assert.equal((await contracts.resolvePushDestination(event, 'CUSTOMER', api)).pathname, '/ride/completed');
   assert.equal(contracts.pushPresentation(event).body, event.payload.body);
 });
+
+test('voucher and rating push notifications present and route cleanly', async () => {
+  const voucherEvent = { type: 'VOUCHER_GRANTED', payload: { title: 'Bạn vừa nhận được voucher', body: 'Voucher chào mừng đã được thêm vào Ưu đãi của tôi.' } };
+  assert.equal(contracts.pushPresentation(voucherEvent).title, 'Bạn vừa nhận được voucher');
+  assert.equal((await contracts.resolvePushDestination(voucherEvent, 'CUSTOMER', {})).pathname, '/vouchers');
+
+  const ratingEvent = { type: 'RATING_RECEIVED', payload: { rideId: 55, title: 'Bạn nhận được đánh giá mới (5/5 sao)', body: 'Đánh giá ẩn danh 5 sao' } };
+  const api = { ride: async id => ({ id, status: 'COMPLETED' }), activeRide: async () => null };
+  assert.equal(contracts.pushPresentation(ratingEvent).title, 'Bạn nhận được đánh giá mới (5/5 sao)');
+  assert.equal((await contracts.resolvePushDestination(ratingEvent, 'DRIVER', api)).pathname, '/ride/complete');
+  assert.equal((await contracts.resolvePushDestination(ratingEvent, 'CUSTOMER', api)).pathname, '/ride/completed');
+});

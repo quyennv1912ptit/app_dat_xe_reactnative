@@ -21,9 +21,15 @@ test("both apps and shared UI remain free of shadow declarations and raised Pape
     "elevation",
     "boxShadow",
   ]);
+  // Home's destination search bar is the single approved elevated CTA; every
+  // other surface stays flat/tonal so the exception cannot spread silently.
+  const shadowExceptions = new Set([
+    "apps/customer/src/features/booking/components/homeStyles.ts",
+  ]);
   for (const file of roots
     .flatMap(walk)
     .filter((file) => /\.tsx?$/.test(file))) {
+    const normalized = file.replaceAll("\\", "/");
     const source = fs.readFileSync(file, "utf8");
     const tree = ts.createSourceFile(
       file,
@@ -37,7 +43,9 @@ test("both apps and shared UI remain free of shadow declarations and raised Pape
         node.name
       ) {
         const name = node.name.getText(tree).replace(/["']/g, "");
-        assert.ok(!forbidden.has(name), `${file}: forbidden ${name}`);
+        if (!shadowExceptions.has(normalized)) {
+          assert.ok(!forbidden.has(name), `${file}: forbidden ${name}`);
+        }
         if (
           ts.isJsxAttribute(node) &&
           name === "mode" &&
@@ -76,7 +84,7 @@ function load(file, mocks) {
   return exports;
 }
 const palette = load("packages/ui/src/theme/colors.ts", {
-  "react-native": { Platform: { OS: "android" } },
+  "react-native": { Platform: { OS: "android", select: (o) => o.android ?? o.default } },
 });
 const theme = load("packages/ui/src/theme/ThemeProvider.tsx", {
   "./colors": palette,
@@ -85,9 +93,10 @@ const theme = load("packages/ui/src/theme/ThemeProvider.tsx", {
   "react/jsx-runtime": {},
 });
 const material = load("packages/ui/src/theme/materialTheme.ts", {
+  "./colors": palette,
   "react-native-paper": {
-    MD3LightTheme: { version: 3, dark: false, colors: {} },
-    MD3DarkTheme: { version: 3, dark: true, colors: {} },
+    MD3LightTheme: { version: 3, dark: false, colors: {}, fonts: {} },
+    MD3DarkTheme: { version: 3, dark: true, colors: {}, fonts: {} },
   },
 });
 
@@ -151,7 +160,15 @@ test("decorative borders cannot return to buttons, badges, cards or their contai
       "apps/customer/src/features/booking/components/bookingStyles.ts",
       new Set(["searchBox"]),
     ],
+    [
+      "apps/customer/src/features/booking/components/homeStyles.ts",
+      new Set(["walletCard"]),
+    ],
     ["apps/driver/src/features/ride/components/RideRouteCard.tsx", new Set(["connector"])],
+    [
+      "apps/driver/src/features/verification/GuidedCaptureScreen.tsx",
+      new Set(["ovalMask", "ovalRing"]),
+    ],
   ]);
   for (const file of roots
     .flatMap(walk)

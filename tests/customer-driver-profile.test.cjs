@@ -12,7 +12,9 @@ function load(file, mocks = {}) {
   }).outputText, { exports, require: name => { if (name in mocks) return mocks[name]; throw Error(name); } });
   return exports;
 }
-const helpers = load('apps/customer/src/features/tracking/driverProfile.ts');
+const helpers = load('apps/customer/src/features/tracking/driverProfile.ts', {
+  '@datxe/shared': load('packages/shared/src/utils/avatar.ts'),
+});
 const driver = { id: 7, fullName: 'Nguyễn Văn An', phoneNumber: '+84 912 345 678', avatarUrl: 'https://images.test/driver.jpg', averageRating: 4.7, yearsOfExperience: 8, licenseClass: 'B2', licenseVerified: true, profileVerified: true };
 
 test('tracking uses only the assigned driver profile and tolerates an older server without it', () => {
@@ -36,6 +38,7 @@ test('missing rating/experience never becomes five stars or fabricated years; ze
   assert.equal(helpers.driverExperience(8), 8);
   assert.equal(helpers.driverInitials(' Nguyễn Văn An '), 'VA');
   assert.equal(helpers.driverInitials(null), '');
+  assert.equal(helpers.driverInitials('Tài Xế Kiểm Thử A (TX)'), 'TA');
 });
 
 function fixture(props = {}, failPhone = false) {
@@ -56,11 +59,13 @@ function fixture(props = {}, failPhone = false) {
     '@datxe/shared': { ...i18n, getLocale: () => 'vi-VN' },
     '@datxe/ui': {
       Button: 'Button', Card: 'Card', MotionPressable: 'Pressable', ScreenWrapper: 'Screen', Typography: 'Text',
+      typography: new Proxy({}, { get: () => ({}) }),
       useLanguage: () => {}, useThemeColors: () => ({}), useThemedStyles: factory => factory({}),
       localizedAlert: (...args) => alerts.push(args),
     },
     '@expo/vector-icons': { MaterialIcons: 'Icon' },
-    'react-native': { Image: 'Image', Modal: 'Modal', View: 'View', ScrollView: 'Scroll',
+    'expo-image': { Image: 'Image' },
+    'react-native': { Modal: 'Modal', View: 'View', ScrollView: 'Scroll',
       StyleSheet: { create: styles => styles, absoluteFill: {} },
       Linking: { openURL: async url => { calls.push(url); if (failPhone) throw Error('no dialer'); } },
     },

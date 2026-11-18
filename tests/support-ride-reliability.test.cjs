@@ -90,6 +90,7 @@ function supportFixture(h) {
     "./components/Typography": { Typography: "Text" },
     "./components/ThemedTextInput": { ThemedTextInput: "TextInput" },
     "./components/ScreenWrapper": { ScreenWrapper: "ScreenWrapper" },
+    "./theme/colors": { typography: new Proxy({}, { get: () => ({}) }) },
     "./theme/ThemeProvider": { useThemedStyles: (factory) => factory({}) },
   });
 }
@@ -256,7 +257,17 @@ test("Home shows a single operational status and prioritizes an actionable GPS b
       "react/jsx-runtime": { jsx, jsxs: jsx },
       "@/lib/driverHealth": { useDriverHealth: () => health },
       "@expo/vector-icons": { MaterialIcons: "Icon" },
-      "@datxe/ui": { Card: "Card", Button: "Button", Typography: "Text", useThemeColors: () => ({}) },
+      "@datxe/ui": {
+        Card: "Card",
+        Button: "Button",
+        GroupedList: "GroupedList",
+        MotionPressable: "Pressable",
+        Typography: "Text",
+        borderRadius: { default: 24, full: 999 },
+        spacing: { xxs: 2, px3: 12, spaceSm: 8, spaceLg: 24 },
+        typography: { titleLg: { fontSize: 20 }, labelMd: { fontSize: 13 }, labelLg: { fontSize: 16 } },
+        useThemeColors: () => ({}),
+      },
       "react-native": { View: "View", StyleSheet: { create: (styles) => styles } },
     },
   );
@@ -293,6 +304,7 @@ test("Home data retry refetches failed sources while retaining data and never in
     "apps/customer/src/features/booking/hooks/useHome.ts",
     {
       "@datxe/shared": { translate: (value) => value },
+      "@datxe/ui": { ensureForegroundLocationPermission: () => assert.fail("data retry requested permission") },
       "@/lib/customerName": { getCustomerDisplayName: () => "Khách" },
       "@/lib/useRefreshOnFocus": { useRefreshOnFocus() {} },
       react: {
@@ -309,6 +321,7 @@ test("Home data retry refetches failed sources while retaining data and never in
       "expo-router": { useRouter: () => ({}), useFocusEffect() {} },
       "react-native": {},
       "../api": api,
+      "../store": { useBookingDraft: { getState: () => ({ begin() {}, setPlace() {} }) } },
       "../components/HomeScreenParts": { getRecentDestinations: () => [] },
       "../bookingUtils": {},
       "@tanstack/react-query": {

@@ -30,7 +30,7 @@ function load(file, mocks) {
   return exports;
 }
 const native = {
-  Platform: { OS: "android" },
+  Platform: { OS: "android", select: (o) => o.android ?? o.default },
   StyleSheet: { create: (value) => value },
   View: "View",
 };
@@ -187,11 +187,13 @@ test("fixed-height buttons do not gain an extra padding frame from legacy caller
   const content = flatten(button.props.children.props.style);
   assert.equal(frame.borderWidth, 0);
   assert.equal(frame.borderLeftWidth, 0);
-  assert.equal(frame.height, 48);
+  assert.equal(frame.height, undefined);
+  assert.equal(frame.minHeight, 48);
   assert.equal(frame.paddingVertical, 0);
   assert.equal(frame.paddingHorizontal, 0);
-  assert.equal(content.height, 48);
-  assert.equal(content.paddingVertical, 0);
+  assert.equal(content.height, undefined);
+  assert.equal(content.minHeight, 48);
+  assert.equal(content.paddingVertical, 8);
   assert.equal(button.props.onPress, onPress);
   assert.equal(
     all(button).find((node) => node.type === "Text").props.numberOfLines,

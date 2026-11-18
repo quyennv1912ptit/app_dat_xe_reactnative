@@ -56,6 +56,7 @@ test('document, vehicle, gearbox, notification and wallet codes have readable la
   assert.equal(labels.vehicleTypeLabel('MOTORCYCLE'), 'Xe máy');
   assert.equal(labels.transmissionLabel('MANUAL'), 'Số sàn');
   assert.equal(labels.notificationTypeLabel('DRIVER_DOCUMENT_REVIEWED'), 'Kết quả kiểm tra giấy tờ');
+  assert.equal(labels.notificationTypeLabel('RATING_RECEIVED'), 'Đánh giá mới');
   assert.equal(labels.walletTransactionLabel('TRIP_EARNING'), 'Thu nhập chuyến đi');
   assert.equal(labels.walletTransactionLabel('COMMISSION_FEE'), 'Phí dịch vụ');
   for (const name of ['documentTypeLabel', 'vehicleTypeLabel', 'transmissionLabel', 'notificationTypeLabel', 'walletTransactionLabel']) {
@@ -71,18 +72,32 @@ const theme = load('packages/ui/src/theme/ThemeProvider.tsx', {
   './colors': palette, react: { createContext: value => value }, 'react-native': {}, 'react/jsx-runtime': {},
 });
 const jsx = (type, props) => ({ type, props });
+const sharedThemeColors = theme.getThemeColors('driver', false);
+const sharedBadge = load('packages/ui/src/components/StatusBadge.tsx', {
+  '@expo/vector-icons': { MaterialIcons: 'Icon' },
+  '../theme/colors': palette,
+  '../theme/ThemeProvider': { useThemeColors: () => sharedThemeColors },
+  './Typography': { Typography: 'Text' },
+  'react-native': { View: 'View', StyleSheet: { create: styles => styles, hairlineWidth: 1 } },
+  'react/jsx-runtime': { jsx, jsxs: jsx },
+});
 const badge = load('apps/driver/src/components/StatusBadge.tsx', {
   '@/lib/displayLabels': labels,
-  '@expo/vector-icons': { MaterialIcons: 'Icon' },
-  '@datxe/ui': { Typography: 'Text', useThemedStyles: factory => factory(theme.getThemeColors('driver', false)) },
+  '@datxe/ui': {
+    SharedStatusBadge: sharedBadge.SharedStatusBadge,
+    sharedStatusColors: sharedBadge.sharedStatusColors,
+    Typography: 'Text',
+    useThemedStyles: factory => factory(theme.getThemeColors('driver', false)),
+  },
   'react-native': { View: 'View', StyleSheet: { create: styles => styles, hairlineWidth: 1 } },
   'react/jsx-runtime': { jsx, jsxs: jsx },
 });
 test('badges expose a readable accessibility label and allow long status text to wrap', () => {
   const rendered = badge.StatusBadge({ kind: 'ride', value: 'IN_PROGRESS', contextLabel: 'Trạng thái chuyến' });
-  assert.equal(rendered.props.accessibilityLabel, 'Trạng thái chuyến: Đang thực hiện chuyến');
-  assert.equal(rendered.props.accessibilityRole, 'text');
-  const text = rendered.props.children.find(child => child.type === 'Text');
+  const shared = sharedBadge.SharedStatusBadge(rendered.props);
+  assert.equal(shared.props.accessibilityLabel, 'Trạng thái chuyến: Đang thực hiện chuyến');
+  assert.equal(shared.props.accessibilityRole, 'text');
+  const text = shared.props.children.find(child => child && child.type === 'Text');
   assert.equal(text.props.children, 'Đang thực hiện chuyến');
   assert.equal(text.props.numberOfLines, undefined);
 });
@@ -145,7 +160,13 @@ test('grouped ride route offers directions only for the current stop', () => {
   const { RideRouteCard } = load('apps/driver/src/features/ride/components/RideRouteCard.tsx', {
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@/lib/navigation': { openRideDirections: (ride, phase) => directions.push(ride[phase]) },
-    '@datxe/ui': { Card: 'Card', Typography: 'Text', useThemeColors: () => ({}) },
+    '@datxe/ui': {
+      Card: 'Card',
+      Typography: 'Text',
+      spacing: { xxs: 2, px3: 12, spaceLg: 24 },
+      typography: { titleLg: { fontSize: 20 }, labelLg: { fontSize: 15 }, bodyLgMedium: { fontSize: 18 } },
+      useThemeColors: () => ({}),
+    },
     'react-native': { StyleSheet: { create: value => value }, View: 'View' },
     'react-native-paper': { IconButton: 'IconButton' },
   });

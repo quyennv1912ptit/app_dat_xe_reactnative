@@ -31,15 +31,16 @@ test('customer returns to the ride only after successful handover confirmation',
   const report = { phase: 'DROPOFF', revision: 2 };
   const { useVehicleInspection } = load('apps/customer/src/features/vehicles/hooks/useVehicleInspection.ts', {
     '@datxe/ui': { localizedAlert: (...args) => alerts.push(args) },
-    '@datxe/shared': { translate: text => text },
+    '@datxe/shared': { AuthApiError: class AuthApiError extends Error {}, translate: text => text },
+    '@/lib/customerRidePresentation': load('apps/customer/src/lib/customerRidePresentation.ts'),
     '@tanstack/react-query': {
       useQueryClient: () => ({ invalidateQueries: async () => { invalidations++; } }),
-      useQuery: () => ({ data: { status: 'VEHICLE_RETURNED', handoverReports: [report] }, refetch: async () => {} }),
+      useQuery: () => ({ data: { id: 73, status: 'VEHICLE_RETURNED', handoverReports: [report] }, isError: false, refetch: async () => {} }),
       useMutation: () => ({ isPending: false }),
     },
     '@/lib/api': {}, '@/lib/supportImages': {},
     'expo-router': {
-      useRouter: () => ({ dismissTo: route => routes.push(route) }),
+      useRouter: () => ({ canGoBack: () => true, dismissTo: route => routes.push(route), replace: route => routes.push(route) }),
       useLocalSearchParams: () => ({ rideId: '73', phase: 'dropoff' }),
     },
     react: { useState: initial => [initial, () => {}] },
@@ -62,19 +63,21 @@ test('driver returns to the active ride after sending a return report', async ()
   const routes = [];
   let mutation;
   let submitted = false;
+  const ride = { id: 73, status: 'ARRIVED_DESTINATION', handoverReports: [] };
   const { useVehicleInspection } = load('apps/driver/src/features/ride/hooks/useVehicleInspection.ts', {
     '@/lib/uploadImage': {}, '@/lib/api': {},
     '@datxe/shared': { getFirebaseUser: () => ({ uid: 'driver-1' }) },
     '@tanstack/react-query': {
-      useQueryClient: () => ({ invalidateQueries: async () => {}, setQueryData: () => {} }),
+      useQueryClient: () => ({ invalidateQueries: async () => {}, setQueryData: () => {}, getQueryState: () => ({ data: ride, status: "success", fetchStatus: "idle" }) }),
       useQuery: ({ queryKey }) => queryKey[0] === 'driverDraft'
         ? { data: { odometer: '150', fuelLevel: '50', photos: ['FRONT', 'REAR', 'LEFT', 'RIGHT'].map(angle => ({ angle, fileUrl: angle, publicId: angle })) } }
-        : { data: { id: 73, status: 'ARRIVED_DESTINATION', handoverReports: [] } },
+        : { data: ride },
       useMutation: options => { mutation = options; return {}; },
     },
     'expo-image-picker': {},
-    'expo-router': { useRouter: () => ({ dismissTo: route => routes.push(route) }) },
-    react: { useState: initial => [initial, () => {}] },
+    'expo-router': { useLocalSearchParams: () => ({ rideId: '73', stop: 'dropoff' }), useRouter: () => ({ dismissTo: route => routes.push(route) }) },
+    react: { useState: initial => [initial, () => {}], useRef: current => ({ current }) },
+    '../ridePresentation': load('apps/driver/src/features/ride/ridePresentation.ts'),
     '../api': { submitDriverHandover: async (id, phase, body) => {
       assert.equal(id, 73); assert.equal(phase, 'dropoff'); assert.equal(body.odometer, 150);
       submitted = true;
@@ -87,4 +90,50 @@ test('driver returns to the active ride after sending a return report', async ()
   assert.equal(routes.length, 0);
   await mutation.onSuccess();
   assert.deepEqual(routes, ['/ride/in-progress']);
+});
+
+test('driver retries a failed upload with the original capture and preserves the inspection fields', async () => {
+  const ride = { id: 73, status: 'DRIVER_ARRIVED', handoverReports: [] };
+  const asset = { uri: 'file:///capture.jpg' };
+  let draft = { photos: [], odometer: '150', notes: 'Vết xước' };
+  let cameraCalls = 0;
+  let uploads = 0;
+  const { useVehicleInspection } = load('apps/driver/src/features/ride/hooks/useVehicleInspection.ts', {
+    '@/lib/uploadImage': {
+      uploadDriverImage: async (image) => {
+        assert.equal(image, asset);
+        if (++uploads === 1) throw new Error('offline');
+        return { secureUrl: 'https://test.invalid/photo', publicId: 'photo' };
+      },
+    },
+    '@/lib/api': {},
+    '@datxe/shared': { getFirebaseUser: () => ({ uid: 'driver-1' }) },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({ setQueryData: (_, update) => { draft = update(draft); } }),
+      useQuery: ({ queryKey }) => ({ data: queryKey[0] === 'driverDraft' ? draft : ride }),
+      useMutation: () => ({}),
+    },
+    'expo-image-picker': {
+      requestCameraPermissionsAsync: async () => ({ granted: true }),
+      launchCameraAsync: async () => { cameraCalls++; return { assets: [asset] }; },
+    },
+    'expo-router': {
+      useRouter: () => ({}),
+      useLocalSearchParams: () => ({ rideId: '73', stop: 'pickup' }),
+    },
+    react: { useState: initial => [initial, () => {}], useRef: current => ({ current }) },
+    '../api': {},
+    '../photoAngles': {},
+    '../ridePresentation': load('apps/driver/src/features/ride/ridePresentation.ts'),
+  });
+  await useVehicleInspection().capture('FRONT');
+  assert.equal(draft.pending.FRONT, asset);
+  assert.equal(draft.photos.length, 0);
+  await useVehicleInspection().capture('FRONT');
+  assert.equal(cameraCalls, 1);
+  assert.equal(uploads, 2);
+  assert.equal(draft.pending.FRONT, undefined);
+  assert.equal(draft.photos[0].uri, asset.uri);
+  assert.equal(draft.odometer, '150');
+  assert.equal(draft.notes, 'Vết xước');
 });

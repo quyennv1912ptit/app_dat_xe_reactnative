@@ -57,6 +57,7 @@ test('chat photo pinch caps zoom, drag stays within the image and double tap res
     '../components/Button': {},
     '../components/ScreenWrapper': {},
     '../components/Typography': {},
+    '../theme/colors': { typography: new Proxy({}, { get: () => ({}) }) },
     '../theme/ThemeProvider': { useThemeColors: () => ({}) },
     '../useLanguage': { useLanguage() {} },
   });

@@ -5,12 +5,20 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '../apps/customer/src/features/booking');
+const utilsExports = {};
+vm.runInNewContext(
+  ts.transpileModule(fs.readFileSync(path.join(__dirname, '../packages/shared/src/utils/index.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText,
+  { exports: utilsExports, require },
+);
+const sharedMock = { ...require('./i18n-loader.cjs'), ...utilsExports };
 function load(file, mocks = {}) {
   const exports = {};
   const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? (name === '@datxe/shared' ? require('./i18n-loader.cjs') : require(name)) });
+  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? (name === '@datxe/shared' ? sharedMock : require(name)) });
   return exports;
 }
 const utils = load('bookingUtils.ts');
@@ -98,6 +106,15 @@ test('Hanoi is the fallback search/map center', () => {
   assert.equal(utils.DEFAULT_MAP_CENTER.lng, 105.8542);
 });
 
+test('scheduled pickup slots start at least 15 minutes ahead and step by 30 minutes', () => {
+  const now = new Date('2026-11-12T18:41:00+07:00').getTime();
+  const slots = utils.buildScheduleSlots(now, 3);
+  assert.equal(Date.parse(slots[0]) - now >= 15 * 60_000, true);
+  assert.equal(new Date(slots[0]).getMinutes(), 0);
+  assert.equal(Date.parse(slots[1]) - Date.parse(slots[0]), 30 * 60_000);
+  assert.equal(Date.parse(slots[2]) - Date.parse(slots[1]), 30 * 60_000);
+});
+
 test('a place without valid provider coordinates cannot become a booking point', async () => {
   const api = load('api.ts', {
     '@/lib/api': { request: async () => ({ id: 'a', coordinate: { lat: 200, lng: 100 } }) },
@@ -113,12 +130,47 @@ test('starting a new booking clears old vehicle, destination and voucher selecti
   useBookingDraft.getState().setVehicle(7);
   useBookingDraft.getState().setVoucher('OLD');
   useBookingDraft.getState().setPickupNote('Ghi chú cũ');
+  useBookingDraft.getState().setScheduledAt('2026-11-12T12:45:00.000Z');
+  useBookingDraft.getState().setPaymentMethod('WALLET');
   useBookingDraft.getState().begin('Sân bay', '', pickup);
   assert.equal(useBookingDraft.getState().pickup, pickup);
   assert.equal(useBookingDraft.getState().dropoff, null);
   assert.equal(useBookingDraft.getState().vehicleId, null);
   assert.equal(useBookingDraft.getState().voucherCode, '');
   assert.equal(useBookingDraft.getState().pickupNote, '');
+  assert.equal(useBookingDraft.getState().scheduledAt, null);
+  assert.equal(useBookingDraft.getState().paymentMethod, null);
   useBookingDraft.getState().clear();
   assert.equal(useBookingDraft.getState().pickup, null);
+});
+
+
+test('garage defaults are preselected but an archived explicit choice is never replaced silently', () => {
+  const cars = [{ id: 7 }, { id: 8, is_default: true }];
+  assert.equal(utils.selectBookingVehicle(cars, null).id, 8);
+  assert.equal(utils.selectBookingVehicle(cars, 7).id, 7);
+  assert.equal(utils.selectBookingVehicle(cars, 9), undefined);
+  assert.equal(utils.selectBookingVehicle([{ id: 7 }], null).id, 7);
+});
+
+test('system-reward vouchers with null code are identified and displayed by id and milestone/title', () => {
+  const { useBookingDraft } = load('store.ts');
+  const rewardA = { id: 101, code: null, campaignTitle: 'Mốc 5 chuyến', description: 'Giảm 20k', milestone: 5 };
+  const rewardB = { id: 102, code: null, campaignTitle: null, description: null, milestone: 10 };
+  assert.equal(utils.voucherDisplayName(rewardA), 'Mốc 5 chuyến');
+  assert.equal(utils.voucherDisplayName(rewardB), 'Ưu đãi mốc 10 chuyến');
+  assert.equal(utils.isVoucherSelected(rewardA, '', 101), true);
+  assert.equal(utils.isVoucherSelected(rewardB, '', 101), false);
+  assert.equal(utils.isVoucherSelected({ id: 103, code: 'SALE50' }, 'SALE50', null), true);
+
+  const req = utils.estimateRequest(pickup, dropoff, 7, null, '', 101, 'WALLET');
+  assert.equal(req.voucher_code, null);
+  assert.equal(req.voucher_id, 101);
+  assert.equal(req.paymentMethod, 'WALLET');
+
+  useBookingDraft.getState().setVoucher('', 101);
+  assert.equal(useBookingDraft.getState().voucherId, 101);
+  assert.equal(useBookingDraft.getState().voucherCode, '');
+  useBookingDraft.getState().clear();
+  assert.equal(useBookingDraft.getState().voucherId, null);
 });
