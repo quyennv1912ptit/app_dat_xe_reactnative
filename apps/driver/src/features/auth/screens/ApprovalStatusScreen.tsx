@@ -16,6 +16,7 @@ export default function ApprovalStatusScreen() {
   const router = useRouter();
   const reload = () => Promise.all([v.refetch(), d.refetch()]);
   const approved = v.data?.verification_status === "APPROVED";
+  const rejected = v.data?.verification_status === "REJECTED";
   const managed = v.data?.verification_workflow === "EKYC";
   const types = [...new Set([...(v.data?.required_document_types ?? []), ...(d.data ?? []).map((doc) => doc.document_type)])];
   const documents = types.map((type) => ({ type, document: d.data?.find((doc) => doc.document_type === type) }));
@@ -38,12 +39,14 @@ export default function ApprovalStatusScreen() {
           <StatusBadge kind="approval" value={v.data.verification_status} />
           <Text style={[styles.summaryHeadline, { color: colors.onSurface }]}>
             {approved ? "Hồ sơ của bạn đã sẵn sàng"
+              : rejected && managed ? "Hồ sơ eKYC chưa được duyệt"
               : managed ? "Hồ sơ đang xác minh eKYC"
               : d.data && needsChanges ? "Hồ sơ cần bổ sung giấy tờ"
               : "Đang chờ quản trị viên xét duyệt"}
           </Text>
           <Text style={s.text}>
             {approved ? "Vào Trang chủ để bật nhận chuyến."
+              : rejected && managed ? "Mở hồ sơ eKYC để xem lý do từ chối và tạo yêu cầu mới."
               : managed ? "Mở hồ sơ eKYC để xem kết quả hoặc bổ sung thông tin."
               : d.data && needsChanges ? "Xem các giấy tờ cần bổ sung hoặc thay ảnh bên dưới."
               : "Bạn có thể kiểm tra lại kết quả tại đây sau khi hồ sơ được xem xét."}
@@ -58,7 +61,7 @@ export default function ApprovalStatusScreen() {
           ) : null}
           {approved ? <Button label="Chọn loại xe nhận lái hộ" onPress={() => router.push("/profile/capabilities")} /> : null}
           {approved ? <Button variant="secondary" label="Vào trang chủ" onPress={() => router.replace("/(tabs)/home")} /> : null}
-          <Button variant={approved ? "ghost" : "primary"} label={approved ? "Xem hồ sơ xác minh" : "Mở xác minh tài xế"} onPress={openVerification} />
+          <Button variant={approved ? "ghost" : "primary"} label={approved ? "Xem hồ sơ xác minh" : rejected ? "Tạo yêu cầu hồ sơ mới" : "Mở xác minh tài xế"} onPress={openVerification} />
         </Card>
       ) : null}
       {!managed && documents.length && d.data ? (

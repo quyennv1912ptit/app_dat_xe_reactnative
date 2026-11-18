@@ -37,6 +37,7 @@ export function useCustomerVouchers() {
       await Promise.all([
         client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
         client.invalidateQueries({ queryKey: ['customer', 'getCustomerVoucherCampaigns'] }),
+        client.invalidateQueries({ queryKey: ['customer', 'voucherCampaigns'] }),
       ]);
       const info = getVoucherPresentation(claimed);
       localizedAlert(

@@ -323,4 +323,33 @@ test('voucherPresentation formats campaign slots, public codes and welcome rewar
   assert.equal(welcome.title, 'Voucher chào mừng thành viên mới');
   assert.equal(welcome.badge, 'Quà chào mừng');
   assert.equal(welcome.isCampaign, false);
+
+  const claimedCampaign = vpExports.getVoucherPresentation({
+    id: 3, code: null, campaignCode: 'HE2026', campaignTitle: 'Chào hè',
+    claimSequence: 2, campaignClaimLimit: 50, description: 'Giảm 20k', milestone: 0, source: 'SYSTEM_REWARD',
+  });
+  assert.equal(claimedCampaign.title, 'Chào hè');
+  assert.equal(claimedCampaign.badge, 'HE2026 · Suất #2/50');
+  assert.equal(claimedCampaign.isCampaign, true);
+
+  const personalWithTitle = vpExports.getVoucherPresentation({
+    id: 4, code: null, campaignCode: null, campaignTitle: 'Tri ân VIP',
+    description: 'Ưu đãi đặc biệt', milestone: 0, source: 'SYSTEM_REWARD',
+  });
+  assert.equal(personalWithTitle.title, 'Tri ân VIP');
+  assert.equal(personalWithTitle.description, 'Ưu đãi đặc biệt');
+  assert.equal(personalWithTitle.isCampaign, false);
+
+  const personalWithDescriptionOnly = vpExports.getVoucherPresentation({
+    id: 5, code: null, campaignCode: null, campaignTitle: null,
+    description: 'Hỗ trợ chuyến đi', milestone: 0, source: 'SYSTEM_REWARD',
+  });
+  assert.equal(personalWithDescriptionOnly.title, 'Ưu đãi dành riêng cho bạn');
+  assert.equal(personalWithDescriptionOnly.description, 'Hỗ trợ chuyến đi');
+
+  const milestone = vpExports.getVoucherPresentation({
+    id: 6, code: null, campaignCode: null, milestone: 5, source: 'SYSTEM_REWARD',
+  });
+  assert.equal(milestone.title, 'Ưu đãi mốc 5 chuyến');
+  assert.equal(milestone.badge, 'Ưu đãi hệ thống');
 });
