@@ -6,10 +6,12 @@ import { SettingsProvider } from "@/lib/settings/SettingsProvider";
 import {
   useLanguage,
   useScreenMotion,
+  useSystemBarSync,
   useTheme,
   usePushForegroundLaunch,
   useStartupLocationPermission,
 } from "@datxe/ui";
+import * as SystemUI from "expo-system-ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
@@ -106,7 +108,12 @@ function ThemedStack() {
   useLanguage();
   useHardwareBack();
   const screenOptions = useScreenMotion();
-  const { dark } = useTheme();
+  const { dark, colors } = useTheme();
+  const systemBarTick = useSystemBarSync();
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+  }, [colors.background, systemBarTick]);
   return (
     <>
       <StatusBar style={dark ? "light" : "dark"} />

@@ -254,4 +254,33 @@ test("UI screens wire VehicleInspection without directions and guard double-tap 
   );
   assert.match(guidedCaptureSrc, /iconButton:\s*\{\s*width:\s*48,\s*height:\s*48/);
   assert.match(guidedCaptureSrc, /errorBanner:\s*\{[^}]*colors\.onErrorContainer/);
+
+  const offerDecisionSrc = fs.readFileSync(
+    path.join(root, "apps/driver/src/features/offers/components/OfferDecision.tsx"),
+    "utf8",
+  );
+  assert.match(offerDecisionSrc, /Khách không cần trả tiền \(0 đ\)/);
+  assert.doesNotMatch(offerDecisionSrc, /Thu tiền mặt \(0 đ\)/);
+
+  const inProgressSrc = fs.readFileSync(
+    path.join(root, "apps/driver/src/features/ride/screens/InProgressScreen.tsx"),
+    "utf8",
+  );
+  assert.match(inProgressSrc, /customerFare === 0[\s\S]{0,120}Khách không cần trả tiền \(0 đ\)/);
+  assert.match(inProgressSrc, /onSettled:[^}]*cancelLock\.current = false/);
+
+  assert.match(
+    useInspectionSrc,
+    /typeof rawPickupOdometer === 'number' && Number\.isSafeInteger\(rawPickupOdometer\) && rawPickupOdometer >= 0/,
+  );
+  assert.match(useInspectionSrc, /onSettled:[^}]*submitLock\.current = false/);
+
+  const directionsMapSrc = fs.readFileSync(
+    path.join(root, "apps/driver/src/components/DriverDirectionsMap.native.tsx"),
+    "utf8",
+  );
+  assert.match(directionsMapSrc, /const \[isAppActive, setIsAppActive\] = useState/);
+  assert.match(directionsMapSrc, /if \(!nextActive\) void Speech\.stop\(\)/);
+  assert.match(directionsMapSrc, /routeSignature/);
+  assert.match(directionsMapSrc, /\}, \[routeSignature\]\)/);
 });

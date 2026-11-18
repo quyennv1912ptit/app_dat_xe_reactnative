@@ -265,3 +265,73 @@ test("Booking dropoff icons use onRideDropoff, RegisterScreenParts avoids onPrim
   assert.doesNotMatch(registerPartsSrc, /secondaryButtonText|colors\.onPrimary/);
   assert.doesNotMatch(driverProfileCardSrc, /contactActions/);
 });
+
+test("ThemeProvider syncs native Appearance colorScheme, system bars, and hides DevTools gear in RootLayout", () => {
+  const appThemeProviderSrc = fs.readFileSync(
+    path.join(ROOT, "packages/ui/src/theme/AppThemeProvider.tsx"),
+    "utf8",
+  );
+  const systemBarSyncSrc = fs.readFileSync(
+    path.join(ROOT, "packages/ui/src/theme/useSystemBarSync.ts"),
+    "utf8",
+  );
+  const customerRootSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/components/RootLayout.tsx"),
+    "utf8",
+  );
+  const driverRootSrc = fs.readFileSync(
+    path.join(ROOT, "apps/driver/src/components/RootLayout.tsx"),
+    "utf8",
+  );
+  const { patchMainActivity } = require("../packages/config/plugins/with-system-nav-bar-sync");
+  const customerAppConfig = fs.readFileSync(path.join(ROOT, "apps/customer/app.config.js"), "utf8");
+  const driverAppConfig = fs.readFileSync(path.join(ROOT, "apps/driver/app.config.js"), "utf8");
+
+  assert.match(appThemeProviderSrc, /Appearance\.setColorScheme/);
+  assert.match(systemBarSyncSrc, /AppState\.addEventListener/);
+  assert.match(systemBarSyncSrc, /Appearance\.addChangeListener/);
+  assert.match(customerRootSrc, /useSystemBarSync/);
+  assert.match(customerRootSrc, /SystemUI\.setBackgroundColorAsync/);
+  assert.match(driverRootSrc, /useSystemBarSync/);
+  assert.match(driverRootSrc, /SystemUI\.setBackgroundColorAsync/);
+  assert.match(driverRootSrc, /setToolsButtonVisible\(false\)/);
+  assert.match(customerAppConfig, /with-system-nav-bar-sync/);
+  assert.match(driverAppConfig, /with-system-nav-bar-sync/);
+
+  const templateKt = `package com.datxe.test
+import android.os.Build
+import android.os.Bundle
+class MainActivity : ReactActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null)
+  }
+}`;
+  const patchedOnce = patchMainActivity(templateKt);
+  const patchedTwice = patchMainActivity(patchedOnce);
+  assert.equal(patchedTwice, patchedOnce, "with-system-nav-bar-sync must be idempotent across prebuilds");
+  assert.match(patchedOnce, /isAppearanceLightNavigationBars = !isNightMode/);
+  assert.match(patchedOnce, /override fun onConfigurationChanged/);
+
+  for (const relKt of [
+    "apps/customer/android/app/src/main/java/com/datxe/customer/MainActivity.kt",
+    "apps/driver/android/app/src/main/java/com/datxe/driver/MainActivity.kt",
+  ]) {
+    const absKt = path.join(ROOT, relKt);
+    if (fs.existsSync(absKt)) {
+      const kt = fs.readFileSync(absKt, "utf8");
+      assert.match(kt, /syncSystemNavigationBars/);
+      assert.match(kt, /isAppearanceLightNavigationBars = !isNightMode/);
+    }
+  }
+
+  const notifPartsSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/features/notifications/components/NotificationScreenParts.tsx"),
+    "utf8",
+  );
+  const notifScreenSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/features/notifications/screens/NotificationScreen.tsx"),
+    "utf8",
+  );
+  assert.doesNotMatch(notifPartsSrc, /flexBasis:\s*["']22%["']/);
+  assert.match(notifScreenSrc, /textBreakStrategy="simple"/);
+});

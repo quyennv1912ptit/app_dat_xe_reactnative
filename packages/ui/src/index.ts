@@ -13,6 +13,7 @@ export * from './types';
 export * from './motion';
 
 export * from './theme/ThemeProvider';
+export { useSystemBarSync } from './theme/useSystemBarSync';
 
 export * from './useLanguage';
 export * from './useDebouncedTextChange';

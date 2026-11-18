@@ -61,7 +61,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
   const earning = offer.driverEarning;
   const roundedEarning = Math.round(earning / EARNING_DISPLAY_STEP_VND) * EARNING_DISPLAY_STEP_VND;
   const payment = offer.paymentMethod === 'CASH'
-    ? { icon: 'payments' as const, label: offer.fareEstimate === 0 ? 'Thu tiền mặt (0 đ)' : 'Thu tiền mặt' }
+    ? { icon: 'payments' as const, label: offer.fareEstimate === 0 ? 'Khách không cần trả tiền (0 đ)' : 'Thu tiền mặt' }
     : offer.paymentMethod === 'WALLET'
       ? {
           icon: 'account-balance-wallet' as const,

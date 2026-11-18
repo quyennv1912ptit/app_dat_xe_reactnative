@@ -15,6 +15,7 @@ module.exports = ({ config }) => {
     '@maplibre/maplibre-react-native',
     'expo-status-bar',
     '../../packages/config/plugins/with-short-cmake-paths',
+    '../../packages/config/plugins/with-system-nav-bar-sync',
     ['../../packages/config/plugins/with-team-dev-signing', {
       keystoreFile: 'team-dev-driver.jks',
       keyAlias: 'team-dev-driver',

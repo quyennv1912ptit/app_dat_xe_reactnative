@@ -194,8 +194,9 @@ export default function InProgressRideScreen() {
                     <Text style={themed_s.label}>Thu nhập dự kiến</Text>
                     <MoneyText value={driverNetEarning} variant="headline" style={styles.fareAmount} />
                     <Text style={themed_s.label}>
-                      Khách trả: {formatMoney(customerFare, { nonBreaking: true })}
-                      {ride.paymentMethod ? ` · ${ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}` : ""}
+                      {customerFare === 0
+                        ? "Khách không cần trả tiền (0 đ)"
+                        : `Khách trả: ${formatMoney(customerFare, { nonBreaking: true })}${ride.paymentMethod ? ` · ${ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}` : ""}`}
                     </Text>
                   </>
                 ) : (

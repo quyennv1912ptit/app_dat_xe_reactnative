@@ -84,16 +84,11 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
   const camera = useRef<CameraRef>(null);
   const [current, setCurrent] = useState<RideCoordinates | null>(null);
   const [voiceMuted, setVoiceMuted] = useState(false);
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [voiceId, setVoiceId] = useState<string | undefined>(undefined);
   const announced = useRef<Set<number>>(new Set());
   const announcedAhead = useRef<Set<string>>(new Set());
   const lastSpokenStepAt = useRef(0);
-  // Route mới (re-route) phải đọc lại từ đầu.
-  useEffect(() => {
-    announced.current.clear();
-    announcedAhead.current.clear();
-    lastSpokenStepAt.current = 0;
-  }, [directions]);
   const overviewShown = useRef(false);
   const mapStyle = env.goongStyleUrl;
 
@@ -102,7 +97,9 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
   }, [voiceMuted]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      if (nextState !== 'active') void Speech.stop();
+      const nextActive = nextState === 'active';
+      setIsAppActive(nextActive);
+      if (!nextActive) void Speech.stop();
     });
     return () => {
       subscription.remove();
@@ -138,6 +135,16 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
 
   const coordinates = useMemo(() => directions?.coordinates ?? [], [directions?.coordinates]);
   const steps = useMemo(() => directions?.steps ?? [], [directions?.steps]);
+  const routeSignature = useMemo(
+    () => `${destination.lat},${destination.lng}:${steps.map(step => `${step.instruction}:${Math.round(step.distanceMeters)}`).join('|')}`,
+    [destination.lat, destination.lng, steps],
+  );
+  // Route mới (re-route hoặc đổi đích đón/trả) đọc lại từ đầu; refetch cùng tuyến giữ nguyên trạng thái đã đọc.
+  useEffect(() => {
+    announced.current.clear();
+    announcedAhead.current.clear();
+    lastSpokenStepAt.current = 0;
+  }, [routeSignature]);
 
   const routeCumulative = useMemo(() => {
     const cumulative = [0];
@@ -178,7 +185,7 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
 
   // Điều phối một lượt phát giọng nói duy nhất mỗi bước/ngưỡng, tránh tự hủy lời nhắc cùng render.
   useEffect(() => {
-    if (!current || steps.length === 0 || voiceMuted) return;
+    if (!isAppActive || !current || steps.length === 0 || voiceMuted) return;
     const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
     const remaining = Math.max(0, stepEnd - scaledProgress);
     const next = steps[stepIndex + 1];
@@ -214,7 +221,7 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
     const text = `Sau ${formatDistance(remaining)}, ${localizeInstruction(next.instruction).trim()}`;
     void Speech.stop();
     Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
-  }, [current, scaledProgress, stepIndex, steps, voiceId, voiceMuted]);
+  }, [current, isAppActive, scaledProgress, stepIndex, steps, voiceId, voiceMuted]);
 
   useEffect(() => {
     if (!current) return;

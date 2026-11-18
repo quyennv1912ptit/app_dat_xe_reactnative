@@ -24,7 +24,13 @@ export function useVehicleInspection() {
   const synchronized = !query.isError && !query.isPaused;
   const presentation = validStop ? inspectionPresentation(ride, phase, synchronized) : null;
   const existing = presentation?.report;
-  const pickupOdometer = phase === 'dropoff' ? ride?.handoverReports?.find((item) => item.phase === 'PICKUP')?.odometer : undefined;
+  const rawPickupOdometer = phase === 'dropoff'
+    ? ride?.handoverReports?.find((item) => item.phase === 'PICKUP')?.odometer
+    : undefined;
+  const pickupOdometer =
+    typeof rawPickupOdometer === 'number' && Number.isSafeInteger(rawPickupOdometer) && rawPickupOdometer >= 0
+      ? rawPickupOdometer
+      : undefined;
   const editable = presentation?.canEditForm === true;
   const canSubmitOnline = presentation?.canSubmit === true;
   const scope = String(ride?.id) + ':' + phase + ':' + (existing?.revision ?? 1) + ':' + (existing?.correctionReason ?? '');

@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { Appearance, Platform } from "react-native";
 import { PaperProvider } from "react-native-paper";
 import {
   ThemeProvider,
@@ -37,6 +38,13 @@ export function AppThemeProvider({
   mode?: ThemeMode;
   brand?: ThemeBrand;
 }) {
+  const mode = props.mode ?? "system";
+  useEffect(() => {
+    if (Platform.OS === "web" || typeof Appearance?.setColorScheme !== "function") return;
+    Appearance.setColorScheme(
+      mode === "dark" ? "dark" : mode === "light" ? "light" : "unspecified",
+    );
+  }, [mode]);
   return (
     <ThemeProvider {...props}>
       <MaterialProvider>{children}</MaterialProvider>

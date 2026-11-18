@@ -29,8 +29,8 @@ export default function DriverSettingsScreen() {
       <GroupedList title="Giao diện">
         {appearances.map(({ value, label }) => (
           <RadioButton.Item key={value} value={value} label={label} style={styles.radioItem}
-            status={mode === value ? "checked" : "unchecked"} disabled={saving}
-            onPress={() => void selectMode(value)} />
+            status={mode === value ? "checked" : "unchecked"}
+            onPress={() => { if (!saving && mode !== value) void selectMode(value); }} />
         ))}
       </GroupedList>
       <GroupedList title="Quyền và kết nối">

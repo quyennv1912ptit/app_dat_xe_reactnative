@@ -117,6 +117,7 @@ export default function NotificationScreen() {
             style={[styles.filter, filter === key && styles.filterActive]}
           >
             <Text
+              textBreakStrategy="simple"
               style={[
                 styles.filterText,
                 filter === key && styles.filterTextActive,

@@ -239,22 +239,48 @@ PtitGo là nền tảng **đặt tài xế lái xe hộ** (tài xế điều khi
 
 - `tests/driver-ride-lifecycle-matrix.test.cjs`:
   - Kiểm chứng `completePresentation` với chuyến `0 đ` `CASH` (`PAID` -> `"Khách được miễn phí (Voucher 0 đ)"`, `PENDING` -> `"Chờ hoàn tất thanh toán 0 đ"`, cả hai đều giữ `canConfirmCash === false` và `cashToCollect === undefined`).
-  - Kiểm chứng `VehicleInspectionScreen.tsx` + `useVehicleInspection.ts` có đối chiếu `pickupOdometer`/`odometerBelowPickup` và `GuidedCaptureScreen.tsx` giữ `iconButton: 48×48` + `colors.onErrorContainer`.
+  - Kiểm chứng `OfferDecision.tsx` (`Khách không cần trả tiền (0 đ)` thay vì `Thu tiền mặt (0 đ)`), `InProgressScreen.tsx` (hiển thị `"Khách không cần trả tiền (0 đ)"` khi `customerFare === 0` và `cancelLock.current = false`), `useVehicleInspection.ts` (`typeof rawPickupOdometer === 'number' && Number.isSafeInteger(rawPickupOdometer) && rawPickupOdometer >= 0`), `DriverDirectionsMap.native.tsx` (`isAppActive` + `routeSignature`), và `GuidedCaptureScreen.tsx` (`iconButton: 48×48` + `colors.onErrorContainer`).
 - `tests/ui-standardization-fixes.test.cjs`:
   - Kiểm chứng `MapPickerScreen.tsx` và `PlaceSelectionScreen.tsx` dùng `colors.onRideDropoff` (không dùng chữ/icon trắng trên nền vàng), `RegisterScreenParts.tsx` không ghi đè `secondaryButtonText`/`colors.onPrimary`, và `DriverProfileCard.tsx` không lặp `contactActions`.
+  - Kiểm chứng đồng bộ Theme & System Bars (`AppThemeProvider.tsx` `Appearance.setColorScheme`, `useSystemBarSync.ts`, `RootLayout.tsx` ở hai app + ẩn DevTools FAB ở Driver, `MainActivity.kt` `syncSystemNavigationBars` + `isAppearanceLightNavigationBars`) và filter chip `NotificationScreenParts.tsx` / `NotificationScreen.tsx` không ép `flexBasis: "22%"` gây cắt chữ.
 - `tests/support-ride-reliability.test.cjs`:
   - Bổ sung mock `expo-image` và `react.useRef` khớp với triển khai an toàn mới.
 
 ---
 
-## 20. Real-Device Visual QA Results (`Vivo V2342T` / `10AE3H0A4C000LH`)
+## 20. Final QA Pass (Phases 1–5) & Real-Device Verification (`Vivo V2342T` / `10AE3H0A4C000LH`)
 
-- **Thiết lập ban đầu ghi nhận:** `Night mode: yes`, `font_scale: 1.0`, `adb reverse` hoạt động trên cổng `8081` (Customer) và `8082` (Driver). Sau kiểm thử đã khôi phục nguyên trạng `Night mode: yes` và `font_scale: 1.0`.
-- **Customer App (`com.datxe.customer`) — VERIFIED ON DEVICE (Dark Mode, `font_scale 1.0` & `1.3`):**
-  - Đã chụp & kiểm tra trực quan các màn `Home`, `History`, `Notifications`, `Profile`: hiển thị đúng 1 marker vị trí khách trên bản đồ, ví `320.945 đ`, bộ lọc chip lịch sử tự xuống dòng sạch ở `font_scale 1.3`, badge `4` trên tab `Thông báo` không bị cắt, email `quyennv19122006@gmail.com` tự xuống dòng trọn vẹn.
-- **Customer & Driver Light Mode / Driver Post-Reload Tabs — PARTIALLY VERIFIED / NOT VERIFIED ON DEVICE:**
-  - Khi chạy `cmd uimode night no`, hệ điều hành đổi icon thanh trạng thái sang màu đen nhưng ứng dụng trên thiết bị vẫn giữ nền tối đã lưu từ thiết lập trước đó (dẫn đến hiện tượng phát hiện thực tế: icon status bar màu đen nổi kém trên nền tối khi ép `cmd uimode` mà app giữ theme dark riêng). Giao diện Light Mode và bảng màu chuẩn của hai app đã được kiểm chứng qua `tests/theme.test.cjs` + `tests/typography-system.test.cjs` + `tests/ui-standardization-fixes.test.cjs`.
-  - Ở `com.datxe.driver`, đã quan sát ảnh chụp trước khi reload (`font_scale 1.3`), nhưng sau khi `am force-stop` để nạp bundle mới, dev-client dừng ở màn trắng chờ kết nối thủ công nên các màn Driver sau khi sửa `HomeScreen.tsx` / `HistoryScreen.tsx` / `Profile` chưa được xác nhận trực tiếp trên thiết bị (đã kiểm chứng đầy đủ bằng `typecheck`, `lint`, unit/render test và `expo export`).
+### Phase 1 — Điều tra Driver White Screen sau `force-stop` / relaunch
+- **Kết luận nguyên nhân gốc (`zero app startup bug`):** Logcat từ `com.datxe.driver` và phản hồi timeout trên `http://localhost:8082/status` xác nhận dev-client bị treo khi `ReactHost{0}.isMetroRunning()` / `loadJSBundleFromMetro()` không nhận được bundle từ tiến trình Metro cũ (cũng gặp trường hợp Metro giữ watch trên thư mục build khi Gradle chạy). Không có lỗi JS runtime, Font, ThemeProvider, Firebase hay Location permission khi khởi động.
+- **Xác minh:** Khởi động lại Metro sạch (`npx expo start --dev-client --port 8082`) và chạy `adb` daemon nền ổn định -> Driver `cold start`, `force-stop` relaunch, warm resume và chuyển đổi 4 tab hoạt động tức thì (`3333 modules`).
+
+### Phase 2 — Sửa đồng bộ Theme (`light` / `dark` / `system`) & System Bars (Status Bar + 3-Button Nav Bar)
+- **Nguyên nhân phát hiện:**
+  1. `AppThemeProvider.tsx` chưa gọi `Appearance.setColorScheme(...)` khi người dùng chọn thủ công `Sáng` / `Tối` / `Theo hệ thống`.
+  2. `<StatusBar>` không re-sync khi Activity quay lại foreground/thay đổi appearance (`useSystemBarSync.ts`).
+  3. `WindowUtil.enableEdgeToEdge()` của React Native chỉ chạy 1 lần trong `onCreate()`, khiến `WindowInsetsControllerCompat.isAppearanceLightNavigationBars` giữ nguyên màu tối/scrim tối khi ứng dụng đổi giao diện lúc runtime hoặc trên OEM khóa `mNightMode`.
+  4. Ở Driver: `DriverSettingsProvider` chưa cập nhật lạc quan (optimistic state) + `DriverSettingsScreen` khóa cả 3 radio khi đang lưu, và floating DevTools FAB chưa được ẩn giống Customer (`setToolsButtonVisible(false)`).
+- **Khắc phục đã áp dụng:**
+  - Tạo [useSystemBarSync.ts](../packages/ui/src/theme/useSystemBarSync.ts), export qua `@datxe/ui`; cập nhật [AppThemeProvider.tsx](../packages/ui/src/theme/AppThemeProvider.tsx), [Customer RootLayout](../apps/customer/src/components/RootLayout.tsx), [Driver RootLayout](../apps/driver/src/components/RootLayout.tsx), [DriverSettingsProvider](../apps/driver/src/lib/settings/DriverSettingsProvider.tsx), [DriverSettingsScreen](../apps/driver/src/features/settings/screens/DriverSettingsScreen.tsx).
+  - Cập nhật [Customer MainActivity.kt](../apps/customer/android/app/src/main/java/com/datxe/customer/MainActivity.kt) và [Driver MainActivity.kt](../apps/driver/android/app/src/main/java/com/datxe/driver/MainActivity.kt) đồng thời đóng gói vào config plugin [with-system-nav-bar-sync.js](../packages/config/plugins/with-system-nav-bar-sync.js) trong cả `apps/customer/app.config.js` & `apps/driver/app.config.js` (`syncSystemNavigationBars` đồng bộ `isAppearanceLightNavigationBars = !isNightMode` trong `onCreate`, `onResume`, `onWindowFocusChanged`, `onConfigurationChanged`), rebuild lại cả 2 debug APK và `install -r` lên thiết bị thật.
+
+### Phase 3 — Real-Device Visual QA Matrix (Đã kiểm chứng trực quan bằng ảnh chụp trên `10AE3H0A4C000LH`)
+- **Phân định phạm vi xác minh rõ ràng:**
+  - **Đã xác minh trực tiếp trên thiết bị thật (`DEVICE-VERIFIED`):**
+    - **Driver App (`com.datxe.driver`):** `Home`, `History`, `Notifications`, `Profile`, `Settings` ở cả **Light Mode (`1.0`, `1.3`, `1.5`)** và **Dark Mode (`1.0`, `1.3`)**, cùng chéo OS (`Sáng` trên OS Night `yes` và `Tối` trên OS Night `no`). Icon thanh trạng thái và thanh điều hướng 3 nút Android đổi tương phản chính xác theo nền thực tế của app; zero DevTools FAB che header; badge số và nhãn tab không bị cắt ở `1.5x`.
+    - **Customer App (`com.datxe.customer`):** `Home`, `History`, `Notifications`, `Profile`, `Settings`, `Giao diện`, `Ví của tôi`, `Ưu đãi của tôi` ở cả **Light Mode (`1.0`, `1.3`)** và **Dark Mode (`1.0`, `1.3`, `1.5`)**, cùng chéo OS (`Sáng` trên OS Night `yes` và `Tối` trên OS Night `no`). Phát hiện trực tiếp ở `font_scale 1.5`: chip `Chuyến đi` trong `Notifications` bị ép `flexBasis: "22%"` gây xuống dòng cắt giữa chữ `"Chuyế / n đi"` -> đã sửa `NotificationScreenParts.tsx` & `NotificationScreen.tsx` dùng độ rộng tự nhiên + `textBreakStrategy="simple"` và xác minh lại trên máy thật (chip xuống dòng giữa các nút sạch sẽ).
+  - **Đã kiểm chứng qua mã nguồn, typecheck & unit/render test (`SOURCE-AUDITED` — không phát sinh chuyến live ngoài backend/emulator GPS trong phiên QA này):** Luồng nhận cuốc `AcceptScreen` / `OfferDecision`, `InProgressScreen`, `VehicleInspectionScreen`, `RideDirectionsScreen`, `CompleteScreen`, `TripCompletedScreen`.
+- **Khôi phục thiết bị sau QA:** Đã trả nguyên trạng `Night mode: yes`, `font_scale: 1.0`, `svc power stayon false`, Customer `mode = "dark"`, Driver `appearance = "system"` (xác nhận lại trực tiếp qua `RKStorage` mà không xóa dữ liệu app).
+
+### Phase 4 — Tinh chỉnh thêm An toàn Nghiệp vụ Driver
+- [OfferDecision.tsx](../apps/driver/src/features/offers/components/OfferDecision.tsx) & [InProgressScreen.tsx](../apps/driver/src/features/ride/screens/InProgressScreen.tsx): Khi chuyến có `0 đ` (`CASH` miễn phí / voucher), hiển thị rõ `"Khách không cần trả tiền (0 đ)"` thay vì `"Thu tiền mặt (0 đ)"` hoặc `"Khách trả: 0 đ · Tiền mặt"`.
+- [useVehicleInspection.ts](../apps/driver/src/features/ride/hooks/useVehicleInspection.ts): Kiểm tra `typeof rawPickupOdometer === 'number' && Number.isSafeInteger(rawPickupOdometer) && rawPickupOdometer >= 0` để không chặn sai trường hợp thiếu dữ liệu ODO pha nhận xe.
+- [DriverDirectionsMap.native.tsx](../apps/driver/src/components/DriverDirectionsMap.native.tsx): Theo dõi `AppState` (`isAppActive`) để ngắt đọc giọng nói ngay khi chạy nền, bỏ qua phát mới lúc nền và khóa reset trạng thái đã đọc theo `routeSignature` (`destination + steps`) thay vì object identity `[directions]`.
+
+### Phase 5 — Dependency, Patch & Security Audit
+- **Clean Checkout Test (`git worktree`):** Đã thử `npm ci` trong worktree tách rời (`added 987 packages, and audited 993 packages in 41s`, exit `0`); `postinstall` (`patch-package 8.0.1`) áp dụng sạch `@gorhom/bottom-sheet@5.2.14` với 0 lỗi.
+- **`expo-doctor`:** `19/20` checks pass ở cả 2 app; 1 cảnh báo giữ nguyên pre-existing SDK 58 minor/patch (16 package ở Customer, 17 ở Driver — bao gồm `react-native@0.88.0`, `expo-dev-client@58.0.16`, `react-native-screens@4.30.0`, `react-native-safe-area-context@5.10.1`). **Quyết định kỹ thuật:** Không nâng hàng loạt vì nhị phân Android dev build đang khớp lockfile hiện tại (`AGENTS.md`).
+- **`npm audit --omit=dev` (không dùng `--force`):** Ghi nhận 45 cảnh báo (`0` critical, `39` high, `6` moderate), toàn bộ xuất phát gián tiếp từ chuỗi build/CLI (`picomatch`, `tinyglobby`, `minimatch`, `glob` dưới `expo` / `@sentry/bundler-plugins`) và `@grpc/grpc-js` dưới `@firebase/firestore` (không được runtime mobile sử dụng do app chỉ dùng `app` / `auth` / `messaging`). `npm audit fix --force` đề xuất hạ cấp phá vỡ sang `expo@52.0.49`, `@react-native-firebase/app@20.1.0`, `react-native@0.83.10` nên bị từ chối tuyệt đối.
 
 ---
 
@@ -265,11 +291,13 @@ PtitGo là nền tảng **đặt tài xế lái xe hộ** (tài xế điều khi
 | `npm run check:architecture` | Toàn monorepo | **PASS** — `Architecture passed: thin routes, imports, feature boundaries, environment and shared/UI separation.` |
 | `npm run typecheck` | `customer`, `driver`, `@datxe/shared`, `@datxe/ui` | **PASS** — Exit `0` trên cả 4 workspace |
 | `npm run lint` | `apps/customer` (`expo lint`), `apps/driver` (`expo lint`) | **PASS** — Exit `0`, không lỗi ESLint |
-| `npm test` | `tests/*.test.cjs` | **PASS** — **238/238 passed**, `0` failed, `0` skipped, `0` todo |
-| `npx expo-doctor` (`apps/customer`) | 20 checks Expo SDK 58 | **19/20 passed** — 1 cảnh báo dependency SDK 58 có sẵn (16 package lệch minor/patch pre-existing; không tự ý nâng theo quy định AGENTS.md) |
-| `npx expo-doctor` (`apps/driver`) | 20 checks Expo SDK 58 | **19/20 passed** — 1 cảnh báo dependency SDK 58 có sẵn (17 package lệch minor/patch pre-existing) |
-| `EXPO_NO_DOTENV=1 npx expo export --platform android --platform web` (`apps/customer`) | Bundle production Android + Web | **PASS** (`exit 0`) — Xuất `index-*.hbc` (`9.1MB`) và 47 web bundles |
-| `EXPO_NO_DOTENV=1 npx expo export --platform android --platform web` (`apps/driver`) | Bundle production Android + Web | **PASS** (`exit 0`) — Xuất `index-*.hbc` (`9MB`) và 41 web bundles |
+| `npm test` | `tests/*.test.cjs` | **PASS** — **239/239 passed**, `0` failed, `0` skipped, `0` todo |
+| Clean `git worktree` `npm ci` + `patch-package` | Checkout sạch từ `HEAD` | **PASS** — Exit `0` (`987 packages`, `@gorhom/bottom-sheet@5.2.14` áp dụng sạch) |
+| Gradle `assembleDebug` (Customer & Driver) | Native Android + `MainActivity.kt` | **PASS** — `BUILD SUCCESSFUL` tuần tự cho cả 2 app, cài đặt `-r` lên `10AE3H0A4C000LH` thành công |
+| `npx expo-doctor` (`apps/customer`) | 20 checks Expo SDK 58 | **19/20 passed** — 1 cảnh báo 16 package SDK 58 minor/patch giữ nguyên để khớp native build |
+| `npx expo-doctor` (`apps/driver`) | 20 checks Expo SDK 58 | **19/20 passed** — 1 cảnh báo 17 package SDK 58 minor/patch giữ nguyên để khớp native build |
+| `EXPO_NO_DOTENV=1 npx expo export --platform android --platform web` (`apps/customer`) | Bundle production Android + Web | **PASS** (`exit 0`) — Xuất Android HBC (`9.2MB`) và 47 web bundles |
+| `EXPO_NO_DOTENV=1 npx expo export --platform android --platform web` (`apps/driver`) | Bundle production Android + Web | **PASS** (`exit 0`) — Xuất Android HBC (`9MB`) và 42 web bundles |
 | `git diff --check` | Toàn bộ diff hiện hành | **PASS** (`exit 0`) — Không lỗi khoảng trắng hoặc conflict marker |
 
 ---
@@ -278,25 +306,27 @@ PtitGo là nền tảng **đặt tài xế lái xe hộ** (tài xế điều khi
 
 > **Lưu ý phương pháp:** Bảng điểm dưới đây là **đánh giá chuyên môn kỹ thuật & thiết kế** của nhóm audit dựa trên đối chiếu code, token `@datxe/ui`, tiêu chuẩn WCAG 2.2 AA, Material Design 3 / Apple HIG và ảnh chụp thiết bị thực tế — **không phải kết quả khảo sát người dùng cuối**.
 
-| Hạng mục (Thang 10) | Trước refine (Hậu merge `fbe50c8`) | Sau refine (Hiện tại) | Căn cứ thay đổi |
+| Hạng mục (Thang 10) | Trước refine (Hậu merge `fbe50c8`) | Sau refine & Final QA | Căn cứ thay đổi |
 | --- | --- | --- | --- |
 | 1. Nhất quán Design System & Tonal Surface | 7.5 | **9.5** | Dọn 13 chỗ typography legacy, gỡ override màu sai chuẩn, thống nhất `@datxe/ui` |
-| 2. Tương phản màu sắc (WCAG 2.2 AA) | 6.5 | **9.5** | Khắc phục `#FFF` trên vàng `#F2B705`, `onPrimary` trên nút phụ register, màu lỗi eKYC |
-| 3. Phóng chữ & Tiếng Việt không cắt chữ | 7.5 | **9.5** | `tabular-nums` đồng bộ, `en.json` đủ key, bọc text an toàn tại `font_scale 1.3` |
-| 4. Vùng chạm, Safe Area & Bàn phím | 7.0 | **9.0** | Nâng toàn bộ nút nhỏ lên `>= 48dp`, bổ sung `KeyboardAvoidingView padding` & cuộn modal |
+| 2. Tương phản màu sắc (WCAG 2.2 AA) & System Bars | 6.5 | **9.5** | Khắc phục `#FFF` trên `#F2B705`, `onPrimary` register, màu lỗi eKYC, và đồng bộ toàn diện Status Bar + Android Nav Bar chéo Light/Dark |
+| 3. Phóng chữ & Tiếng Việt không cắt chữ | 7.5 | **9.5** | `tabular-nums` đồng bộ, `en.json` đủ key, bọc an toàn badge, email & filter chip ở `font_scale 1.3–1.5` |
+| 4. Vùng chạm, Safe Area & Bàn phím | 7.0 | **9.0** | Nâng toàn bộ nút nhỏ lên `>= 48dp`, ẩn DevTools FAB che header, bổ sung `KeyboardAvoidingView padding` & cuộn modal |
 | 5. Trải nghiệm Đặt xe (Customer) | 8.0 | **9.0** | Sửa picker modal, tương phản map picker, bảo vệ back navigation và route `find-driver` |
-| 6. Trải nghiệm Tài xế một tay & Tốc độ đọc (Driver) | 6.5 | **9.0** | Ưu tiên chuyến/offer/`HomeOperationalStatus` lên đầu `HomeScreen`, gom speech & map control |
-| 7. Độ tin cậy Luồng chuyến & Dữ liệu Backend | 7.0 | **9.5** | Khóa `0 đ` CASH, khóa nhấn đúp tiền mặt/hủy, chặn ODO trả < ODO nhận, xóa ghi chú không tồn tại |
+| 6. Trải nghiệm Tài xế một tay & Tốc độ đọc (Driver) | 6.5 | **9.0** | Ưu tiên chuyến/offer/`HomeOperationalStatus` lên đầu `HomeScreen`, gom speech + `routeSignature` + `AppState` |
+| 7. Độ tin cậy Luồng chuyến & Dữ liệu Backend | 7.0 | **9.5** | Sửa thông điệp `0 đ` không gây hiểu nhầm thu tiền mặt, khóa nhấn đúp tiền mặt/hủy, kiểm tra an toàn `pickupOdometer` |
 | 8. Accessibility Semantics (TalkBack / VoiceOver) | 6.5 | **9.0** | Ẩn badge trùng lặp, bổ sung `checked`, `accessibilityRole="button"`, label theo item |
-| 9. Hiệu năng, Bộ nhớ & Sạch mã nguồn | 7.5 | **9.0** | Dùng `expo-image`, cleanup timer/AppState speech, xóa 3 file dead code |
-| 10. Độ phủ Kiểm thử & Tính sẵn sàng Release | 8.5 | **9.5** | 238/238 tests, kiến trúc/typecheck/lint/expo-export Android+Web đều pass sạch |
+| 9. Hiệu năng, Bộ nhớ & Sạch mã nguồn | 7.5 | **9.0** | Dùng `expo-image`, cleanup timer/`AppState` speech, xóa 3 file dead code |
+| 10. Độ phủ Kiểm thử & Tính sẵn sàng Release | 8.5 | **9.5** | 239/239 tests, clean `git worktree` `npm ci` + `patch-package`, Android/Web exports & native debug APKs đều pass sạch |
 
 ---
 
 ## 23. Remaining Known Limitations & Production Release Verdict
 
 1. **Giới hạn hiện tại đã ghi nhận trung thực:**
-   - **Pre-existing SDK 58 dependency versions (`19/20 expo-doctor`):** Do monorepo đóng băng phiên bản trong đợt release, không tự nâng 16–17 package patch/minor khi chưa đánh giá toàn bộ native prebuild.
-   - **Device QA Light Mode & Driver Post-Reload:** Chưa quan sát trực tiếp màn Light Mode do thiết bị lưu theme dark cá nhân (và phát hiện edge case icon status bar đen nếu OS đổi light trong lúc app giữ dark theme riêng), và dev-client Driver chưa tự nạp lại từ `am force-stop` trong phiên terminal. Nên chạy thêm 1 lượt bấm reload nóng trên dev build Driver thật trước khi build APK release.
+   - **Pre-existing SDK 58 dependency versions (`19/20 expo-doctor`) & `npm audit` build/transitive advisories:** Đóng băng phiên bản SDK 58 để giữ nguyên ổn định native binary; không có CVE `critical` và không dùng `npm audit fix --force`.
+   - **LogBox Dev-Only khi đổi `font_scale` nóng lúc Activity recreate:** Trong bản development build trên Android, đổi `font_scale` hệ thống khi app đang mở có thể khiến Android recreate `MainActivity` trên cùng Hermes runtime và kích hoạt cảnh báo dev LogBox từ React Navigation `useLinking` (không xuất hiện ở cold launch hay bản release JS).
+   - **Các màn chuyến đi đang chạy trực tiếp (Offer/Handover/Directions):** Đã được kiểm chứng chặt qua source audit, typecheck và unit/regression test (`SOURCE-AUDITED`), chưa kích hoạt luồng đặt-nhận-hoàn thành chuyến trực tiếp trên backend trong phiên Device QA này.
+2. **Release Verdict:** **READY FOR INTERNAL RELEASE / STAGING BUILD** — cả 2 app `apps/customer` và `apps/driver` đạt chuẩn kiến trúc, UI/UX Light/Dark ở cỡ chữ hệ thống lên tới `1.5x`, vượt qua `239/239` tests, clean checkout `npm ci` và `expo export` Android + Web.
    - **Bản đồ `GoongMap` khi ở chế độ tối:** Lớp bản đồ nền webview/tiles giữ tông sáng theo style map hiện hành; chữ/overlay bản đồ vẫn đảm bảo tương phản rõ.
 2. **Release Verdict:** **READY FOR STAGING / PRE-RELEASE QA BUILD** trên cơ sở mã nguồn (`238/238` test pass, `check:architecture`, `typecheck`, `lint`, `expo export --platform android --platform web` đều đạt exit `0`), khuyến nghị thực hiện smoke test thủ công nhanh trên APK staging cho 2 luồng: (a) Driver Home + ODO trả xe + chuyến `0 đ` trên thiết bị thật ở cả Light Mode và Dark Mode, và (b) toàn luồng Customer tìm tài xế `NO_DRIVER_FOUND` -> đặt lại -> đánh giá 1 lần.
