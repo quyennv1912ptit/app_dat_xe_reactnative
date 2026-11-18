@@ -186,6 +186,28 @@ test("complete presentation handles all terminal payment methods/statuses and re
     assert.match(res.paymentBanner.title, expectedTitle);
   }
 
+  const zeroCashPaid = completePresentation(
+    makeRide({
+      status: "COMPLETED",
+      finalFare: 0,
+      payment: { amount: 0, method: "CASH", status: "PAID", paidAt: "2026-11-18T00:00:00Z" },
+    }),
+  );
+  assert.equal(zeroCashPaid.canConfirmCash, false);
+  assert.equal(zeroCashPaid.cashToCollect, undefined);
+  assert.match(zeroCashPaid.paymentBanner.title, /Khách được miễn phí \(Voucher 0 đ\)/);
+
+  const zeroCashPending = completePresentation(
+    makeRide({
+      status: "COMPLETED",
+      finalFare: 0,
+      payment: { amount: 0, method: "CASH", status: "PENDING", paidAt: null },
+    }),
+  );
+  assert.equal(zeroCashPending.canConfirmCash, false);
+  assert.equal(zeroCashPending.cashToCollect, undefined);
+  assert.match(zeroCashPending.paymentBanner.title, /Chờ hoàn tất thanh toán 0 đ/);
+
   for (const status of ["COMPLETED", "CANCELLED", "NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM"]) {
     assert.equal(isTerminalRideStatus(status), true);
     assert.equal(ridePresentation(makeRide({ status }), true), null);
@@ -218,4 +240,18 @@ test("UI screens wire VehicleInspection without directions and guard double-tap 
     "utf8",
   );
   assert.match(useAcceptSrc, /actionLock/);
+
+  const useInspectionSrc = fs.readFileSync(
+    path.join(root, "apps/driver/src/features/ride/hooks/useVehicleInspection.ts"),
+    "utf8",
+  );
+  assert.match(useInspectionSrc, /pickupOdometer/);
+  assert.match(inspectionScreen, /odometerBelowPickup/);
+
+  const guidedCaptureSrc = fs.readFileSync(
+    path.join(root, "apps/driver/src/features/verification/GuidedCaptureScreen.tsx"),
+    "utf8",
+  );
+  assert.match(guidedCaptureSrc, /iconButton:\s*\{\s*width:\s*48,\s*height:\s*48/);
+  assert.match(guidedCaptureSrc, /errorBanner:\s*\{[^}]*colors\.onErrorContainer/);
 });

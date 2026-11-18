@@ -76,6 +76,21 @@ test("SharedStatusBadge renders complete labels without numberOfLines clipping a
   assert.equal(textNode.props.textBreakStrategy, "simple");
   const flatStyle = Object.assign({}, ...(Array.isArray(textNode.props.style) ? textNode.props.style : [textNode.props.style]));
   assert.notEqual(flatStyle.flexShrink, 1, "Status text must not compress horizontally inside narrow headers");
+  assert.equal(flatStyle.letterSpacing, 0, "Badge text must use letterSpacing 0 so Android Fabric does not clip trailing Vietnamese words");
+
+  const longBadge = SharedStatusBadge({ label: "Không tìm được tài xế", tone: "danger", icon: "error-outline" });
+  const badgeRootStyle = Object.assign({}, ...(Array.isArray(longBadge.props.style) ? longBadge.props.style : [longBadge.props.style]));
+  assert.equal(badgeRootStyle.flexShrink, 0);
+  const longText = flatten(longBadge).find((n) => n.type === "Text");
+  assert.equal(longText.props.children, "Không tìm được tài xế");
+  const longFlatStyle = Object.assign(
+    {},
+    ...(Array.isArray(longText.props.style) ? longText.props.style : [longText.props.style]),
+  );
+  assert.ok(
+    typeof longFlatStyle.minWidth === "number" && longFlatStyle.minWidth >= 140,
+    "Multi-word status badge must reserve safe minWidth against Android OEM font clipping",
+  );
 });
 
 test("MoneyText and KeyValueRow adapt to 320dp widths and large fontScale without truncating", () => {
@@ -225,4 +240,28 @@ test("Banned crude vehicle icons and emojis are completely removed from Customer
     }
   }
   assert.ok(surfaces);
+});
+
+test("Booking dropoff icons use onRideDropoff, RegisterScreenParts avoids onPrimary override, and DriverProfileCard omits duplicate inline contactActions", () => {
+  const mapPickerSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/features/booking/screens/MapPickerScreen.tsx"),
+    "utf8",
+  );
+  const placeSelectionSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/features/booking/screens/PlaceSelectionScreen.tsx"),
+    "utf8",
+  );
+  const registerPartsSrc = fs.readFileSync(
+    path.join(ROOT, "apps/driver/src/features/auth/components/RegisterScreenParts.tsx"),
+    "utf8",
+  );
+  const driverProfileCardSrc = fs.readFileSync(
+    path.join(ROOT, "apps/customer/src/features/tracking/components/DriverProfileCard.tsx"),
+    "utf8",
+  );
+
+  assert.match(mapPickerSrc, /colors\.onRideDropoff/);
+  assert.match(placeSelectionSrc, /colors\.onRideDropoff/);
+  assert.doesNotMatch(registerPartsSrc, /secondaryButtonText|colors\.onPrimary/);
+  assert.doesNotMatch(driverProfileCardSrc, /contactActions/);
 });

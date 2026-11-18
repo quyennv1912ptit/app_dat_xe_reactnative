@@ -78,8 +78,8 @@ function supportFixture(h) {
       List: { Item: "List.Item", Icon: "List.Icon", Accordion: "List.Accordion" },
       RadioButton: { Group: "RadioButton.Group", Item: "RadioButton.Item" },
     },
+    "expo-image": { Image: "Image" },
     "react-native": {
-      Image: "Image",
       Modal: "Modal",
       ScrollView: "ScrollView",
       View: "View",
@@ -365,7 +365,7 @@ test("cash collection comes from the persisted ride and updates query cache befo
   const { useComplete } = load(
     "apps/driver/src/features/ride/hooks/useComplete.ts",
     {
-      react: { useCallback: (value) => value },
+      react: { useCallback: (value) => value, useRef: (value) => ({ current: value }) },
       "expo-router": {
         useLocalSearchParams: () => ({ rideId: "45" }),
         useRouter: () => ({}),
