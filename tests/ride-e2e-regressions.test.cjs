@@ -74,6 +74,7 @@ test('driver rating sends only stars and the optional comment to the ride endpoi
   assert.equal(request.body.stars, 4);
   assert.equal(request.body.comment, null);
   assert.equal((await rateRideCustomer(42, 5, '  Đúng giờ  ')).body.comment, 'Đúng giờ');
+  assert.deepEqual((await rateRideCustomer(42, 5, '  Đúng giờ  ', ['Khách lịch sự'])).body.tags, ['Khách lịch sự']);
 });
 
 test('driver can skip, cannot submit twice while sending, and sees server-confirmed ratings as read-only', () => {
@@ -87,8 +88,8 @@ test('driver can skip, cannot submit twice while sending, and sees server-confir
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@datxe/shared': {},
     '@datxe/ui': {
-      Button: 'Button', Card: 'Card', MotionPressable: 'Radio', PaperTextInput: 'Input',
-      Typography: 'Text', spacing: {}, useThemeColors: () => ({}),
+      Button: 'Button', Card: 'Card', FilterChip: 'FilterChip', MotionPressable: 'Radio', PaperTextInput: 'Input',
+      Typography: 'Text', spacing: {}, typography: {}, useThemeColors: () => ({}),
     },
     '@expo/vector-icons': { MaterialIcons: 'Icon' },
     '@tanstack/react-query': {
@@ -106,10 +107,10 @@ test('driver can skip, cannot submit twice while sending, and sees server-confir
     'react-native': { StyleSheet: { create: value => value }, View: 'View' },
     '../api': {},
   });
-  const render = rated => {
+  const render = (rated, existingRating = null) => {
     stateIndex = 0;
     refIndex = 0;
-    return RideCustomerRating({ rideId: 42, rated });
+    return RideCustomerRating({ rideId: 42, rated, existingRating });
   };
   const find = (node, predicate) => {
     if (node == null || typeof node !== 'object') return;
@@ -129,6 +130,9 @@ test('driver can skip, cannot submit twice while sending, and sees server-confir
   assert.equal(render(false), null);
   assert.ok(find(render(true), node => node.props.children === 'Đã đánh giá khách hàng'));
   assert.equal(find(render(true), node => node.props.label === 'Gửi đánh giá'), undefined);
+  const detailed = render(true, { stars: 4, comment: 'Rất thân thiện', tags: ['Đúng giờ hẹn'] });
+  assert.ok(find(detailed, node => node.props.children === 'Đúng giờ hẹn'));
+  assert.ok(find(detailed, node => node.props.children === 'Rất thân thiện'));
 });
 
 const { ridePresentation } = load('apps/driver/src/features/ride/ridePresentation.ts');

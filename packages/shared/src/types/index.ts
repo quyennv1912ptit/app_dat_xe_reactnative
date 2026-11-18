@@ -93,6 +93,11 @@ export type CustomerRideDetail = {
   distanceKm: number | null;
   estimatedFare: number;
   finalFare: number | null;
+  payableFare?: number;
+  driverExpectedEarning?: number;
+  hasRated?: boolean;
+  myRatingStars?: number | null;
+  myRatingComment?: string | null;
   status: RideStatus;
   cancelReason: string | null;
   cancelledBy: number | null;
@@ -131,8 +136,6 @@ export type CustomerRideDetail = {
   cancelledAt: string | null;
   cancelledByRole: RideActorRole | null;
   discountAmount: number | null;
-  payableFare?: number;
-  driverExpectedEarning?: number;
   unreadChatCount: number;
 };
 

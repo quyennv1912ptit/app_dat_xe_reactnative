@@ -1,3 +1,4 @@
+import { DriverDirectionsMap } from '@/components/DriverDirectionsMap';
 import { DriverPage } from '@/components/DriverPage';
 import { env } from '@/config/env';
 import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from '@datxe/ui';
@@ -33,7 +34,15 @@ export default function RideDirectionsScreen() {
     <MapSheetLayout
       title={title}
       onBack={() => h.router.canGoBack() ? h.router.back() : h.router.replace('/ride/in-progress')}
-      renderMap={viewport => (
+      renderMap={viewport => h.destination ? (
+        <DriverDirectionsMap
+          destination={h.destination}
+          targetLabel={h.stop === 'dropoff' ? 'điểm trả' : 'điểm đón'}
+          directions={h.directions}
+          viewport={viewport}
+          onRefresh={h.refresh}
+        />
+      ) : (
         <GoongMap
           mapKey={env.goongMapKey}
           viewport={viewport}

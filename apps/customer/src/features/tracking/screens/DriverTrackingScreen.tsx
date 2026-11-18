@@ -169,9 +169,13 @@ export default function DriverTrackingScreen() {
               {!ended ? (
                 <View style={styles.price}>
                   <Text style={[customerType.meta, { color: colors.onSurfaceVariant }]}>
-                    {t(ride.payableFare != null && ride.payableFare !== ride.estimatedFare ? "Cần thanh toán" : "Giá dự kiến")}
+                    {t(ride.finalFare != null
+                      ? "Cước chuyến đi"
+                      : ride.payableFare != null && ride.payableFare !== ride.estimatedFare
+                        ? "Cần thanh toán"
+                        : "Giá dự kiến")}
                   </Text>
-                  <MoneyText value={ride.payableFare ?? ride.estimatedFare} style={styles.compactAmount} />
+                  <MoneyText value={ride.finalFare ?? ride.payableFare ?? ride.estimatedFare} style={styles.compactAmount} />
                 </View>
               ) : null}
             </Card>

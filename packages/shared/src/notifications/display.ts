@@ -169,6 +169,22 @@ export function getNotificationText(
       : {};
   const code = identifier(type);
   const status = identifier(payload.status);
+  if (code === 'RATING_RECEIVED') {
+    const starsVal = typeof payload.stars === 'number' ? payload.stars : Number(payload.stars);
+    const starsLabel = Number.isFinite(starsVal) && starsVal > 0 ? ` (${starsVal}/5 sao)` : '';
+    const commentText = typeof payload.comment === 'string' && payload.comment.trim() ? payload.comment.trim() : '';
+    const fallback = messages.RATING_RECEIVED;
+    return {
+      title: typeof payload.title === 'string' && payload.title.trim()
+        ? t(payload.title)
+        : t(starsLabel ? `Bạn nhận được đánh giá mới${starsLabel}` : fallback.title),
+      description: typeof payload.body === 'string' && payload.body.trim()
+        ? t(payload.body)
+        : commentText
+          ? t(`Đánh giá ẩn danh${starsLabel}: "${commentText}"`)
+          : t(fallback.description),
+    };
+  }
   if (code === 'PAYMENT_UPDATED') return {
     title: t(typeof payload.title === 'string' ? payload.title : 'Cập nhật thanh toán'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Phương thức hoặc trạng thái thanh toán đã thay đổi. Vui lòng kiểm tra hóa đơn.'),
@@ -177,7 +193,7 @@ export function getNotificationText(
     title: t(typeof payload.title === 'string' ? payload.title : status === 'SUCCESS' ? 'Rút tiền thành công' : 'Yêu cầu rút tiền bị từ chối'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Mở yêu cầu rút tiền để xem kết quả xử lý.'),
   };
-  if (code === 'VOUCHER_GRANTED' || code === 'VOUCHER_CAMPAIGN' || code === 'RATING_RECEIVED') {
+  if (code === 'VOUCHER_GRANTED' || code === 'VOUCHER_CAMPAIGN') {
     const fallback = messages[code];
     return {
       title: typeof payload.title === 'string' && payload.title.trim() ? t(payload.title) : t(fallback.title),

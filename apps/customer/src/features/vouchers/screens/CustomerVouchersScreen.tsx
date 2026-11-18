@@ -1,6 +1,7 @@
 import { CustomerNotice } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { getVoucherPresentation } from "@/lib/voucherPresentation";
 import { translate as i18nT } from "@datxe/shared";
 import {
   Button,
@@ -19,14 +20,12 @@ import {
   styles as base_styles,
   date,
   money,
-  voucherLabel,
 } from "../components/CustomerVouchersScreenParts";
 import { useCustomerVouchers } from "../hooks/useCustomerVouchers";
+
 export default function CustomerVouchersScreen() {
   useLanguage();
-
   const colors = useThemeColors();
-
   const styles = useThemedStyles(base_styles);
 
   const {
@@ -42,15 +41,10 @@ export default function CustomerVouchersScreen() {
   } = useCustomerVouchers();
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <ScreenHeader
-        title={i18nT("Ưu đãi của tôi")}
-        onBack={() => router.back()}
-      />
+      <ScreenHeader title={i18nT("Ưu đãi của tôi")} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          {i18nT(
-            "Mã ưu đãi áp dụng được hiển thị khi hệ thống tính giá chuyến.",
-          )}
+          {i18nT("Mã ưu đãi áp dụng được hiển thị khi hệ thống tính giá chuyến.")}
         </Text>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
@@ -64,7 +58,7 @@ export default function CustomerVouchersScreen() {
             />
             <Text style={styles.heading}>{i18nT("Chưa có ưu đãi")}</Text>
             <Text style={styles.meta}>
-              {i18nT("Ưu đãi khả dụng sẽ xuất hiện tại đây.")}
+              {i18nT("Mỗi tài khoản nhận tối đa một lượt. Ưu đãi có thể hết trước thời hạn.")}
             </Text>
             <Button
               label={i18nT("Đặt chuyến ngay")}
@@ -78,6 +72,7 @@ export default function CustomerVouchersScreen() {
             <GroupedList>
               {campaigns.map((campaign) => {
                 const claiming = claimingId === campaign.id;
+                const remaining = Math.max(0, campaign.claimLimit - campaign.claimedCount);
                 const exhausted = campaign.claimedCount >= campaign.claimLimit || campaign.budgetRemaining <= 0;
                 return (
                   <View key={`campaign-${campaign.id}`} style={styles.voucher}>
@@ -89,9 +84,23 @@ export default function CustomerVouchersScreen() {
                       />
                     </View>
                     <View style={styles.details}>
-                      <Text style={styles.code}>
-                        {campaign.campaignTitle?.trim() || campaign.code}
-                      </Text>
+                      <View style={styles.titleRow}>
+                        <Text style={styles.code}>
+                          {campaign.campaignTitle?.trim() || campaign.code}
+                        </Text>
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>
+                            {i18nT("{2} · Còn {0}/{1} suất", {
+                              0: remaining,
+                              1: campaign.claimLimit,
+                              2: campaign.code,
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+                      {campaign.description ? (
+                        <Text style={styles.description}>{campaign.description}</Text>
+                      ) : null}
                       <Text style={styles.discount}>
                         {campaign.discountType === "PERCENT"
                           ? i18nT("Giảm {0}%{1}", {
@@ -104,9 +113,6 @@ export default function CustomerVouchersScreen() {
                             })
                           : i18nT("Giảm {0}", { "0": money(campaign.value) })}
                       </Text>
-                      {campaign.description ? (
-                        <Text style={styles.meta}>{campaign.description}</Text>
-                      ) : null}
                       <Text style={styles.meta}>
                         {i18nT("Đơn tối thiểu")} {money(campaign.minimumOrderAmount)}
                       </Text>
@@ -141,18 +147,26 @@ export default function CustomerVouchersScreen() {
             ) : null}
             <GroupedList>
               {vouchers.map((voucher) => {
-                const label = voucherLabel(voucher);
+                const info = getVoucherPresentation(voucher);
                 return (
                   <View key={voucher.id} style={styles.voucher}>
                     <View style={styles.voucherIcon}>
                       <MaterialIcons
-                        name="local-offer"
+                        name={info.isCampaign ? "confirmation-number" : "local-offer"}
                         size={24}
                         color={colors.primary}
                       />
                     </View>
                     <View style={styles.details}>
-                      <Text style={styles.code}>{label}</Text>
+                      <View style={styles.titleRow}>
+                        <Text style={styles.code}>{info.title}</Text>
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{info.badge}</Text>
+                        </View>
+                      </View>
+                      {info.description && info.description.trim() !== info.title ? (
+                        <Text style={styles.description}>{info.description.trim()}</Text>
+                      ) : null}
                       <Text style={styles.discount}>
                         {voucher.discountType === "PERCENT"
                           ? i18nT("Giảm {0}%{1}", {
@@ -165,9 +179,6 @@ export default function CustomerVouchersScreen() {
                             })
                           : i18nT("Giảm {0}", { "0": money(voucher.value) })}
                       </Text>
-                      {voucher.description && voucher.description.trim() !== label ? (
-                        <Text style={styles.meta}>{voucher.description.trim()}</Text>
-                      ) : null}
                       <Text style={styles.meta}>
                         {i18nT("Đơn tối thiểu")} {money(voucher.minimumOrderAmount)}
                       </Text>

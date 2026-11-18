@@ -98,6 +98,42 @@ export function DriverProfileCard({
         <Text style={s.meta}>{experienceText}</Text>
       </View>
       {!large ? (
+        <View style={s.contactActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Nhắn tin với tài xế")}
+            disabled={!contactEnabled}
+            style={s.contactAction}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (contactEnabled) onMessage();
+            }}
+          >
+            <MaterialIcons
+              name="chat"
+              size={21}
+              color={contactEnabled ? colors.primary : colors.outline}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Gọi điện cho tài xế")}
+            disabled={!contactEnabled || !phoneUrl}
+            style={s.contactAction}
+            onPress={(event) => {
+              event.stopPropagation();
+              void call();
+            }}
+          >
+            <MaterialIcons
+              name="phone"
+              size={21}
+              color={contactEnabled && phoneUrl ? colors.primary : colors.outline}
+            />
+          </Pressable>
+        </View>
+      ) : null}
+      {!large ? (
         <MaterialIcons
           name="chevron-right"
           size={24}
@@ -317,6 +353,13 @@ const profileStyles = (c: ThemeColors) =>
     body: { ...typography.body, color: c.onSurface, flexShrink: 1 },
     meta: { ...typography.bodySecondary, color: c.onSurfaceVariant },
     link: { ...typography.label, color: c.primary },
+    contactActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+    contactAction: {
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     overlay: {
       flex: 1,
       justifyContent: "flex-end",

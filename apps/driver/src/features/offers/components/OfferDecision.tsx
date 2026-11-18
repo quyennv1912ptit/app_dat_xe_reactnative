@@ -1,7 +1,8 @@
 import { transmissionLabel, vehicleTypeLabel } from '@/lib/displayLabels';
 import type { DriverOffer } from '@/lib/driverOffer';
+import { formatScheduledPickup } from '@/lib/scheduledPickup';
 import { formatDistance, formatMoney } from '@datxe/shared';
-import { offerPalette as palette, typography, Typography as Text } from '@datxe/ui';
+import { offerPalette as palette, typography, Typography as Text, useLanguage } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -48,6 +49,8 @@ function Stop({ kind, address, km, minutes }: {
 }
 
 export const OfferDecision = memo(function OfferDecision({ offer }: { offer: DriverOffer }) {
+  useLanguage();
+  const pickupTime = formatScheduledPickup(offer.scheduledAt);
   const totalKm = validEstimate(offer.distanceToPickupKm) && validEstimate(offer.tripDistanceKm)
     ? formatDistance(offer.distanceToPickupKm + offer.tripDistanceKm) : null;
   const totalMinutes = validEstimate(offer.etaToPickupMin) && validEstimate(offer.estDurationMin)
@@ -88,7 +91,9 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
           ) : null}
         </View>
       </View>
+      {pickupTime ? <Text style={styles.pickupTime}>{pickupTime}</Text> : null}
       <Text style={styles.summary}>{total ? `Tổng cộng: ${total}` : 'Chưa đủ dữ liệu tổng hành trình'}</Text>
+      <Text style={styles.summary}>Khách hàng: {offer.customer.displayName} · {offer.customer.rating == null ? 'Chưa có đánh giá' : `${offer.customer.rating.toFixed(1)}/5`}</Text>
       <View style={styles.timeline}>
         <Stop kind="pickup" address={offer.pickup.address} km={offer.distanceToPickupKm} minutes={offer.etaToPickupMin} />
         <Stop kind="dropoff" address={offer.dropoff.address} km={offer.tripDistanceKm} minutes={offer.estDurationMin} />
@@ -106,6 +111,7 @@ const styles = StyleSheet.create({
   badge: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, backgroundColor: palette.badge, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   vehicle: { ...typography.label, color: palette.text },
   transmission: { ...typography.caption, color: palette.muted },
+  pickupTime: { ...typography.label, color: palette.text },
   paymentChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: palette.badge, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,

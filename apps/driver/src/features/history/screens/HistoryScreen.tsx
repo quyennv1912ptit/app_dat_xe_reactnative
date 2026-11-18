@@ -44,7 +44,7 @@ const TripHistoryRow = memo(function TripHistoryRow({
   const colors = useThemeColors();
   const pickup = trip.pickupAddress ?? "Chưa có địa chỉ";
   const dropoff = trip.dropoffAddress ?? "Chưa có địa chỉ";
-  const fare = formatMoney(trip.finalFare ?? trip.estimatedFare);
+  const fare = formatMoney(trip.finalFare ?? trip.payableFare ?? trip.estimatedFare);
   const date = new Date(trip.createdAt).toLocaleString("vi-VN");
   const statusText = statusLabel("ride", trip.status).label;
 
@@ -77,7 +77,7 @@ const TripHistoryRow = memo(function TripHistoryRow({
           <View style={styles.tripFooter}>
             <Text style={[typography.labelMd, styles.tripDate, { color: colors.onSurfaceVariant }]}>{date}</Text>
             {trip.status !== "CANCELLED" ? (
-              <MoneyText value={trip.finalFare ?? trip.estimatedFare} variant="title" color={colors.primary} style={styles.fare} />
+              <MoneyText value={trip.finalFare ?? trip.payableFare ?? trip.estimatedFare} variant="title" color={colors.primary} style={styles.fare} />
             ) : null}
           </View>
         </View>

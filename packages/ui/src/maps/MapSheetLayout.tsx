@@ -54,7 +54,7 @@ function SheetBody({ children, footer, contentStyle, bottomInset, backgroundColo
   return (
     <Animated.View style={visibleBody}>
       {/* Register the layout wrapper before the scroll view registers itself. */}
-      <BottomSheetView focusHook={useLayoutEffect} style={styles.sheetBody}>
+      <BottomSheetView focusHook={useLayoutEffect as never} style={styles.sheetBody}>
         <BottomSheetScrollView
           keyboardShouldPersistTaps="handled"
           style={styles.scrollViewport}

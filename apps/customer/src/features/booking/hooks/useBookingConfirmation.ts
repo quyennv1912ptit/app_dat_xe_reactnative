@@ -9,8 +9,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { createCustomerRide, getActiveCustomerRide, getCustomerVehicles, getCustomerVouchers, getRideEstimate } from '../api';
-import { activeRideDestination, buildScheduleSlots, estimateRequest, isVoucherSelected } from '../bookingUtils';
+import { activeRideDestination, estimateRequest, isVoucherSelected, type SchedulePickerSession } from '../bookingUtils';
 import { useBookingDraft, type BookedDraftSnapshot } from '../store';
+import { getVoucherPresentation } from '@/lib/voucherPresentation';
 
 function friendlyPriceError(error: unknown): string {
   if (error instanceof AuthApiError && error.code === 'PRICING_RULE_NOT_FOUND') return i18nT("Hiện chưa có bảng giá cho phương tiện này. Bạn có thể chọn xe khác hoặc thử lại sau.");
@@ -34,7 +35,9 @@ export function useBookingConfirmation() {
   const [voucherError, setVoucherError] = useState('');
   const [applyingKey, setApplyingKey] = useState<string | null>(null);
   const [scheduleVisible, setScheduleVisible] = useState(Boolean(draft.scheduleRequested && !scheduledAt));
-  const [slots, setSlots] = useState(draft.scheduleRequested ? buildScheduleSlots : []);
+  const [schedulePicker, setSchedulePicker] = useState<SchedulePickerSession | null>(() =>
+    draft.scheduleRequested && !scheduledAt ? { referenceTime: Date.now(), expired: false } : null,
+  );
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const submitting = useRef(false);
   const vehicles = useQuery({ queryKey: ['customer', 'getCustomerVehicles'], queryFn: getCustomerVehicles });
@@ -61,6 +64,23 @@ export function useBookingConfirmation() {
     queryKey: ['customer', 'getCustomerVouchers'],
     queryFn: getCustomerVouchers,
     enabled: voucherVisible || Boolean(draft.voucherCode) || draft.voucherId != null,
+  });
+  const campaigns = useQuery({
+    queryKey: ['customer', 'voucherCampaigns'],
+    queryFn: customerApi.getCustomerVoucherCampaigns,
+    enabled: voucherVisible,
+  });
+  const claim = useMutation({
+    mutationFn: customerApi.claimCustomerVoucherCampaign,
+    onSuccess: async (claimed) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
+        client.invalidateQueries({ queryKey: ['customer', 'voucherCampaigns'] }),
+      ]);
+      const info = getVoucherPresentation(claimed);
+      localizedAlert(i18nT('Đã nhận voucher {0}', { '0': info.title }), i18nT('{0} · Đã thêm vào danh sách ưu đãi của bạn.', { '0': info.badge }));
+    },
+    onError: (err) => localizedAlert(i18nT('Không nhận được voucher'), err instanceof Error ? err.message : i18nT('Ưu đãi có thể đã hết lượt hoặc ngân sách.')),
   });
   const selectedVoucher = vouchers.data?.find(item =>
     isVoucherSelected(item, draft.voucherCode, draft.voucherId),
@@ -136,6 +156,13 @@ export function useBookingConfirmation() {
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
     onError: async error => {
+      if (error instanceof AuthApiError && error.code === 'SCHEDULED_RIDE_EXISTS') {
+        localizedAlert('Bạn đã có lịch hẹn đang chờ', 'Mở Lịch sử để xem hoặc hủy lịch hiện tại trước khi đặt lịch khác.', [
+          { text: 'Đóng', style: 'cancel' },
+          { text: 'Mở Lịch sử', onPress: () => router.replace('/(tabs)/history') },
+        ]);
+        return;
+      }
       if (error instanceof AuthApiError && ['ACTIVE_RIDE_EXISTS', 'CONFLICT'].includes(error.code)) {
         const currentRide = await getActiveCustomerRide().catch(() => null);
         if (currentRide) {
@@ -151,8 +178,65 @@ export function useBookingConfirmation() {
   });
   const book = () => { if (ready && !submitting.current) { submitting.current = true; create.mutate(); } };
   const openSchedule = () => {
-    setSlots(buildScheduleSlots());
+    setSchedulePicker({ referenceTime: Date.now(), expired: false });
     setScheduleVisible(true);
   };
-  return { router, paymentMethod, setPaymentMethod, walletBalance: balance, paymentError, retryWallet: wallet.refetch, draft, vehicle, route: estimate.data?.route?.coordinates, routeLoading: estimate.isFetching, estimate: estimate.data, estimating: estimate.isFetching, error, ready, schedulePendingSelection, note, setNote, scheduledAt, setScheduledAt, scheduleVisible, setScheduleVisible, slots, openSchedule, voucherVisible, setVoucherVisible, voucherError, applyingKey, applyVoucher, vouchers: vouchers.data ?? [], vouchersLoading: vouchers.isLoading, vouchersError: vouchers.error?.message, retryVouchers: vouchers.refetch, selectedVoucher, retryPrice: estimate.refetch, activeRide: active.data, book, submitting: create.isPending };
+  const closeSchedule = () => setScheduleVisible(false);
+  const selectSchedule = (slot: string | null) => {
+    const now = Date.now();
+    if (slot !== null && Date.parse(slot) <= now) {
+      setSchedulePicker({ referenceTime: now, expired: true });
+      return;
+    }
+    if (slot === null) draft.clearScheduleRequest();
+    setScheduledAt(slot);
+    closeSchedule();
+  };
+  return {
+    router,
+    paymentMethod,
+    setPaymentMethod,
+    walletBalance: balance,
+    paymentError,
+    retryWallet: wallet.refetch,
+    draft,
+    vehicle,
+    route: estimate.data?.route?.coordinates,
+    routeLoading: estimate.isFetching,
+    estimate: estimate.data,
+    estimating: estimate.isFetching,
+    error,
+    ready,
+    schedulePendingSelection,
+    note,
+    setNote,
+    scheduledAt,
+    setScheduledAt,
+    scheduleVisible,
+    setScheduleVisible,
+    schedulePicker,
+    openSchedule,
+    closeSchedule,
+    selectSchedule,
+    voucherVisible,
+    setVoucherVisible,
+    voucherError,
+    applyingKey,
+    applyVoucher,
+    vouchers: vouchers.data ?? [],
+    vouchersLoading: vouchers.isLoading,
+    vouchersError: vouchers.error?.message,
+    retryVouchers: vouchers.refetch,
+    selectedVoucher,
+    retryPrice: estimate.refetch,
+    activeRide: active.data,
+    book,
+    submitting: create.isPending,
+    campaigns: campaigns.data ?? [],
+    campaignsLoading: campaigns.isLoading,
+    campaignsError: campaigns.error?.message,
+    retryCampaigns: campaigns.refetch,
+    claimVoucher: claim.mutate,
+    claimingCampaignId: claim.isPending ? (claim.variables ?? null) : null,
+  };
 }

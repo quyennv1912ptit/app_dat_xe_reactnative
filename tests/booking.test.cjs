@@ -13,12 +13,12 @@ vm.runInNewContext(
   { exports: utilsExports, require },
 );
 const sharedMock = { ...require('./i18n-loader.cjs'), ...utilsExports };
-function load(file, mocks = {}) {
+function load(file, mocks = {}, globals = {}) {
   const exports = {};
   const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => mocks[name] ?? (name === '@datxe/shared' ? sharedMock : require(name)) });
+  vm.runInNewContext(source, { exports, URLSearchParams, ...globals, require: name => mocks[name] ?? (name === '@datxe/shared' ? sharedMock : require(name)) });
   return exports;
 }
 const utils = load('bookingUtils.ts');
@@ -173,4 +173,154 @@ test('system-reward vouchers with null code are identified and displayed by id a
   assert.equal(useBookingDraft.getState().voucherCode, '');
   useBookingDraft.getState().clear();
   assert.equal(useBookingDraft.getState().voucherId, null);
+});
+
+test('pickup slots retain the 15 minute lead and 48 half-hour options', () => {
+  const slots = utils.createScheduleSlots(Date.parse('2026-11-10T07:09:00Z'));
+  assert.equal(slots.length, 48);
+  assert.equal(slots[0], '2026-11-10T07:30:00.000Z');
+  assert.equal(slots.at(-1), '2026-11-11T07:00:00.000Z');
+  assert.ok(slots.slice(1).every((slot, index) => Date.parse(slot) - Date.parse(slots[index]) === 30 * 60_000));
+  assert.equal(utils.createScheduleSlots(Date.parse('2026-11-10T07:15:00Z'))[0], slots[0]);
+  assert.equal(utils.createScheduleSlots(Date.parse('2026-11-10T07:15:01Z'))[0], slots[1]);
+});
+
+test('pickup day labels and summary use Vietnam time across midnight', () => {
+  const now = Date.parse('2026-11-10T16:58:00Z');
+  const slots = utils.createScheduleSlots(now);
+  const days = utils.groupScheduleSlots(slots, now);
+  assert.equal(days.length, 2);
+  assert.equal(days[0].label, 'Ngày mai');
+  assert.equal(days[0].slots.length, 47);
+  assert.match(days[1].label, /12\/11/);
+  assert.equal(days[1].slots[0], '2026-11-11T17:00:00.000Z');
+  assert.equal(utils.formatScheduleTime(days[1].slots[0]), '00:00');
+  assert.equal(utils.formatScheduledPickup(slots[0]), '00:30 · 11/11');
+});
+
+test('a duplicate schedule error lets the customer open ride history and applied pickup slots update booking', async () => {
+  let now = Date.parse('2026-11-10T07:09:00Z');
+  const clock = class extends Date { static now() { return now; } };
+  const states = [];
+  const refs = [];
+  let stateIndex, refIndex, quote, mutation, requestedQuote, booked, alert;
+  const routes = [];
+  class DuplicateScheduleError extends Error {
+    code = 'SCHEDULED_RIDE_EXISTS';
+  }
+  const price = { payableFare: 80_000 };
+  const { useBookingConfirmation } = load('hooks/useBookingConfirmation.ts', {
+    '@/lib/useWallet': { useWalletOverview: () => ({}) },
+    '@/lib/rideNavigation': { resetToRideScreen: () => {} },
+    '@/lib/walletApi': { walletApi: {} },
+    '@/lib/customerApi': { customerApi: { getCustomerProfile: async () => ({ default_payment_method: 'CASH' }) } },
+    '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
+    '@/lib/voucherPresentation': { getVoucherPresentation: v => ({ title: v?.code ?? 'Voucher', badge: 'Voucher', description: null, isCampaign: false }) },
+    '@datxe/shared': { walletBalance: () => undefined, translate: text => text, AuthApiError: DuplicateScheduleError },
+    '@datxe/ui': { localizedAlert: (...args) => { alert = args; } },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({ setQueryData: () => {} }),
+      useQuery: options => {
+        const name = options.queryKey[1];
+        if (name === 'bookingEstimate') quote = options;
+        return { data: name === 'getCustomerVehicles' ? [{ id: 7 }] : name === 'bookingEstimate' ? price : null, isSuccess: true };
+      },
+      useMutation: options => { mutation = options; return {}; },
+    },
+    'expo-router': { useRouter: () => ({ replace: route => routes.push(route) }) },
+    react: {
+      useState: initial => {
+        const index = stateIndex++;
+        if (!(index in states)) states[index] = initial;
+        return [states[index], value => { states[index] = value; }];
+      },
+      useRef: initial => refs[refIndex++] ??= { current: initial },
+    },
+    '../api': {
+      getActiveCustomerRide: async () => null,
+      getRideEstimate: async request => { requestedQuote = request; return price; },
+      createCustomerRide: async request => { booked = request; return { id: 42 }; },
+      getCustomerVehicles: async () => [{ id: 7 }],
+      getCustomerVouchers: async () => [],
+    },
+    '../bookingUtils': utils,
+    '../store': (() => {
+      let scheduledAt = null;
+      return {
+        useBookingDraft: () => ({
+          pickup, dropoff, vehicleId: 7, pickupNote: '', note: '', voucherCode: '', voucherId: null,
+          paymentMethod: 'CASH', scheduledAt, scheduleRequested: false,
+          setScheduledAt: value => { scheduledAt = value; },
+          clearScheduleRequest: () => {},
+          setPaymentMethod: () => {}, setVoucher: () => {}, setNote: () => {}, setBookedSnapshot: () => {},
+        }),
+      };
+    })(),
+  }, { Date: clock });
+  const render = () => { stateIndex = refIndex = 0; return useBookingConfirmation(); };
+
+  render().openSchedule();
+  let hook = render();
+  const first = utils.createScheduleSlots(hook.schedulePicker.referenceTime)[0];
+  now = Date.parse(first);
+  hook.selectSchedule(first);
+  hook = render();
+  assert.equal(hook.scheduleVisible, true);
+  assert.equal(hook.schedulePicker.expired, true);
+  assert.equal(hook.schedulePicker.referenceTime, now);
+  assert.equal(hook.scheduledAt, null);
+  assert.equal(quote.queryKey[2].scheduledAt, null);
+
+  const chosen = utils.createScheduleSlots(now)[0];
+  hook.selectSchedule(chosen);
+  hook = render();
+  assert.equal(hook.scheduleVisible, false);
+  assert.equal(quote.queryKey[2].scheduledAt, chosen);
+  await quote.queryFn();
+  assert.equal(requestedQuote.scheduledAt, chosen);
+  await mutation.mutationFn();
+  assert.equal(booked.scheduledAt, chosen);
+  assert.equal(booked.type, 'SCHEDULED');
+
+  hook.openSchedule();
+  hook = render();
+  assert.equal(hook.scheduledAt, chosen);
+  assert.equal(hook.schedulePicker.expired, false);
+  hook.closeSchedule();
+  assert.equal(render().scheduledAt, chosen);
+  render().openSchedule();
+  render().selectSchedule(null);
+  assert.equal(render().scheduledAt, null);
+  assert.equal(quote.queryKey[2].scheduledAt, null);
+  await mutation.mutationFn();
+  assert.equal(booked.type, 'INSTANT');
+  assert.equal(booked.scheduledAt, null);
+
+  await mutation.onError(new DuplicateScheduleError('Bạn đã có lịch hẹn'));
+  assert.match(alert[0], /đã có lịch hẹn/i);
+  assert.deepEqual(routes, []);
+  alert[2].find(button => button.text === 'Mở Lịch sử').onPress();
+  assert.deepEqual(routes, ['/(tabs)/history']);
+});
+
+test('voucherPresentation formats campaign slots, public codes and welcome rewards cleanly', () => {
+  const vpExports = {};
+  const vpSource = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../apps/customer/src/lib/voucherPresentation.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  vm.runInNewContext(vpSource, { exports: vpExports, require: () => sharedMock });
+  const campaign = vpExports.getVoucherPresentation({
+    id: 1, code: 'HE2026', campaignCode: 'HE2026', campaignTitle: 'Chào hè',
+    claimSequence: 5, campaignClaimLimit: 100, description: 'Giảm giá hè', source: 'CAMPAIGN',
+  });
+  assert.equal(campaign.title, 'Chào hè');
+  assert.equal(campaign.badge, 'HE2026 · Suất #5/100');
+  assert.equal(campaign.isCampaign, true);
+
+  const welcome = vpExports.getVoucherPresentation({
+    id: 2, code: null, campaignCode: null, milestone: 0, source: 'SYSTEM_REWARD',
+  });
+  assert.equal(welcome.title, 'Voucher chào mừng thành viên mới');
+  assert.equal(welcome.badge, 'Quà chào mừng');
+  assert.equal(welcome.isCampaign, false);
 });

@@ -144,6 +144,7 @@ export function WalletHistorySection({ items, loading, error, hasMore, loadingMo
 }
 
 const PRESET_AMOUNTS = [50_000, 100_000, 200_000, 500_000] as const;
+const formatAmountInput = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 export function WalletMoneyForm({
   mode,
@@ -204,7 +205,6 @@ export function WalletMoneyForm({
       setBusy(false);
     }
   };
-
   if (done) {
     return (
       <Card style={s.card}>
@@ -231,8 +231,8 @@ export function WalletMoneyForm({
       </Text>
       <PaperTextInput
         label="Số tiền (đ)"
-        draftValue={amount}
-        onChangeText={setAmount}
+        draftValue={formatAmountInput(amount)}
+        onChangeText={text => setAmount(text.replace(/\D/g, ''))}
         keyboardType="number-pad"
         maxLength={15}
         disabled={busy}

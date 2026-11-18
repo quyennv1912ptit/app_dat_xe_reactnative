@@ -273,6 +273,7 @@ test('HomeScreen does not guess vehicleTypes[0] when backend has not confirmed o
 test('OfferDecision avoids claiming "Đã trả qua ví" unless paymentStatus === PAID', () => {
   const { OfferDecision } = loadTs('apps/driver/src/features/offers/components/OfferDecision.tsx', {
     '@/lib/displayLabels': { transmissionLabel: v => v, vehicleTypeLabel: v => v },
+    '@/lib/scheduledPickup': { formatScheduledPickup: () => null },
     '@datxe/shared': { formatDistance: v => `${v} km`, formatMoney: v => `${v} đ` },
     '@datxe/ui': {
       offerPalette: {
@@ -288,6 +289,7 @@ test('OfferDecision avoids claiming "Đã trả qua ví" unless paymentStatus ==
       },
       Typography: 'Text',
       typography: new Proxy({}, { get: () => ({}) }),
+      useLanguage: () => 'vi',
     },
     '@expo/vector-icons': { MaterialIcons: 'MaterialIcons' },
     'react-native': { StyleSheet: { create: x => x }, View: 'View' },

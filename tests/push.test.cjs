@@ -258,7 +258,6 @@ test('driver trip notifications never open a different active trip', async () =>
   });
   assert.equal(current.pathname, '/ride/in-progress');
 });
-
 test('withdrawal result opens the exact driver request and presents its outcome', async () => {
   const event = { type: 'WITHDRAWAL_REVIEWED', payload: { withdrawalId: 99, status: 'REJECTED', title: 'Yêu cầu rút tiền bị từ chối', body: 'Sai số tài khoản. Số tiền đã được hoàn lại vào ví.' } };
   const destination = await contracts.resolvePushDestination(event, 'DRIVER', {});

@@ -9,6 +9,7 @@ import { useFonts } from "expo-font";
 import * as Location from "expo-location";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 import { DriverRealtimeBridge } from "./DriverRealtimeBridge";
@@ -18,9 +19,15 @@ import { PushBridge } from "./PushBridge";
 export default function RootLayout() {
   validateEnv();
   const [loaded, error] = useFonts(MaterialIcons.font);
+  const [fontTimeout, setFontTimeout] = useState(false);
   const foregroundLaunch = usePushForegroundLaunch();
-  useStartupLocationPermission(foregroundLaunch && Boolean(loaded || error), Location);
-  if (!foregroundLaunch || (!loaded && !error)) return null;
+  useEffect(() => {
+    const timer = setTimeout(() => setFontTimeout(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+  const fontsSettled = Boolean(loaded || error || fontTimeout);
+  useStartupLocationPermission(foregroundLaunch && fontsSettled, Location);
+  if (!foregroundLaunch || !fontsSettled) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>

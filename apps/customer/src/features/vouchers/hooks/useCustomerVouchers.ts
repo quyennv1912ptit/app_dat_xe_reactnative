@@ -1,5 +1,7 @@
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
+import { getVoucherPresentation } from '@/lib/voucherPresentation';
 import { translate as i18nT } from '@datxe/shared';
+import { localizedAlert } from '@datxe/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -31,11 +33,16 @@ export function useCustomerVouchers() {
       setClaimingId(campaignId);
       setClaimError('');
     },
-    onSuccess: async () => {
+    onSuccess: async (claimed) => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
         client.invalidateQueries({ queryKey: ['customer', 'getCustomerVoucherCampaigns'] }),
       ]);
+      const info = getVoucherPresentation(claimed);
+      localizedAlert(
+        i18nT('Đã nhận voucher {0}', { 0: info.title }),
+        i18nT('{0} · Đã thêm vào danh sách ưu đãi của bạn.', { 0: info.badge }),
+      );
     },
     onError: error => {
       setClaimError(

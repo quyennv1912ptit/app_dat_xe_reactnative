@@ -8,8 +8,29 @@ export const reviseDriverHandover = (id: number, phase: 'pickup' | 'dropoff', re
 export const getDriverRide=(id:number)=>request<CustomerRideDetail>('/driver/rides/'+id);
 export const confirmCashReceived=(id:number)=>request<{rideId:number;amount:number;status:NonNullable<CustomerRideDetail['payment']>['status'];paidAt:string|null}>('/driver/rides/'+id+'/payment/cash/confirm',{method:'POST'});
 
-export const rateRideCustomer = (id: number, stars: number, comment: string) =>
-  request(`/driver/rides/${id}/rating`, { method: 'POST', body: { stars, comment: comment.trim() || null } });
+export type DriverMyRating = {
+  rideId: number;
+  direction: string;
+  driverId: number | null;
+  customerId: number | null;
+  stars: number;
+  comment: string | null;
+  tip: number;
+  tags: string[];
+};
+
+export const getMyDriverRideRating = (id: number) =>
+  request<DriverMyRating | null>(`/driver/rides/${id}/rating/me`, { allowNull: true });
+
+export const rateRideCustomer = (id: number, stars: number, comment: string, tags?: string[] | null) =>
+  request(`/driver/rides/${id}/rating`, {
+    method: 'POST',
+    body: {
+      stars,
+      comment: comment.trim() || null,
+      ...(tags?.length ? { tags } : {}),
+    },
+  });
 
 export const cancelDriverRide = (id: number, reason: string) =>
   request<RideStatusResponse>(`/driver/rides/${id}/cancel`, { method: 'POST', body: { reason } });

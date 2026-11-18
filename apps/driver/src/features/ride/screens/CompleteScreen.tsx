@@ -21,6 +21,7 @@ import {
 import { Divider } from "react-native-paper";
 import { StyleSheet, View } from "react-native";
 import { useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { RideCustomerRating } from "../components/RideCustomerRating";
 import { HandoverSummary } from "../components/HandoverSummary";
 import { RideRouteCard } from "../components/RideRouteCard";
@@ -44,10 +45,16 @@ function ReceiptRow({
 
 export default function CompleteRideScreen() {
   const [confirmation, setConfirmation] = useState<{ rideId: number; amount: number } | null>(null);
+  const params = useLocalSearchParams<{ ratingStars?: string; ratingComment?: string; ratingTags?: string }>();
+  const receivedStars = params.ratingStars ? Number(params.ratingStars) : null;
+  const receivedComment = typeof params.ratingComment === "string" ? params.ratingComment.trim() : "";
+  const receivedTags = typeof params.ratingTags === "string" && params.ratingTags.trim()
+    ? params.ratingTags.split(",").map((item) => item.trim()).filter(Boolean)
+    : [];
 
   const themed_s = useThemedStyles(s);
   const colors = useThemeColors();
-  const { query: q, cash, router, valid } = useComplete();
+  const { query: q, myRating, cash, router, valid } = useComplete();
   const ride = q.data;
   const model = completePresentation(ride);
   const payment = ride?.payment;
@@ -97,6 +104,25 @@ export default function CompleteRideScreen() {
           </>
         ) : (
           <>
+            {receivedStars && Number.isFinite(receivedStars) && receivedStars > 0 ? (
+              <Card style={themed_s.card}>
+                <Text accessibilityRole="header" style={themed_s.title}>
+                  Đánh giá ẩn danh từ khách hàng ({receivedStars}/5 sao)
+                </Text>
+                <Text style={[typography.sectionTitle, { color: colors.onWarningContainer }]}>
+                  {"★".repeat(Math.min(5, Math.max(1, Math.round(receivedStars))))}
+                  {"☆".repeat(Math.max(0, 5 - Math.min(5, Math.max(1, Math.round(receivedStars)))))}
+                </Text>
+                {receivedComment ? (
+                  <Text style={themed_s.text}>Chú thích: “{receivedComment}”</Text>
+                ) : (
+                  <Text style={themed_s.label}>Khách hàng không để lại chú thích thêm.</Text>
+                )}
+                {receivedTags.length > 0 ? (
+                  <Text style={themed_s.label}>Thẻ: {receivedTags.join(" · ")}</Text>
+                ) : null}
+              </Card>
+            ) : null}
             <Card style={[styles.receiptCard, { backgroundColor: colors.rideSurface }]}>
               <View style={styles.summaryHeader}>
                 <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Biên lai chuyến #{ride.id}</Text>
@@ -109,7 +135,7 @@ export default function CompleteRideScreen() {
                     {earnings ? "Thu nhập sau chiết khấu" : ride.finalFare === null ? "Cước dự kiến" : "Cước chuyến đi"}
                   </Text>
                   <MoneyText
-                    value={earnings ? earnings.netAmount : (ride.finalFare ?? ride.estimatedFare)}
+                    value={earnings ? earnings.netAmount : (ride.finalFare ?? ride.payableFare ?? ride.estimatedFare)}
                     variant="display"
                     color={earnings ? colors.primary : colors.onSurface}
                     style={styles.price}
@@ -136,7 +162,7 @@ export default function CompleteRideScreen() {
                 ) : (
                   <ReceiptRow
                     label={ride.finalFare === null ? "Cước khách trả dự kiến" : "Tổng cước chuyến"}
-                    value={formatMoney(ride.finalFare ?? ride.estimatedFare, { nonBreaking: true })}
+                    value={formatMoney(ride.finalFare ?? ride.payableFare ?? ride.estimatedFare, { nonBreaking: true })}
                     strong
                   />
                 )}
@@ -194,8 +220,13 @@ export default function CompleteRideScreen() {
               ) : null}
             </Card>
 
-            {ride.status === "COMPLETED" && typeof ride.driverHasRatedCustomer === "boolean" ? (
-              <RideCustomerRating key={ride.id} rideId={ride.id} rated={ride.driverHasRatedCustomer} />
+            {ride.status === "COMPLETED" && (typeof ride.driverHasRatedCustomer === "boolean" || typeof ride.hasRated === "boolean" || myRating) ? (
+              <RideCustomerRating
+                key={ride.id}
+                rideId={ride.id}
+                rated={Boolean(ride.driverHasRatedCustomer || ride.hasRated || myRating)}
+                existingRating={myRating}
+              />
             ) : null}
             <RideRouteCard ride={ride} />
             {ride.handoverReports.map((report) => (

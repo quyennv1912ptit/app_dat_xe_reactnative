@@ -1,14 +1,62 @@
 import { formatMoney, getLocale, translate as i18nT } from '@datxe/shared';
-import type { CustomerVehicle, CustomerRideDetail, CustomerVoucher, PaymentMethod, RideCoordinates, RideEstimate, RideEstimateRequest } from '@datxe/shared';
+import type { CustomerVehicle, CustomerRideDetail, CustomerVoucher, CustomerVoucherCampaign, PaymentMethod, RideCoordinates, RideEstimate, RideEstimateRequest } from '@datxe/shared';
 import type { BookingPlace } from './types';
 
 export const DEFAULT_MAP_CENTER: RideCoordinates = { lat: 21.0285, lng: 105.8542 };
 
+const vietnamTimeZone = 'Asia/Ho_Chi_Minh';
+const minute = 60_000;
+const slotInterval = 30 * minute;
+const scheduleDateKey = new Intl.DateTimeFormat('en-CA', {
+  timeZone: vietnamTimeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+});
+const scheduleClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: vietnamTimeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+const scheduleShortDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: vietnamTimeZone, day: '2-digit', month: '2-digit',
+});
+
+export type SchedulePickerSession = { referenceTime: number; expired: boolean };
+
 /** Các mốc đặt trước 30 phút, bắt đầu từ mốc kế tiếp sau ít nhất 15 phút. */
 export function buildScheduleSlots(now = Date.now(), count = 48): string[] {
-  const step = 30 * 60_000;
-  const first = Math.ceil((now + 15 * 60_000) / step) * step;
-  return Array.from({ length: count }, (_, index) => new Date(first + index * step).toISOString());
+  const first = Math.ceil((now + 15 * minute) / slotInterval) * slotInterval;
+  return Array.from({ length: count }, (_, index) => new Date(first + index * slotInterval).toISOString());
+}
+
+export function createScheduleSlots(now: number): string[] {
+  return buildScheduleSlots(now, 48);
+}
+
+export function scheduleDayKey(time: string | number): string {
+  return scheduleDateKey.format(typeof time === 'string' ? Date.parse(time) : time);
+}
+
+export function groupScheduleSlots(slots: readonly string[], now: number) {
+  const today = scheduleDayKey(now);
+  const tomorrow = scheduleDayKey(now + 24 * 60 * minute);
+  const date = new Intl.DateTimeFormat(getLocale(), {
+    timeZone: vietnamTimeZone, weekday: 'short', day: '2-digit', month: '2-digit',
+  });
+  const days = new Map<string, { key: string; label: string; slots: string[] }>();
+  for (const slot of slots) {
+    const key = scheduleDayKey(slot);
+    const day = days.get(key);
+    if (day) day.slots.push(slot);
+    else days.set(key, {
+      key,
+      label: key === today ? i18nT('Hôm nay') : key === tomorrow ? i18nT('Ngày mai') : date.format(Date.parse(slot)),
+      slots: [slot],
+    });
+  }
+  return [...days.values()];
+}
+
+export const formatScheduleTime = (slot: string) => scheduleClock.format(Date.parse(slot));
+
+export function formatScheduledPickup(slot: string): string {
+  return `${formatScheduleTime(slot)} · ${scheduleShortDate.format(Date.parse(slot))}`;
 }
 export function activeRideDestination(ride: Pick<CustomerRideDetail, 'id' | 'status'>) {
   return {
@@ -76,6 +124,12 @@ export function voucherUnavailable(voucher: CustomerVoucher, subtotal: number | 
   if (Date.parse(voucher.validTo) <= now) return i18nT("Ưu đãi đã hết hạn");
   if (voucher.usageLimit !== null && voucher.usageCount >= voucher.usageLimit) return i18nT("Đã hết lượt sử dụng");
   if (subtotal !== undefined && subtotal < voucher.minimumOrderAmount) return i18nT("Áp dụng từ {0}", {"0": money(voucher.minimumOrderAmount)});
+  return null;
+}
+export function campaignClaimBlocked(campaign: CustomerVoucherCampaign, now = Date.now()): string | null {
+  if (Date.parse(campaign.validTo) <= now) return i18nT("Ưu đãi đã hết hạn");
+  if (campaign.claimedCount >= campaign.claimLimit) return i18nT("Đã hết lượt nhận");
+  if (campaign.budgetRemaining <= 0) return i18nT("Đã hết ngân sách ưu đãi");
   return null;
 }
 export function minimumFareAdjustment(quote: RideEstimate): number {

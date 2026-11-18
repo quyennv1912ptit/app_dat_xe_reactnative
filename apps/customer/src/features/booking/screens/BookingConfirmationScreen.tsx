@@ -2,7 +2,7 @@ import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { List } from 'react-native-paper';
 import { MoneyText } from '@/components/CustomerRideUI';
 import { MapSheetLayout } from '@datxe/ui/goong-map';
-import { getLocale, translate as i18nT } from '@datxe/shared';
+import { formatMoney, translate as i18nT } from '@datxe/shared';
 import {
   Button,
   Card,
@@ -20,7 +20,7 @@ import { useState, type ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BookingMap } from '@/components/map/BookingMap';
-import { activeRideDestination, DEFAULT_MAP_CENTER, voucherDisplayName } from '../bookingUtils';
+import { activeRideDestination, DEFAULT_MAP_CENTER, formatScheduledPickup } from '../bookingUtils';
 import { bookingStyles as base_s } from '../components/bookingStyles';
 import { checkoutStyles } from '../components/checkoutStyles';
 import { FareDetails } from '../components/FareDetails';
@@ -29,6 +29,7 @@ import { RideRouteBar } from '../components/RideRouteBar';
 import { SchedulePickerModal } from '../components/SchedulePickerModal';
 import { VoucherPickerModal } from '../components/VoucherPickerModal';
 import { useBookingConfirmation } from '../hooks/useBookingConfirmation';
+import { getVoucherPresentation } from '@/lib/voucherPresentation';
 // The sheet uses Gesture Handler's native TextInput. Its adapter forwards the
 // same editor used by the uncontrolled draft component, with an optional ref value.
 const SheetDraftInput = BottomSheetTextInput as unknown as NonNullable<ComponentProps<typeof TextInput>["inputComponent"]>;
@@ -45,13 +46,11 @@ export default function BookingConfirmationScreen() {
 
   const h = useBookingConfirmation();
   const [paymentVisible, setPaymentVisible] = useState(false);
-  const scheduleTime = h.scheduledAt
-    ? new Date(h.scheduledAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false })
-    : '';
+  const scheduleTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : '';
   const voucherLabel = h.selectedVoucher
-    ? voucherDisplayName(h.selectedVoucher)
+    ? getVoucherPresentation(h.selectedVoucher).title
     : h.draft.voucherCode || (h.draft.voucherId != null ? i18nT("Đã chọn ưu đãi") : "");
-
+  const discount = h.estimate?.discountAmount ?? 0;
   return (
     <>
       <MapSheetLayout
@@ -191,7 +190,11 @@ export default function BookingConfirmationScreen() {
             >
               <MaterialIcons name="local-offer" size={18} color={colors.primary} />
               <Text style={[checkout.optionLabel, Boolean(voucherLabel) && checkout.optionLabelActive]}>
-                {voucherLabel || i18nT('Ưu đãi')}
+                {voucherLabel
+                  ? discount > 0
+                    ? `${voucherLabel} (-${formatMoney(discount, { nonBreaking: true })})`
+                    : voucherLabel
+                  : i18nT('Ưu đãi')}
               </Text>
               <MaterialIcons name="chevron-right" size={16} color={colors.onSurfaceVariant} />
             </Pressable>
@@ -298,17 +301,20 @@ export default function BookingConfirmationScreen() {
         subtotal={h.estimate?.estimatedFare}
         onApply={(selection) => void h.applyVoucher(selection)}
         onRetry={() => void h.retryVouchers()}
+        campaigns={h.campaigns}
+        campaignsLoading={h.campaignsLoading}
+        campaignsError={h.campaignsError}
+        retryCampaigns={() => void h.retryCampaigns()}
+        claimVoucher={(id) => void h.claimVoucher(id)}
+        claimingCampaignId={h.claimingCampaignId}
       />
       <SchedulePickerModal
         key={h.scheduleVisible ? 'schedule-open' : 'schedule-closed'}
         visible={h.scheduleVisible}
-        close={() => h.setScheduleVisible(false)}
+        close={h.closeSchedule}
         selected={h.scheduledAt}
-        slots={h.slots}
-        onSelect={(slot) => {
-          h.setScheduledAt(slot);
-          h.setScheduleVisible(false);
-        }}
+        session={h.schedulePicker}
+        onSelect={h.selectSchedule}
       />
     </>
   );

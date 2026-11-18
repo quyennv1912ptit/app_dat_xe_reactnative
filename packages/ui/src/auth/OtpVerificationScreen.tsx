@@ -83,6 +83,7 @@ export function OtpVerificationScreen({
     }
     setLoading(true);
     setError("");
+    let navigated = false;
     try {
       const user = await confirmPhoneCode(code);
       try {
@@ -94,9 +95,11 @@ export function OtpVerificationScreen({
           );
         }
         onHome();
+        navigated = true;
       } catch (cause) {
         if (isAccountNotFound(cause)) {
           onRegister(normalizeVietnamPhoneNumber(phone));
+          navigated = true;
           return;
         }
         throw cause;
@@ -104,7 +107,10 @@ export function OtpVerificationScreen({
     } catch (cause) {
       setError(getErrorMessage(cause));
     } finally {
-      setLoading(false);
+      // Giữ nguyên cây View khi màn OTP đang được thay thế. Đổi trạng thái
+      // Button ngay sau router.replace có thể khiến Fabric reparent View
+      // trong lúc native-stack vẫn đang chạy animation rời màn hình.
+      if (!navigated) setLoading(false);
     }
   };
 

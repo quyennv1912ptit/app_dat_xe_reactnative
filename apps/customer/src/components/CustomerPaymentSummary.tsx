@@ -21,7 +21,7 @@ export function CustomerPaymentSummary({ ride }: { ride: CustomerRideDetail }) {
   const cash = payment?.method === "CASH";
   const pendingCash = cash && payment.status === "PENDING" && ride.status === "COMPLETED";
   const paidCash = cash && payment.status === "PAID";
-  const amount = payment?.amount ?? ride.finalFare ?? ride.estimatedFare;
+  const amount = payment?.amount ?? ride.finalFare ?? ride.payableFare ?? ride.estimatedFare;
   const label = isUnbilledTerminal && !payment
     ? "Trạng thái thanh toán"
     : pendingCash
@@ -70,7 +70,6 @@ export function CustomerPaymentSummary({ ride }: { ride: CustomerRideDetail }) {
       </Card>
     );
   }
-
   return (
     <Card style={styles.card}>
       <View style={styles.header}>

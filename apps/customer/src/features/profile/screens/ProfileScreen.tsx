@@ -1,4 +1,3 @@
-import { useWalletOverview } from '@/lib/useWallet';
 import { ActivityIndicator, Divider, IconButton } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import {
@@ -11,6 +10,7 @@ import {
   getCustomerInitials,
 } from "@/lib/customerName";
 import { useTranslation } from "@/lib/settings/i18n";
+import { useWalletOverview } from "@/lib/useWallet";
 import { formatMoney, walletBalance, translate as i18nT, signOutFirebase } from "@datxe/shared";
 import type { ProfileScreenMenuItem } from "@datxe/ui";
 import {

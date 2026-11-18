@@ -1,20 +1,25 @@
 import { request } from '@/lib/api';
+import { customerApi } from '@/lib/customerApi';
+import { getBookingRoute } from '@/lib/directions';
+import { getVoucherPresentation } from '@/lib/voucherPresentation';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import { useWalletOverview } from '@/lib/useWallet';
-import { getVehicleCatalog, vehicleCatalogQueryKey, walletBalance } from '@datxe/shared';
-import { useQuery } from '@tanstack/react-query';
+import { getVehicleCatalog, translate as i18nT, vehicleCatalogQueryKey, walletBalance } from '@datxe/shared';
+import { localizedAlert } from '@datxe/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { getActiveCustomerRide, getBookingRoute, getCustomerProfile, getCustomerVehicles, getCustomerVouchers } from '../api';
-import { buildScheduleSlots, isVoucherSelected, selectBookingVehicle } from '../bookingUtils';
+import { getActiveCustomerRide, getCustomerProfile, getCustomerVehicles, getCustomerVouchers } from '../api';
+import { isVoucherSelected, selectBookingVehicle, type SchedulePickerSession } from '../bookingUtils';
 import { useBookingDraft } from '../store';
 export function useVehicleSelection() {
   const router = useRouter();
+  const client = useQueryClient();
   const params = useLocalSearchParams<{ edit?: string }>();
   const draft = useBookingDraft();
   const [selectedId, setSelectedId] = useState(draft.vehicleId);
   const [scheduleVisible, setScheduleVisible] = useState(false);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [schedulePicker, setSchedulePicker] = useState<SchedulePickerSession | null>(null);
   const [voucherVisible, setVoucherVisible] = useState(false);
   const profile = useQuery({ queryKey: ['customer', 'getCustomerProfile'], queryFn: getCustomerProfile });
   const wallet = useWalletOverview();
@@ -31,6 +36,23 @@ export function useVehicleSelection() {
     queryKey: ['customer', 'getCustomerVouchers'],
     queryFn: getCustomerVouchers,
     enabled: voucherVisible || Boolean(draft.voucherCode) || draft.voucherId != null,
+  });
+  const campaigns = useQuery({
+    queryKey: ['customer', 'voucherCampaigns'],
+    queryFn: customerApi.getCustomerVoucherCampaigns,
+    enabled: voucherVisible,
+  });
+  const claim = useMutation({
+    mutationFn: customerApi.claimCustomerVoucherCampaign,
+    onSuccess: async (claimed) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['customer', 'getCustomerVouchers'] }),
+        client.invalidateQueries({ queryKey: ['customer', 'voucherCampaigns'] }),
+      ]);
+      const info = getVoucherPresentation(claimed);
+      localizedAlert(i18nT('Đã nhận voucher {0}', { '0': info.title }), i18nT('{0} · Đã thêm vào danh sách ưu đãi của bạn.', { '0': info.badge }));
+    },
+    onError: (err) => localizedAlert(i18nT('Không nhận được voucher'), err instanceof Error ? err.message : i18nT('Ưu đãi có thể đã hết lượt hoặc ngân sách.')),
   });
   const selectedVoucher = vouchers.data?.find(item =>
     isVoucherSelected(item, draft.voucherCode, draft.voucherId),
@@ -68,8 +90,19 @@ export function useVehicleSelection() {
     else router.push('/ride/confirm');
   };
   const openSchedule = () => {
-    setSlots(buildScheduleSlots());
+    setSchedulePicker({ referenceTime: Date.now(), expired: false });
     setScheduleVisible(true);
+  };
+  const closeSchedule = () => setScheduleVisible(false);
+  const selectSchedule = (slot: string | null) => {
+    const now = Date.now();
+    if (slot !== null && Date.parse(slot) <= now) {
+      setSchedulePicker({ referenceTime: now, expired: true });
+      return;
+    }
+    if (slot === null) draft.clearScheduleRequest();
+    draft.setScheduledAt(slot);
+    closeSchedule();
   };
   return {
     router,
@@ -90,8 +123,10 @@ export function useVehicleSelection() {
     setScheduledAt: draft.setScheduledAt,
     scheduleVisible,
     setScheduleVisible,
-    slots,
+    schedulePicker,
     openSchedule,
+    closeSchedule,
+    selectSchedule,
     paymentMethod,
     setPaymentMethod: draft.setPaymentMethod,
     walletBalance: balance,
@@ -107,5 +142,11 @@ export function useVehicleSelection() {
     applyVoucher,
     selectedVoucher,
     retryVouchers: vouchers.refetch,
+    campaigns: campaigns.data ?? [],
+    campaignsLoading: campaigns.isLoading,
+    campaignsError: campaigns.error?.message,
+    retryCampaigns: campaigns.refetch,
+    claimVoucher: claim.mutate,
+    claimingCampaignId: claim.isPending ? (claim.variables ?? null) : null,
   };
 }

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import type { CustomerRideDetail } from '@datxe/shared';
-import { getDriverRide, confirmCashReceived } from '../api';
+import { getDriverRide, confirmCashReceived, getMyDriverRideRating } from '../api';
 
 export function useComplete() {
   const { rideId } = useLocalSearchParams<{ rideId?: string }>();
@@ -13,8 +13,15 @@ export function useComplete() {
   const valid = Number.isSafeInteger(id) && id > 0;
   const key = ['driver', 'ride', id];
   const query = useQuery({ queryKey: key, queryFn: () => getDriverRide(id), enabled: valid, refetchOnWindowFocus: 'always', refetchInterval: q => q.state.data?.payment?.status === 'PENDING' ? 5000 : false });
+  const myRatingQuery = useQuery({
+    queryKey: ['driver', 'ride', id, 'my-rating'],
+    queryFn: () => getMyDriverRideRating(id),
+    enabled: valid && query.data?.status === 'COMPLETED',
+    retry: false,
+  });
   const refetch = query.refetch;
-  useRefreshOnFocus(useCallback(() => valid ? refetch() : undefined, [valid, refetch]));
+  const refetchRating = myRatingQuery.refetch;
+  useRefreshOnFocus(useCallback(() => valid ? Promise.all([refetch(), refetchRating()]) : undefined, [valid, refetch, refetchRating]));
   const cash = useMutation({
     mutationFn: () => {
       if (!valid || query.data?.status !== 'COMPLETED' || query.data.payment?.method !== 'CASH' || query.data.payment.status !== 'PENDING')
@@ -31,5 +38,5 @@ export function useComplete() {
       ]);
     },
   });
-  return { query, cash, router, valid };
+  return { query, myRating: myRatingQuery.data ?? null, cash, router, valid };
 }

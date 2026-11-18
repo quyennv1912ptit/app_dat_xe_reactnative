@@ -1,7 +1,7 @@
 import { customerType } from "@/components/CustomerRideUI";
 import { ActivityIndicator } from "react-native-paper";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { translate as i18nT } from "@datxe/shared";
 import {
   Button,
   GroupedList,
@@ -17,7 +17,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { BookingMap } from "@/components/map/BookingMap";
-import { activeRideDestination, DEFAULT_MAP_CENTER, voucherDisplayName } from "../bookingUtils";
+import { activeRideDestination, DEFAULT_MAP_CENTER, formatScheduledPickup } from "../bookingUtils";
 import { bookingStyles as base_s } from "../components/bookingStyles";
 import { checkoutStyles } from "../components/checkoutStyles";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
@@ -25,6 +25,7 @@ import { RideRouteBar } from "../components/RideRouteBar";
 import { SchedulePickerModal } from "../components/SchedulePickerModal";
 import { VoucherPickerModal } from "../components/VoucherPickerModal";
 import { useVehicleSelection } from "../hooks/useVehicleSelection";
+import { getVoucherPresentation } from "@/lib/voucherPresentation";
 
 export default function VehicleSelectionScreen() {
   const extra = useThemedStyles(extraStyles);
@@ -38,10 +39,10 @@ export default function VehicleSelectionScreen() {
 
   const h = useVehicleSelection();
   const [paymentVisible, setPaymentVisible] = useState(false);
-  const scheduleTime = h.scheduledAt
-    ? new Date(h.scheduledAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false })
-    : '';
-  const voucherLabel = h.selectedVoucher ? voucherDisplayName(h.selectedVoucher) : h.draft.voucherCode;
+  const scheduleTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : '';
+  const voucherLabel = h.selectedVoucher
+    ? getVoucherPresentation(h.selectedVoucher).title
+    : h.draft.voucherCode || (h.draft.voucherId != null ? i18nT("Đã chọn ưu đãi") : "");
 
   return (
     <>
@@ -302,17 +303,20 @@ export default function VehicleSelectionScreen() {
         applyingKey={h.applyingKey}
         onApply={(selection) => h.applyVoucher(selection)}
         onRetry={() => void h.retryVouchers()}
+        campaigns={h.campaigns}
+        campaignsLoading={h.campaignsLoading}
+        campaignsError={h.campaignsError}
+        retryCampaigns={() => void h.retryCampaigns()}
+        claimVoucher={(id) => void h.claimVoucher(id)}
+        claimingCampaignId={h.claimingCampaignId}
       />
       <SchedulePickerModal
         key={h.scheduleVisible ? 'schedule-open' : 'schedule-closed'}
         visible={h.scheduleVisible}
-        close={() => h.setScheduleVisible(false)}
+        close={h.closeSchedule}
         selected={h.scheduledAt}
-        slots={h.slots}
-        onSelect={(slot) => {
-          h.setScheduledAt(slot);
-          h.setScheduleVisible(false);
-        }}
+        session={h.schedulePicker}
+        onSelect={h.selectSchedule}
       />
     </>
   );

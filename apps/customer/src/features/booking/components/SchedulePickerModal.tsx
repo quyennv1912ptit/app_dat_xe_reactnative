@@ -1,281 +1,301 @@
-import { getLocale, translate as i18nT } from '@datxe/shared';
-import type { ThemeColors } from '@datxe/ui';
+import { translate as i18nT } from "@datxe/shared";
+import type { ThemeColors } from "@datxe/ui";
 import {
-  Button,
   MotionPressable as Pressable,
+  ScreenWrapper,
   Typography as Text,
   typography,
   useLanguage,
   useThemeColors,
   useThemedStyles,
-} from '@datxe/ui';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "@datxe/ui";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useState } from "react";
+import {
+  Modal,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import {
+  createScheduleSlots,
+  formatScheduledPickup,
+  formatScheduleTime,
+  groupScheduleSlots,
+  scheduleDayKey,
+  type SchedulePickerSession,
+} from "../bookingUtils";
+import { bookingStyles } from "./bookingStyles";
 
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+type SchedulePickerProps = {
+  visible: boolean;
+  close: () => void;
+  session: SchedulePickerSession | null;
+  selected: string | null;
+  onSelect: (slot: string | null) => void;
+};
+
+const gridGap = 8;
+const sheetPadding = 16;
 
 export function SchedulePickerModal({
   visible,
   close,
-  slots,
+  session,
   selected,
   onSelect,
-}: {
-  visible: boolean;
-  close: () => void;
-  slots: string[];
-  selected: string | null;
-  onSelect: (slot: string | null) => void;
-}) {
-  const s = useThemedStyles(makeStyles);
-  useLanguage();
-  const colors = useThemeColors();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [pending, setPending] = useState<string | null>(
-    selected && slots.includes(selected) ? selected : slots[0] ?? null,
-  );
-
-  const pendingDate = pending ? new Date(pending) : null;
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-
-  const timeLabel = (value: string) => new Date(value).toLocaleTimeString(getLocale(), {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const dayLabel = (value: string) => {
-    const date = new Date(value);
-    if (sameDay(date, now)) return i18nT('Hôm nay');
-    if (sameDay(date, tomorrow)) return i18nT('Ngày mai');
-    return date.toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const confirm = () => {
-    if (pending) onSelect(pending);
-  };
+}: SchedulePickerProps) {
+  const styles = useThemedStyles(createStyles);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <View style={s.scrim}>
-        <Pressable accessibilityLabel={i18nT('Đóng lịch đón')} style={s.backdrop} onPress={close} />
-        <View style={[s.sheet, { paddingBottom: Math.max(18, insets.bottom + 10) }]}>
-          <View style={s.header}>
-            <Text style={s.title}>{i18nT('Chọn thời gian tài xế đến đón')}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={i18nT('Đóng')}
-              onPress={close}
-              style={s.close}
-            >
-              <MaterialIcons name="close" size={21} color={colors.onSurface} />
-            </Pressable>
-          </View>
-
-          <View style={s.columnHeader}>
-            <Text style={s.columnText}>{i18nT('Thời gian')}</Text>
-            <Text style={s.columnText}>{i18nT('Ngày')}</Text>
-          </View>
-
-          <ScrollView style={s.list} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
-            {slots.map((slot) => {
-              const active = slot === pending;
-              return (
-                <Pressable
-                  key={slot}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => setPending(slot)}
-                  style={[s.row, active && s.rowActive]}
-                >
-                  <Text style={[s.time, active && s.timeActive]}>{timeLabel(slot)}</Text>
-                  <Text style={[s.day, active && s.dayActive]}>{dayLabel(slot)}</Text>
-                </Pressable>
-              );
-            })}
-            {!slots.length ? (
-              <Text style={s.empty}>{i18nT('Chưa có khung giờ phù hợp. Vui lòng thử lại.')}</Text>
-            ) : null}
-          </ScrollView>
-
-          <View style={s.summary}>
-            <Text style={s.summaryText}>
-              {i18nT('Tài xế sẽ đón bạn lúc')}{' '}
-              <Text style={s.summaryStrong}>
-                {pendingDate ? `${timeLabel(pending!)}, ${dayLabel(pending!)}` : i18nT('Chưa chọn giờ')}
-              </Text>
-            </Text>
-          </View>
-
-          <View style={s.perks}>
-            <View style={s.perk}>
-              <View style={s.perkIcon}>
-                <MaterialIcons name="bolt" size={20} color={colors.primary} />
-              </View>
-              <View style={s.perkCopy}>
-                <Text style={s.perkTitle}>{i18nT('Ưu tiên tìm tài xế')}</Text>
-                <Text style={s.perkText}>
-                  {i18nT('Hệ thống sẽ ưu tiên tìm tài xế cho chuyến xe đặt trước so với những chuyến khác')}
-                </Text>
-              </View>
-            </View>
-            <View style={s.perk}>
-              <View style={s.perkIcon}>
-                <MaterialIcons name="percent" size={20} color={colors.primary} />
-              </View>
-              <View style={s.perkCopy}>
-                <Text style={s.perkTitle}>{i18nT('Hủy miễn phí trước chuyến đi 30 phút')}</Text>
-                <Text style={s.perkText}>
-                  {i18nT('Sau thời gian này, phí hủy chuyến sẽ được áp dụng.')}{' '}
-                  <Text
-                    accessibilityRole="link"
-                    style={s.link}
-                    onPress={() => { close(); router.push('/support'); }}
-                  >
-                    {i18nT('Xem chi tiết tại đây')}
-                  </Text>
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={i18nT('Tìm hiểu thêm về dịch vụ')}
-            onPress={() => { close(); router.push('/support'); }}
-            style={s.learnMore}
-          >
-            <MaterialIcons name="info-outline" size={17} color={colors.primary} />
-            <Text style={s.learnMoreText}>{i18nT('Tìm hiểu thêm về dịch vụ')}</Text>
-          </Pressable>
-
-          <Button
-            label="Xác nhận"
-            disabled={!pending}
-            onPress={confirm}
-            style={s.cta}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={close}
+    >
+      <View style={styles.overlay}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          accessible={false}
+          onPress={close}
+        />
+        {session ? (
+          <ScheduleChoices
+            key={session.referenceTime}
+            session={session}
+            selected={selected}
+            close={close}
+            onSelect={onSelect}
           />
-        </View>
+        ) : null}
       </View>
     </Modal>
   );
 }
 
-const makeStyles = (colors: ThemeColors) =>
+function ScheduleChoices({
+  session,
+  selected,
+  close,
+  onSelect,
+}: Omit<SchedulePickerProps, "visible" | "session"> & {
+  session: SchedulePickerSession;
+}) {
+  useLanguage();
+  const styles = useThemedStyles(createStyles);
+  const base = useThemedStyles(bookingStyles);
+  const colors = useThemeColors();
+  const { width, fontScale } = useWindowDimensions();
+  const { referenceTime, expired } = session;
+  const days = groupScheduleSlots(
+    createScheduleSlots(referenceTime),
+    referenceTime,
+  );
+  const selectedExpired =
+    selected !== null && Date.parse(selected) <= referenceTime;
+  const current = selectedExpired ? null : selected;
+  const selectedDay = current
+    ? days.find((day) => day.key === scheduleDayKey(current))
+    : undefined;
+  const [dayKey, setDayKey] = useState(() => (selectedDay ?? days[0]).key);
+  const day = days.find((option) => option.key === dayKey) ?? days[0];
+  const gridWidth = Math.max(240, width - 2 * sheetPadding);
+  const columns = Math.max(
+    1,
+    Math.min(
+      4,
+      Math.floor(
+        (gridWidth + gridGap) / (76 * Math.max(1, fontScale) + gridGap),
+      ),
+    ),
+  );
+  const slotWidth = Math.floor((gridWidth - (columns - 1) * gridGap) / columns);
+  const slotHeight = Math.max(48, Math.ceil(22 * fontScale) + 20);
+  const selectedIndex = current ? day.slots.indexOf(current) : -1;
+  const initialOffset =
+    Math.floor(Math.max(0, selectedIndex) / columns) * (slotHeight + gridGap);
+
+  return (
+    <ScreenWrapper
+      edges={["bottom"]}
+      style={[base.sheet, styles.sheet]}
+      accessibilityViewIsModal
+    >
+      <View style={base.handle} />
+      <View style={styles.header}>
+        <Text accessibilityRole="header" style={[base.title, styles.title]}>
+          {i18nT("Chọn giờ đón")}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={i18nT("Đóng")}
+          onPress={close}
+          style={styles.close}
+        >
+          <MaterialIcons name="close" size={24} color={colors.onSurface} />
+        </Pressable>
+      </View>
+
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityLabel={i18nT("Đi ngay")}
+        accessibilityState={{ checked: selected === null }}
+        style={[styles.instant, selected === null && styles.selected]}
+        onPress={() => onSelect(null)}
+      >
+        <MaterialIcons name="bolt" size={22} color={colors.primary} />
+        <Text style={[base.text, styles.grow]}>{i18nT("Đi ngay")}</Text>
+        {selected === null ? (
+          <MaterialIcons name="check" size={20} color={colors.primary} />
+        ) : null}
+      </Pressable>
+
+      {expired || selectedExpired ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={[base.muted, styles.alert]}
+        >
+          {i18nT("Giờ hẹn đã qua. Hãy chọn lại thời gian đón.")}
+        </Text>
+      ) : null}
+      {current && !selectedDay?.slots.includes(current) ? (
+        <View style={[styles.instant, styles.selected]}>
+          <MaterialIcons name="check" size={18} color={colors.primary} />
+          <Text style={[base.muted, styles.grow]}>
+            {i18nT("Đang chọn {0}", { "0": formatScheduledPickup(current) })}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.section}>
+        <Text style={base.label}>{i18nT("Đặt trước · Giờ Việt Nam")}</Text>
+        <View style={styles.dayTabs} accessibilityRole="tablist">
+          {days.map((option) => (
+            <Pressable
+              key={option.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: option.key === day.key }}
+              onPress={() => setDayKey(option.key)}
+              style={[styles.day, option.key === day.key && styles.selected]}
+            >
+              <Text
+                style={[base.label, option.key === day.key && styles.accent]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView
+        key={day.key + "-" + columns}
+        contentContainerStyle={styles.grid}
+        contentOffset={{ x: 0, y: initialOffset }}
+        style={styles.times}
+      >
+        {day.slots.map((slot) => {
+          const checked = slot === current;
+          const time = formatScheduleTime(slot);
+          return (
+            <Pressable
+              key={slot}
+              accessibilityRole="radio"
+              accessibilityLabel={`${time}, ${day.label}`}
+              accessibilityState={{ checked }}
+              onPress={() => onSelect(slot)}
+              style={[
+                styles.slot,
+                { width: slotWidth, minHeight: slotHeight },
+                checked && styles.selected,
+              ]}
+            >
+              <Text
+                style={[
+                  base.text,
+                  styles.time,
+                  checked && styles.accent,
+                ]}
+              >
+                {time}
+              </Text>
+              {checked ? (
+                <MaterialIcons name="check" size={16} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </ScreenWrapper>
+  );
+}
+
+const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    scrim: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim60 },
-    backdrop: { flex: 1 },
+    overlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: colors.scrim60,
+    },
     sheet: {
-      maxHeight: '94%',
-      backgroundColor: colors.surfaceContainerLowest,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      gap: 10,
+      flex: 0,
+      maxHeight: "86%",
+      padding: sheetPadding,
+      gap: 12,
     },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    title: {
-      ...typography.cardTitle,
-      flex: 1,
-      color: colors.onSurface,
-    },
+    header: { flexDirection: "row", alignItems: "center", gap: 8 },
+    title: { flex: 1 },
+    grow: { flex: 1 },
     close: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    instant: {
+      minHeight: 48,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
       backgroundColor: colors.surfaceContainerHigh,
     },
-    columnHeader: {
-      flexDirection: 'row',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 10,
-      backgroundColor: colors.surfaceContainerHigh,
-    },
-    columnText: {
-      ...typography.label,
-      flex: 1,
-      color: colors.onSurface,
-    },
-    list: { maxHeight: 160 },
-    listContent: { gap: 2 },
-    row: {
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      borderRadius: 10,
-    },
-    rowActive: { backgroundColor: colors.surfaceContainerHigh },
-    time: {
-      ...typography.body,
-      flex: 1,
-      color: colors.onSurfaceVariant,
-      fontVariant: ['tabular-nums'],
-    },
-    timeActive: { ...typography.cardTitle, color: colors.onSurface },
+    section: { gap: 6 },
+    dayTabs: { flexDirection: "row", flexWrap: "wrap", gap: gridGap },
     day: {
-      ...typography.label,
-      flex: 1,
-      color: colors.onSurfaceVariant,
+      minHeight: 48,
+      minWidth: 48,
+      maxWidth: "100%",
+      justifyContent: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 24,
+      backgroundColor: colors.surfaceContainerHigh,
     },
-    dayActive: { color: colors.onSurface },
-    empty: {
-      ...typography.caption,
-      color: colors.onSurfaceVariant,
-      paddingVertical: 16,
-      textAlign: 'center',
+    times: { flexGrow: 0, flexShrink: 1 },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: gridGap, paddingBottom: 8 },
+    slot: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 8,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceContainerHigh,
     },
-    summary: {
+    time: { ...typography.button, fontVariant: ["tabular-nums"] },
+    selected: { backgroundColor: colors.primarySoft },
+    accent: { color: colors.primary },
+    alert: {
+      color: colors.onErrorContainer,
+      backgroundColor: colors.errorContainer,
       padding: 12,
       borderRadius: 12,
-      backgroundColor: colors.surfaceContainerLow,
     },
-    summaryText: {
-      ...typography.body,
-      color: colors.onSurface,
-      textAlign: 'center',
-    },
-    summaryStrong: { ...typography.label, color: colors.primary },
-    perks: { gap: 12 },
-    perk: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    perkIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.primaryFixedTint,
-    },
-    perkCopy: { flex: 1, gap: 2 },
-    perkTitle: {
-      ...typography.label,
-      color: colors.onSurface,
-    },
-    perkText: {
-      ...typography.bodySecondary,
-      color: colors.onSurfaceVariant,
-    },
-    link: { ...typography.label, color: colors.primary },
-    learnMore: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 4,
-    },
-    learnMoreText: {
-      ...typography.label,
-      color: colors.primary,
-    },
-    cta: { height: 50, backgroundColor: colors.primary },
   });

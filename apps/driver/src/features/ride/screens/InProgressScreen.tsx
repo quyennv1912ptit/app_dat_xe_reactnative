@@ -4,6 +4,7 @@ import { Appbar, Divider, ProgressBar } from "react-native-paper";
 import { DriverPage } from "@/components/DriverPage";
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
 import { useSessionStore } from "@/lib/store";
+import { formatScheduledPickup } from "@/lib/scheduledPickup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CustomerRideDetail } from "@datxe/shared";
@@ -14,7 +15,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { RideRouteCard } from "../components/RideRouteCard";
 import { RideStatusBanner } from "../components/RideStatusBanner";
 import { StyleSheet, View } from "react-native";
-import { formatDistance } from "@datxe/shared";
+import { formatDistance, formatMoney } from "@datxe/shared";
 import {
   Button,
   Card,
@@ -26,6 +27,7 @@ import {
   borderRadius,
   spacing,
   typography,
+  useLanguage,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
@@ -34,6 +36,7 @@ import { useInProgress } from "../hooks/useInProgress";
 import { ridePresentation, type RideStop } from "../ridePresentation";
 
 export default function InProgressRideScreen() {
+  useLanguage();
   const themed_s = useThemedStyles(s);
   const colors = useThemeColors();
 
@@ -46,6 +49,7 @@ export default function InProgressRideScreen() {
     progress,
     advance,
   } = useInProgress();
+  const pickupTime = formatScheduledPickup(ride?.scheduledAt);
   const client = useQueryClient();
   const [confirmation, setConfirmation] = useState<{ rideId: number; userId: number } | null>(null);
   const [reason, setReason] = useState("");
@@ -88,6 +92,8 @@ export default function InProgressRideScreen() {
   }
 
   const action = model?.action;
+  const driverNetEarning = ride?.driverEarnings?.netAmount ?? ride?.driverExpectedEarning;
+  const customerFare = ride ? (ride.finalFare ?? ride.payableFare ?? ride.estimatedFare) : 0;
   const inspection = (stop: RideStop) => {
     if (ride) router.push({ pathname: "/ride/vehicle-inspection", params: { rideId: String(ride.id), stop } });
   };
@@ -175,17 +181,32 @@ export default function InProgressRideScreen() {
             </View>
           ) : null}
 
+          {pickupTime ? <Text style={themed_s.text}>{pickupTime}</Text> : null}
+
           <RideRouteCard ride={ride} navigationStop={model.navigation} routeMode={model.routeMode}>
             <Divider style={{ backgroundColor: colors.outlineVariant }} />
             <View style={styles.routeSummary}>
               <View style={styles.fare}>
-                <Text style={themed_s.label}>Cước dự kiến</Text>
-                <MoneyText value={ride.estimatedFare} variant="headline" style={styles.fareAmount} />
-                {ride.paymentMethod ? (
-                  <Text style={themed_s.label}>
-                    {ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}
-                  </Text>
-                ) : null}
+                {driverNetEarning != null ? (
+                  <>
+                    <Text style={themed_s.label}>Thu nhập dự kiến</Text>
+                    <MoneyText value={driverNetEarning} variant="headline" style={styles.fareAmount} />
+                    <Text style={themed_s.label}>
+                      Khách trả: {formatMoney(customerFare, { nonBreaking: true })}
+                      {ride.paymentMethod ? ` · ${ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}` : ""}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={themed_s.label}>Cước dự kiến</Text>
+                    <MoneyText value={customerFare} variant="headline" style={styles.fareAmount} />
+                    {ride.paymentMethod ? (
+                      <Text style={themed_s.label}>
+                        {ride.paymentMethod === "WALLET" ? "Thanh toán qua ví" : "Tiền mặt"}
+                      </Text>
+                    ) : null}
+                  </>
+                )}
                 {model.vehicleSummary ? (
                   <Text style={themed_s.label}>{model.vehicleSummary}</Text>
                 ) : null}

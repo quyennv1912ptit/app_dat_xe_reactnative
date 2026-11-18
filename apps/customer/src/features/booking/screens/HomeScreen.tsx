@@ -1,8 +1,8 @@
-import { useWalletOverview } from '@/lib/useWallet';
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import { CustomerNotice } from "@/components/CustomerRideUI";
 import { HeaderIconButton } from "@/components/ScreenHeader";
 import { HomeMap } from "@/components/map/HomeMap";
+import { useWalletOverview } from "@/lib/useWallet";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
 import { walletBalance, translate as t } from "@datxe/shared";
 import {

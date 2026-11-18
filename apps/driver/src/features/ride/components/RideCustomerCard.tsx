@@ -14,6 +14,10 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const customer = ride.customer;
   const name = customer?.fullName?.trim() || "Khách hàng";
+  const rating = customer?.averageRating;
+  const ratingText = rating == null
+    ? null
+    : `${rating.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/5`;
   const phone = customer?.phoneNumber?.trim();
   const dialNumber = phone?.replace(/[\s().-]/g, "") ?? "";
   const canCall = /^\+?\d{3,15}$/.test(dialNumber);
@@ -56,6 +60,12 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
           <View style={styles.identity}>
             <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Khách hàng</Text>
             <Text style={[styles.name, { color: colors.onSurface }]}>{name}</Text>
+            {ratingText ? (
+              <View style={styles.ratingRow}>
+                <MaterialIcons name="star" size={16} color={colors.onSurfaceVariant} importantForAccessibility="no" />
+                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>{ratingText}</Text>
+              </View>
+            ) : null}
           </View>
           <MaterialIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} importantForAccessibility="no" />
         </MotionPressable>
@@ -115,6 +125,7 @@ const styles = StyleSheet.create({
   card: { padding: spacing.spaceMd, gap: spacing.px3 },
   summary: { flexDirection: "row", alignItems: "center", gap: spacing.px3, minHeight: 48 },
   identity: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: spacing.spaceXs },
   name: { ...typography.cardTitle },
   actions: { flexDirection: "row", gap: spacing.spaceSm },
   actionButton: { flex: 1, flexBasis: 0, minWidth: 0 },

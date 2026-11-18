@@ -24,7 +24,7 @@ module.exports = ({ config }) => {
       {
         android: { kotlinVersion: '2.4.0' },
         // Firebase qua SPM yêu cầu dynamic linkage để tránh trùng symbol.
-        ios: { useFrameworks: 'dynamic' },
+        ios: { useFrameworks: process.env.USE_FRAMEWORKS ?? 'dynamic', usePrecompiledModules: false },
       },
     ],
   ];
@@ -42,7 +42,13 @@ module.exports = ({ config }) => {
   }
 
   const googleServicesFile = path.join(__dirname, 'google-services.json');
-  const googleServiceInfoFile = path.join(__dirname, 'GoogleServiceDriver-Info.plist');
+  const namedIosPlist = path.join(__dirname, 'GoogleServiceDriver-Info.plist');
+  const genericIosPlist = path.join(__dirname, 'GoogleService-Info.plist');
+  const iosPlistPath = fs.existsSync(namedIosPlist)
+    ? './GoogleServiceDriver-Info.plist'
+    : fs.existsSync(genericIosPlist)
+      ? './GoogleService-Info.plist'
+      : null;
 
   return {
     ...config,
@@ -53,7 +59,7 @@ module.exports = ({ config }) => {
     },
     ios: {
       ...config.ios,
-      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleServiceDriver-Info.plist' } : {}),
+      ...(iosPlistPath ? { googleServicesFile: iosPlistPath } : {}),
     },
     plugins: process.env.CI_RELEASE === '1'
       ? [...plugins, '../../packages/config/plugins/with-release-signing']

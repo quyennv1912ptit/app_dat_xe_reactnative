@@ -49,6 +49,7 @@ test('booking sends selected wallet method and rechecks the latest balance befor
     '@/lib/rideNavigation': load('apps/customer/src/lib/rideNavigation.ts'),
     '@/lib/walletApi': { walletApi: { overview: async () => ({ balances: [{ walletType: 'CUSTOMER', balance: latestBalance }] }) } },
     '@/lib/customerApi': { customerApi: {} }, '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
+    '@/lib/voucherPresentation': { getVoucherPresentation: (v) => ({ title: v?.code ?? 'Voucher', badge: 'Voucher', description: v?.description ?? null, isCampaign: false }) },
     '@datxe/ui': { localizedAlert: () => {} }, '@datxe/shared': { walletBalance: wallet.walletBalance, translate: text => text, AuthApiError: class extends Error {} },
     '@tanstack/react-query': { useQueryClient: () => ({ setQueryData: () => {} }), useQuery: ({ queryKey }) => {
       const name = queryKey[1];

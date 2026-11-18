@@ -62,5 +62,5 @@ async function getUnreadNotificationCount(): Promise<number> {
 async function getCustomerVehicles(): Promise<CustomerVehicle[]> {
   return (await request<CustomerVehicle[]>('/customer/vehicles')) as CustomerVehicle[];
 }
-return {getCustomerProfile, updateCustomerProfile, getCustomerVouchers, getCustomerVoucherCampaigns, claimCustomerVoucherCampaign, cancelCustomerRide, getCustomerRide, getActiveCustomerRide, getCustomerRides, getUnreadNotificationCount, getCustomerVehicles};
+return {getCustomerProfile, updateCustomerProfile, getCustomerVouchers, getCustomerVoucherCampaigns, claimCustomerVoucherCampaign, getVoucherCampaigns: getCustomerVoucherCampaigns, claimVoucherCampaign: claimCustomerVoucherCampaign, cancelCustomerRide, getCustomerRide, getActiveCustomerRide, getCustomerRides, getUnreadNotificationCount, getCustomerVehicles};
 }

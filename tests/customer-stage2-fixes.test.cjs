@@ -135,10 +135,13 @@ test("useTripCompleted respects server customerHasRatedDriver and skips duplicat
   const { useTripCompleted } = load("apps/customer/src/features/tracking/hooks/useTripCompleted.ts", {
     "@datxe/ui": { localizedAlert: () => {} },
     "@datxe/shared": { AuthApiError: MockAuthApiError, translate: (t) => t },
-    "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
+    "@tanstack/react-query": {
+      useQueryClient: () => ({ invalidateQueries: async () => {} }),
+      useQuery: () => ({ data: null, isLoading: false, refetch: async () => {} }),
+    },
     "expo-router": { useLocalSearchParams: () => ({ rideId: "88" }), useRouter: () => ({ replace: (r) => routes.push(r) }) },
     react: { useState: (init) => [init, () => {}] },
-    "../api": { rateCustomerRide: async () => { rateCalls++; } },
+    "../api": { getMyCustomerRideRating: async () => null, rateCustomerRide: async () => { rateCalls++; } },
     "./useRideQuery": { useRideQuery: () => ({ data: rideData, error: null, isSuccess: true, refetch: async () => {} }) },
   });
 

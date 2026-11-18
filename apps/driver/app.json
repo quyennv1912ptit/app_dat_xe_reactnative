@@ -11,7 +11,8 @@
       "bundleIdentifier": "com.datxe.driver",
       "googleServicesFile": "./GoogleServiceDriver-Info.plist",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "PtitGo Tài Xế"
       }
     },
     "android": {

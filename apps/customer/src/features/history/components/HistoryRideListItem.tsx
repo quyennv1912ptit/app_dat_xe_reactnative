@@ -4,6 +4,7 @@ import {
   type CustomerRideSummary,
 } from "@datxe/shared";
 import {
+  Button,
   MoneyText,
   MotionPressable as Pressable,
   SharedStatusBadge,
@@ -22,9 +23,11 @@ import {
 export function HistoryRideListItem({
   ride,
   onPress,
+  onRate,
 }: {
   ride: CustomerRideSummary;
   onPress: () => void;
+  onRate?: () => void;
 }) {
   useLanguage();
   const colors = useThemeColors();
@@ -40,6 +43,7 @@ export function HistoryRideListItem({
         : "active";
 
   return (
+    <View style={{ gap: 8 }}>
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.ride}>
       <View style={styles.rideHeader}>
         <View style={styles.rideTitleRow}>
@@ -101,5 +105,22 @@ export function HistoryRideListItem({
         />
       </View>
     </Pressable>
+    {ride.status === "COMPLETED" && onRate ? (
+      ride.hasRated ? (
+        <Button
+          label={
+            ride.myRatingStars
+              ? i18nT("Đã đánh giá ({0}/5 sao)", { 0: ride.myRatingStars })
+              : i18nT("Đã đánh giá chuyến đi")
+          }
+          icon="check-circle"
+          variant="ghost"
+          onPress={onRate}
+        />
+      ) : (
+        <Button label={i18nT("Đánh giá chuyến đi")} icon="star" variant="secondary" onPress={onRate} />
+      )
+    ) : null}
+    </View>
   );
 }
