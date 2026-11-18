@@ -58,12 +58,12 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
         >
           {avatar(48)}
           <View style={styles.identity}>
-            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Khách hàng</Text>
+            <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>Khách hàng</Text>
             <Text style={[styles.name, { color: colors.onSurface }]}>{name}</Text>
             {ratingText ? (
               <View style={styles.ratingRow}>
                 <MaterialIcons name="star" size={16} color={colors.onSurfaceVariant} importantForAccessibility="no" />
-                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>{ratingText}</Text>
+                <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>{ratingText}</Text>
               </View>
             ) : null}
           </View>

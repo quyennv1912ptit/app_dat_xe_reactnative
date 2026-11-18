@@ -22,7 +22,7 @@ export default function DriverSafetyScreen() {
     <DriverPage title="An toàn chuyến đi">
       <Card style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>Hỗ trợ khẩn cấp tại Việt Nam</Text>
-        <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+        <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
           Nếu đang gặp tình huống nguy cấp, hãy gọi tổng đài khẩn cấp quốc gia và cung cấp vị trí hiện tại của bạn.
         </Text>
         <Button

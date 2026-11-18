@@ -60,7 +60,7 @@ export default function DriverWalletScreen() {
       </View>
       <WalletLoadState loading={overview.isLoading} error={overview.error?.message} onRetry={() => void overview.refetch()} />
       <View style={styles.sectionHeader}>
-        <Text accessibilityRole="header" style={typography.titleLg}>Lịch sử giao dịch</Text>
+        <Text accessibilityRole="header" style={typography.sectionTitle}>Lịch sử giao dịch</Text>
       </View>
       <View style={styles.chips}>
         {filterOptions.map(item => (

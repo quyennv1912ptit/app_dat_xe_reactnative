@@ -142,7 +142,7 @@ export default function NotificationsScreen() {
           />
         ) : null}
       </View>
-      {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert" style={typography.bodyMd}>{notice}</Text></Card> : null}
+      {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert" style={typography.bodySecondary}>{notice}</Text></Card> : null}
     </View>
   );
 

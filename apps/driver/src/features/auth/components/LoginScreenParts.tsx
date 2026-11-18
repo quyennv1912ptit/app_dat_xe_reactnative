@@ -87,19 +87,19 @@ export const styles = (colors: ThemeColors) =>
     },
     brandIcon: { width: 80, height: 80, alignSelf: "center" },
     brandName: {
-      ...typography.labelLg,
+      ...typography.label,
       color: colors.primary,
       textAlign: "center",
       marginTop: spacing.spaceSm,
     },
     title: {
-      ...typography.headlineXlMobile,
+      ...typography.display,
       color: colors.onSurface,
       textAlign: "center",
       marginTop: spacing.spaceXl,
     },
     subtitle: {
-      ...typography.bodyMd,
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
       textAlign: "center",
       marginTop: spacing.spaceXs,
@@ -107,11 +107,11 @@ export const styles = (colors: ThemeColors) =>
     },
     formCard: { gap: spacing.spaceMd, padding: 16 },
     helperText: {
-      ...typography.labelSm,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
       marginTop: -spacing.spaceSm,
     },
-    errorText: { ...typography.bodyMd, color: colors.error },
+    errorText: { ...typography.bodySecondary, color: colors.error },
     phoneButton: {
       marginTop: spacing.spaceXs,
       backgroundColor: colors.primary,
@@ -124,7 +124,7 @@ export const styles = (colors: ThemeColors) =>
       marginVertical: spacing.spaceXs,
     },
     dividerLine: { height: 1, flex: 1, backgroundColor: colors.outlineVariant },
-    dividerLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
+    dividerLabel: { ...typography.caption, color: colors.onSurfaceVariant },
     socialButton: {
       minHeight: 52,
 
@@ -144,7 +144,7 @@ export const styles = (colors: ThemeColors) =>
       color: colors.googleBlue,
     },
     facebookMark: { color: colors.facebook },
-    socialLabel: { ...typography.labelMd, color: colors.onSurface },
+    socialLabel: { ...typography.button, color: colors.onSurface },
     footer: {
       flexDirection: "row",
       alignItems: "center",
@@ -152,5 +152,5 @@ export const styles = (colors: ThemeColors) =>
       gap: spacing.spaceXs,
       marginTop: spacing.spaceLg,
     },
-    footerText: { ...typography.labelSm, color: colors.onSurfaceVariant },
+    footerText: { ...typography.caption, color: colors.onSurfaceVariant },
   });

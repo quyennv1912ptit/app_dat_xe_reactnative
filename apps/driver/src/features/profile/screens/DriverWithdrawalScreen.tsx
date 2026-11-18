@@ -16,8 +16,8 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 const WithdrawalCard = memo(function WithdrawalCard({ item }: { item: Withdrawal }) {
   return (
     <Card style={styles.card}>
-      <Text style={[typography.titleLg, styles.amount]}>{formatMoney(item.amount)}</Text>
-      <Text style={typography.labelLg}>
+      <Text style={[typography.cardTitle, styles.amount]}>{formatMoney(item.amount)}</Text>
+      <Text style={typography.label}>
         {(item.status === 'FAILED' || item.status === 'REJECTED') ? 'Đã từ chối · Đã hoàn tiền' : walletStatusLabel[item.status]}
       </Text>
       {item.rejectReason ? <Text accessibilityRole="alert">Lý do từ chối: {item.rejectReason}</Text> : null}
@@ -88,7 +88,7 @@ export default function DriverWithdrawalScreen() {
       <WalletBalanceCard title="Ví tiền mặt khả dụng" balance={cash} description="Tiền đang chờ duyệt rút đã được trừ khỏi số dư khả dụng. Ví tín dụng không thể rút." />
       <WalletLoadState loading={overview.isLoading} error={overview.error?.message} onRetry={() => void overview.refetch()} />
       <Card style={styles.card}>
-        <Text style={typography.titleLg}>Tài khoản nhận tiền</Text>
+        <Text style={typography.cardTitle}>Tài khoản nhận tiền</Text>
         <WalletLoadState loading={bank.isLoading} error={bank.error?.message} onRetry={() => void bank.refetch()} />
         {hasBank ? <><Text>{bank.data?.bank_name}</Text><Text selectable>Số tài khoản: {bank.data?.bank_account_number}</Text></> : !bank.isLoading && !bank.isError ? <Text>Bổ sung tên ngân hàng và số tài khoản chính chủ trước khi gửi yêu cầu rút tiền.</Text> : null}
         <Button variant="secondary" label={hasBank ? 'Cập nhật tài khoản ngân hàng' : 'Bổ sung tài khoản ngân hàng'} onPress={() => router.push('/profile/edit')} />
@@ -96,7 +96,7 @@ export default function DriverWithdrawalScreen() {
       {cash !== undefined && !overview.isError && hasBank && !bank.isError && !reviewing ? <WalletMoneyForm mode="withdraw" maxAmount={Number.MAX_SAFE_INTEGER} available={cash} onSubmit={submit} onDone={() => router.dismissTo('/profile/wallet')} /> : null}
       {reviewing ? <Button variant="secondary" label="Tạo yêu cầu rút tiền mới" onPress={() => router.setParams({ requestId: '' })} /> : null}
       <Button variant="ghost" label="Cập nhật yêu cầu rút" onPress={() => void Promise.all([overview.refetch(), requests.refetch()])} />
-      <Text accessibilityRole="header" style={typography.titleLg}>Yêu cầu rút tiền của tôi</Text>
+      <Text accessibilityRole="header" style={typography.sectionTitle}>Yêu cầu rút tiền của tôi</Text>
       <WalletLoadState loading={requests.isLoading} error={requests.error?.message} onRetry={() => void requests.refetch()} />
       {reviewing ? <WalletLoadState loading={selected.isLoading} error={selected.error?.message} onRetry={() => void selected.refetch()} /> : null}
     </View>

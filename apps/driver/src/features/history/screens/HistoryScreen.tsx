@@ -58,7 +58,7 @@ const TripHistoryRow = memo(function TripHistoryRow({
       >
         <View style={styles.tripContent}>
           <View style={styles.tripHeader}>
-            <Text style={[typography.labelLg, styles.tripId]}>Chuyến #{trip.id}</Text>
+            <Text style={[typography.cardTitle, styles.tripId]}>Chuyến #{trip.id}</Text>
             <View style={styles.tripStatus}><StatusBadge kind="ride" value={trip.status} /></View>
           </View>
           <View style={[styles.stop, styles.pickup]}>
@@ -68,14 +68,14 @@ const TripHistoryRow = memo(function TripHistoryRow({
               ))}
             </View>
             <View style={[styles.dot, { backgroundColor: colors.success }]} />
-            <Text style={[typography.bodyMd, styles.address]}>{pickup}</Text>
+            <Text style={[typography.body, styles.address]}>{pickup}</Text>
           </View>
           <View style={styles.stop}>
             <View style={[styles.dot, { backgroundColor: colors.error }]} />
-            <Text style={[typography.bodyMd, styles.address]}>{dropoff}</Text>
+            <Text style={[typography.body, styles.address]}>{dropoff}</Text>
           </View>
           <View style={styles.tripFooter}>
-            <Text style={[typography.labelMd, styles.tripDate, { color: colors.onSurfaceVariant }]}>{date}</Text>
+            <Text style={[typography.bodySecondary, styles.tripDate, { color: colors.onSurfaceVariant }]}>{date}</Text>
             {trip.status !== "CANCELLED" ? (
               <MoneyText value={trip.finalFare ?? trip.payableFare ?? trip.estimatedFare} variant="title" color={colors.primary} style={styles.fare} />
             ) : null}
@@ -150,7 +150,7 @@ export default function HistoryScreen() {
         />
       </View>
       {period === "week" ? (
-        <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+        <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
           Hiển thị các chuyến trong 7 ngày qua.
         </Text>
       ) : null}
