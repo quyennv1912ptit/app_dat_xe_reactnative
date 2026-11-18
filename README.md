@@ -4,6 +4,10 @@ Npm workspaces, Expo SDK 58, React Native 0.88, Expo Router. Mã được chuy�
 
 ## Chạy ứng dụng
 
+Yêu cầu Node.js 22 trở lên và npm. Cài từ `package-lock.json` ở thư mục gốc. Android cần Android SDK và emulator hoặc thiết bị có USB debugging. iOS cần macOS và Xcode. Các module Firebase và bản đồ native cần development build của từng app.
+
+Xem [kiến trúc hệ thống và thứ tự khởi động](docs/system-architecture.md) khi thiết lập cùng backend, GoAdmin và eKYC.
+
 ```powershell
 cd D:\datxe_rn
 npm ci
@@ -70,6 +74,7 @@ Customer chuyển nhóm `(main)` thành `(tabs)` cho Home/History/Notifications/
 ### Đặt chuyến customer
 
 - Tìm địa điểm sau khi nhập ít nhất 2 ký tự, debounce 350ms và hủy request cũ. `/location/places/search` trả gợi ý; Goong dùng `/location/places/detail?id=...` khi chọn để lấy đúng tọa độ, `/location/places/reverse` lấy địa chỉ tại ghim. Ưu tiên điểm đón/GPS được cấp quyền; khi chưa có tọa độ dùng Hà Nội. Không cắt địa chỉ dài chứa số nhà/ngõ/ngách.
+- Màn chọn địa điểm hiển thị điểm gần đây/phổ biến khi chưa nhập, tìm kiếm khi nhập, nút `...` mở chi tiết địa điểm, và đưa kết quả sang bản đồ để ghim chính xác. Bản đồ tải các điểm trong bán kính 100 m từ `/location/places/nearby` và cho chọn lại ghim. Endpoint mới `/customer/places/recent`, `/customer/places/popular`, `/customer/places/report`; chi tiết ở [docs/place-discovery.md](docs/place-discovery.md).
 - Goong xử lý gợi ý, chi tiết, geocode và tìm tuyến. Backend giữ các endpoint `/location/...` và đổi thứ tự tọa độ từ `lng,lat` của API chỉ đường hiện có sang `lat,lng` khi gọi Goong.
 - Customer và Driver dùng chung renderer Goong cho bản đồ native/web. Nút chỉ đường Driver mở bản đồ trong app và tải tuyến theo GPS hiện tại, điểm đón/trả và loại xe.
 - Xác nhận hiển thị các thành phần giá backend, giá tối thiểu, giảm giá và tổng thanh toán. Chọn ưu đãi qua modal và xác thực bằng báo giá backend trước khi áp dụng. Có modal giờ hẹn, ghi chú và thanh toán tiền mặt.
