@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Text } from "react-native-paper";
 import { PaperTextInput as PaperInput } from "./PaperTextInput";
+import { typography } from "../theme/colors";
 import { useThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 type IconName = keyof typeof MaterialIcons.glyphMap;
@@ -120,5 +121,5 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   outline: { borderRadius: 24 },
-  content: { minHeight: 56, fontSize: 16 },
+  content: { ...typography.body, minHeight: 56 },
 });

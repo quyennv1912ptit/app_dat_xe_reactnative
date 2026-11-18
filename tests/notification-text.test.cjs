@@ -229,10 +229,32 @@ test("a mounted notification consumer rerenders copy immediately when the langua
   assert.ok(text().includes("Chuyến đi của bạn đã kết thúc thành công."));
   listener();
 });
-
 test('withdrawal notification shows the result and rejection reason', () => {
   const payload = { status: 'REJECTED', title: 'Yêu cầu rút tiền bị từ chối', body: 'Lý do: Sai số tài khoản. Số tiền đã được hoàn lại vào ví.' };
   const text = getNotificationText('WITHDRAWAL_REVIEWED', payload, value => value);
   assert.equal(text.title, payload.title);
   assert.equal(text.description, payload.body);
+});
+
+test('voucher and rating notifications render backend title/body with readable defaults', () => {
+  const rating = getNotificationText('RATING_RECEIVED', {
+    rideId: 11,
+    stars: 5,
+    title: 'Bạn nhận được đánh giá mới (5/5 sao)',
+    body: 'Đánh giá ẩn danh 5 sao: "Lái rất êm"',
+  }, value => value);
+  assert.equal(rating.title, 'Bạn nhận được đánh giá mới (5/5 sao)');
+  assert.match(rating.description, /Lái rất êm/);
+
+  const campaign = getNotificationText('VOUCHER_CAMPAIGN', {
+    campaignId: 2,
+    code: 'HE2026',
+    title: 'Săn ưu đãi (HE2026)',
+    body: 'Giảm 25%',
+  }, value => value);
+  assert.equal(campaign.title, 'Săn ưu đãi (HE2026)');
+  assert.equal(campaign.description, 'Giảm 25%');
+
+  const grantedFallback = getNotificationText('VOUCHER_GRANTED', {}, value => value);
+  assert.equal(grantedFallback.title, 'Bạn vừa nhận được ưu đãi');
 });

@@ -1,6 +1,7 @@
 import { translate } from "@datxe/shared";
 import { StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
+import { typography } from "../theme/colors";
 import { useThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 
@@ -30,15 +31,12 @@ export function SectionHeading({
 }
 const styles = StyleSheet.create({
   heading: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
+    ...typography.label,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   uppercase: {
     textTransform: "uppercase",
-    fontWeight: "600",
     letterSpacing: 0.8,
   },
 });

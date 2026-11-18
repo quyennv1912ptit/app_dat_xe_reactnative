@@ -8,7 +8,7 @@ import {
   useLanguage,
   useThemedStyles,
 } from "@datxe/ui";
-import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Image, KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import {
   SocialButton,
@@ -36,7 +36,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={styles.flex}
       >
         <ScrollView

@@ -1,10 +1,11 @@
 import { DriverChatButton } from "@/components/DriverChatButton";
+import { canDriverChat } from "@/lib/chatAvailability";
 import type { CustomerRideDetail } from "@datxe/shared";
-import { Button, Card, Typography as Text, useThemeColors } from "@datxe/ui";
+import { Button, Card, MotionPressable, Typography as Text, spacing, typography, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
-import { Avatar, Dialog, Portal } from "react-native-paper";
+import { Avatar, Dialog, Divider, Portal } from "react-native-paper";
 
 export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const colors = useThemeColors();
@@ -13,9 +14,14 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const customer = ride.customer;
   const name = customer?.fullName?.trim() || "Khách hàng";
+  const rating = customer?.averageRating;
+  const ratingText = rating == null
+    ? null
+    : `${rating.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/5`;
   const phone = customer?.phoneNumber?.trim();
   const dialNumber = phone?.replace(/[\s().-]/g, "") ?? "";
   const canCall = /^\+?\d{3,15}$/.test(dialNumber);
+  const canChat = canDriverChat(ride);
   const avatarUrl = customer?.avatarUrl;
   const hasAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatar);
   const avatarColors = { backgroundColor: colors.primaryContainer };
@@ -43,18 +49,46 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
 
   return (
     <>
-      <Card
-        onPress={() => setVisible(true)}
-        accessibilityLabel={`Xem thông tin khách hàng, ${name}`}
-        style={styles.summary}
-      >
-        {avatar(48)}
-        <View style={styles.identity}>
-          <Text style={{ color: colors.onSurfaceVariant }}>Khách hàng</Text>
-          <Text style={styles.name} numberOfLines={2}>{name}</Text>
-        </View>
-        <MaterialIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} />
+      <Card style={[styles.card, { backgroundColor: colors.rideSurface }]}>
+        <MotionPressable
+          accessibilityRole="button"
+          accessibilityLabel={`Xem thông tin khách hàng, ${name}`}
+          onPress={() => setVisible(true)}
+          style={styles.summary}
+        >
+          {avatar(48)}
+          <View style={styles.identity}>
+            <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>Khách hàng</Text>
+            <Text style={[styles.name, { color: colors.onSurface }]}>{name}</Text>
+            {ratingText ? (
+              <View style={styles.ratingRow}>
+                <MaterialIcons name="star" size={16} color={colors.onSurfaceVariant} importantForAccessibility="no" />
+                <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>{ratingText}</Text>
+              </View>
+            ) : null}
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} importantForAccessibility="no" />
+        </MotionPressable>
+        {canChat || canCall ? (
+          <>
+            <Divider style={{ backgroundColor: colors.outlineVariant }} />
+            <View style={styles.actions}>
+              {canChat ? <DriverChatButton ride={ride} labelText="Nhắn tin" style={styles.actionButton} /> : null}
+              {canCall ? (
+                <Button
+                  label="Gọi khách"
+                  variant="secondary"
+                  icon="call"
+                  iconPosition="leading"
+                  style={styles.actionButton}
+                  onPress={() => void call()}
+                />
+              ) : null}
+            </View>
+          </>
+        ) : null}
       </Card>
+      {!visible && callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
       <Portal>
         <Dialog visible={visible} onDismiss={close} style={{ backgroundColor: colors.surfaceContainerHigh, borderRadius: 28 }}>
           <Dialog.Title>Thông tin khách hàng</Dialog.Title>
@@ -88,9 +122,13 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
 }
 
 const styles = StyleSheet.create({
-  summary: { flexDirection: "row", alignItems: "center", gap: 12 },
-  identity: { flex: 1, gap: 4 },
-  name: { fontSize: 16, fontWeight: "600" },
+  card: { padding: spacing.spaceMd, gap: spacing.px3 },
+  summary: { flexDirection: "row", alignItems: "center", gap: spacing.px3, minHeight: 48 },
+  identity: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: spacing.spaceXs },
+  name: { ...typography.cardTitle },
+  actions: { flexDirection: "row", gap: spacing.spaceSm },
+  actionButton: { flex: 1, flexBasis: 0, minWidth: 0 },
   scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0 },
   details: { paddingHorizontal: 24, paddingVertical: 8, gap: 12 },
   contact: { gap: 4 },

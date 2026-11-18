@@ -1,5 +1,5 @@
 import type { ThemeColors } from "@datxe/ui";
-import { fontFamily } from "@datxe/ui";
+import { typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 export const bookingStyles = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -8,34 +8,23 @@ export const bookingStyles = (colors: ThemeColors) =>
     flex: { flex: 1 },
     page: { padding: 16, gap: 16, paddingBottom: 28 },
     title: {
-      fontFamily: fontFamily.inter,
-      fontSize: 24,
-      fontWeight: "500",
+      ...typography.screenTitle,
       color: colors.onSurface,
     },
     section: {
-      fontFamily: fontFamily.inter,
-      fontSize: 17,
-      fontWeight: "700",
+      ...typography.sectionTitle,
       color: colors.onSurface,
     },
     text: {
-      fontFamily: fontFamily.inter,
-      fontSize: 16,
-      lineHeight: 23,
+      ...typography.body,
       color: colors.onSurface,
     },
     muted: {
-      fontFamily: fontFamily.inter,
-      fontSize: 13,
-      lineHeight: 19,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
     },
     label: {
-      fontFamily: fontFamily.inter,
-      fontSize: 13,
-      lineHeight: 19,
-      fontWeight: "500",
+      ...typography.label,
       color: colors.onSurfaceVariant,
     },
     row: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -85,23 +74,17 @@ export const bookingStyles = (colors: ThemeColors) =>
       gap: 8,
     },
     primaryText: {
-      fontFamily: fontFamily.inter,
-      fontSize: 16,
-      fontWeight: "700",
+      ...typography.button,
       color: colors.onPrimary,
     },
     disabled: { opacity: 0.42 },
     link: {
-      fontFamily: fontFamily.inter,
+      ...typography.label,
       color: colors.primary,
-      fontSize: 14,
-      fontWeight: "600",
     },
     error: {
-      fontFamily: fontFamily.inter,
+      ...typography.bodySecondary,
       color: colors.onErrorContainer,
-      fontSize: 14,
-      lineHeight: 21,
     },
     errorBox: {
       padding: 16,
@@ -110,9 +93,8 @@ export const bookingStyles = (colors: ThemeColors) =>
       gap: 8,
     },
     search: {
+      ...typography.body,
       flex: 1,
-      fontFamily: fontFamily.inter,
-      fontSize: 16,
       minHeight: 48,
       color: colors.onSurface,
       paddingVertical: 10,

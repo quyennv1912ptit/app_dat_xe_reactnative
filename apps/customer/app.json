@@ -9,10 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.datxe.customer",
+      "googleServicesFile": "./GoogleServiceCustomer-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleServiceCustomer-Info.plist"
+      }
     },
     "android": {
       "package": "com.datxe.customer",

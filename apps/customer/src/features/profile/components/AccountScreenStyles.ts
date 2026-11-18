@@ -1,4 +1,4 @@
-import type { useThemeColors } from "@datxe/ui";
+import { typography, type useThemeColors } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 /**
  * Style cho màn tài khoản (Chỉnh sửa thông tin, Phương thức thanh toán).
@@ -9,10 +9,9 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
     safe: { flex: 1, backgroundColor: c.background },
     content: { padding: 16, gap: 24, paddingBottom: 112 },
     group: { gap: 0 },
-    intro: { fontSize: 14, lineHeight: 22, color: c.onSurfaceVariant },
+    intro: { ...typography.bodySecondary, color: c.onSurfaceVariant },
     section: {
-      fontSize: 13,
-      fontWeight: "700",
+      ...typography.caption,
       letterSpacing: 0.8,
       textTransform: "uppercase",
       color: c.onSurfaceVariant,
@@ -32,17 +31,17 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    title: { fontSize: 17, fontWeight: "500", color: c.onSurface },
-    label: { fontSize: 14, fontWeight: "600", color: c.onSurface },
+    title: { ...typography.cardTitle, color: c.onSurface },
+    label: { ...typography.label, color: c.onSurface },
     field: { gap: 8 },
     inputWrap: { justifyContent: "center" },
     input: {
+      ...typography.body,
       minHeight: 52,
       borderRadius: 24,
       paddingHorizontal: 16,
       color: c.onSurface,
       backgroundColor: c.inputSurface,
-      fontSize: 16,
     },
     inputPadded: { paddingRight: 44 },
     inputReadonly: { color: c.onSurfaceVariant },
@@ -56,10 +55,12 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
       backgroundColor: c.inputSurface,
       paddingHorizontal: 16,
     },
-    dateText: { flex: 1, fontSize: 16, color: c.onSurface },
+    dateText: { ...typography.body, flex: 1, color: c.onSurface },
     dateTextPlaceholder: { color: c.onSurfaceVariant },
     choices: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     choice: {
+      minHeight: 48,
+      justifyContent: "center",
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 999,
@@ -69,10 +70,10 @@ export const accountStyles = (c: ReturnType<typeof useThemeColors>) =>
     selected: {
       backgroundColor: c.primaryContainer,
     },
-    choiceText: { fontSize: 14, fontWeight: "500", color: c.onSurface },
-    choiceTextSelected: { color: c.onPrimaryContainer, fontWeight: "600" },
+    choiceText: { ...typography.label, color: c.onSurface },
+    choiceTextSelected: { color: c.onPrimaryContainer },
     phoneRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    error: { fontSize: 14, lineHeight: 21, color: c.error },
+    error: { ...typography.bodySecondary, color: c.error },
     footer: {
       paddingHorizontal: 16,
       paddingTop: 16,

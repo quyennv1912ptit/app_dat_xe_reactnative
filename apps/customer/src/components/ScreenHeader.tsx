@@ -104,6 +104,7 @@ export function HeaderLabeledIconButton({
         color={tone === "primary" ? colors.primary : colors.onSurface}
       />
       <Text
+        textBreakStrategy="simple"
         style={[
           styles.labeledIconText,
           tone === "primary" && styles.primaryLabeledIconText,
@@ -166,14 +167,14 @@ export function ScreenHeader({
                 {title ? (
                   <Text
                     accessibilityRole="header"
-                    numberOfLines={2}
+                    textBreakStrategy="simple"
                     style={[styles.title, largeTitle && styles.largeTitle]}
                   >
                     {i18nT(title)}
                   </Text>
                 ) : null}
                 {subtitle ? (
-                  <Text numberOfLines={2} style={styles.subtitle}>
+                  <Text textBreakStrategy="simple" style={styles.subtitle}>
                     {i18nT(subtitle)}
                   </Text>
                 ) : null}
@@ -182,7 +183,7 @@ export function ScreenHeader({
           />
         )}
         {rightContent ? (
-          <View style={[styles.rightSlot, { width: sideSlotWidth }]}>
+          <View style={[styles.rightSlot, sideSlotWidth > 0 && { minWidth: Math.min(sideSlotWidth, 48) }]}>
             {rightContent}
           </View>
         ) : null}
@@ -209,13 +210,12 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     titleBlock: { flex: 1, minWidth: 0, marginLeft: 8, marginRight: 8 },
     titleCopy: { minWidth: 0, gap: 4 },
     title: {
-      ...typography.headlineMd,
+      ...typography.screenTitle,
       color: colors.onSurface,
-      fontWeight: "600",
       textAlign: "left",
     },
-    largeTitle: { fontSize: 24, lineHeight: 32 },
-    subtitle: { ...typography.labelSm, fontSize: 13, lineHeight: 18, color: colors.onSurfaceMuted },
+    largeTitle: { ...typography.display },
+    subtitle: { ...typography.bodySecondary, color: colors.onSurfaceMuted },
     iconButton: {
       width: 48,
       height: 48,
@@ -229,8 +229,10 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       height: 48,
     },
     labeledIconButton: {
-      width: HEADER_SAFETY_ACTION_WIDTH,
+      minWidth: 48,
       minHeight: 48,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -239,21 +241,23 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       backgroundColor: colors.surfaceContainerLow,
     },
     labeledIconText: {
-      ...typography.labelSm,
+      ...typography.navigationLabel,
       color: colors.onSurface,
     },
     primaryLabeledIconText: {
       color: colors.primary,
     },
     rightSlot: {
-      flexShrink: 0,
+      flexShrink: 1,
       alignItems: "flex-end",
       justifyContent: "center",
-      marginRight: 8,
+      marginRight: 4,
     },
     actionGroup: {
       flexDirection: "row",
+      flexWrap: "wrap",
       alignItems: "center",
+      justifyContent: "flex-end",
       gap: spacing.spaceXs,
     },
     primaryIconButton: {

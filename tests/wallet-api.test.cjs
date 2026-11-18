@@ -40,13 +40,16 @@ test('booking sends selected wallet method and rechecks the latest balance befor
   let balance = 100000;
   let latestBalance = 100000;
   let walletFailed = false;
+  let paymentMethod = null;
   const payloads = [];
   const overview = () => ({ balances: [{ walletType: 'CUSTOMER', balance }] });
   const price = { payableFare: 100000, route: { id: 'quote-1', coordinates: [] } };
   const { useBookingConfirmation } = load('apps/customer/src/features/booking/hooks/useBookingConfirmation.ts', {
     '@/lib/useWallet': { useWalletOverview: () => ({ data: overview(), isSuccess: true, isError: walletFailed, isFetching: false }) },
+    '@/lib/rideNavigation': load('apps/customer/src/lib/rideNavigation.ts'),
     '@/lib/walletApi': { walletApi: { overview: async () => ({ balances: [{ walletType: 'CUSTOMER', balance: latestBalance }] }) } },
     '@/lib/customerApi': { customerApi: {} }, '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
+    '@/lib/voucherPresentation': { getVoucherPresentation: (v) => ({ title: v?.code ?? 'Voucher', badge: 'Voucher', description: v?.description ?? null, isCampaign: false }) },
     '@datxe/ui': { localizedAlert: () => {} }, '@datxe/shared': { walletBalance: wallet.walletBalance, translate: text => text, AuthApiError: class extends Error {} },
     '@tanstack/react-query': { useQueryClient: () => ({ setQueryData: () => {} }), useQuery: ({ queryKey }) => {
       const name = queryKey[1];
@@ -56,7 +59,7 @@ test('booking sends selected wallet method and rechecks the latest balance befor
     react: { useState: initial => { const index = stateIndex++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = value; }]; }, useRef: initial => refs[refIndex++] ??= { current: initial } },
     '../api': { getActiveCustomerRide: async () => null, getRideEstimate: async () => price, createCustomerRide: async (payload, key) => { payloads.push({ payload, key }); return { id: 42 }; } },
     '../bookingUtils': { estimateRequest: () => ({ vehicleId: 1 }) },
-    '../store': { useBookingDraft: () => ({ vehicleId: 1, pickupNote: '', setVoucher: () => {} }) },
+    '../store': { useBookingDraft: () => ({ vehicleId: 1, pickup: { id: 'p', name: 'A', address: 'A', coordinate: { lat: 21.03, lng: 105.84 } }, dropoff: { id: 'd', name: 'B', address: 'B', coordinate: { lat: 21.04, lng: 105.85 } }, note: '', pickupNote: '', voucherCode: '', paymentMethod, scheduledAt: null, setNote: () => {}, setVoucher: () => {}, setPaymentMethod: value => { paymentMethod = value; } }) },
   });
   const render = () => { stateIndex = refIndex = 0; return useBookingConfirmation(); };
   let hook = render();

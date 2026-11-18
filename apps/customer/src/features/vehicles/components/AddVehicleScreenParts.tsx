@@ -35,6 +35,7 @@ export function Field({
     <View style={themed_styles.group}>
       <Text style={themed_styles.label}>{i18nT(label)}</Text>
       <TextInput
+        accessibilityLabel={i18nT(label)}
         {...props}
         draftValue={value}
         style={themed_styles.input}

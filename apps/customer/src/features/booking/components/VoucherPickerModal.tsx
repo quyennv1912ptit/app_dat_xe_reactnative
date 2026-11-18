@@ -1,5 +1,5 @@
 import { ActivityIndicator } from "react-native-paper";
-import type { CustomerVoucher } from "@datxe/shared";
+import type { CustomerVoucher, CustomerVoucherCampaign } from "@datxe/shared";
 import { getLocale, translate as i18nT } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import {
@@ -13,7 +13,8 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
-import { money, voucherUnavailable } from "../bookingUtils";
+import { campaignClaimBlocked, isVoucherSelected, money, voucherUnavailable } from "../bookingUtils";
+import { getVoucherPresentation } from "@/lib/voucherPresentation";
 import { bookingStyles as base_s } from "./bookingStyles";
 type Props = {
   visible: boolean;
@@ -23,10 +24,17 @@ type Props = {
   error?: string;
   applyError: string;
   selectedCode: string;
-  applyingCode: string | null;
+  selectedId?: number | null;
+  applyingKey: string | null;
   subtotal?: number;
-  onApply: (code: string) => void;
+  onApply: (selection: { id: number | null; code: string }) => void;
   onRetry: () => void;
+  campaigns: CustomerVoucherCampaign[];
+  campaignsLoading: boolean;
+  campaignsError?: string;
+  retryCampaigns: () => void;
+  claimVoucher: (campaignId: number) => void;
+  claimingCampaignId: number | null;
 };
 export function VoucherPickerModal(p: Props) {
   const extra = useThemedStyles(extraStyles);
@@ -36,6 +44,13 @@ export function VoucherPickerModal(p: Props) {
   const colors = useThemeColors();
 
   const s = useThemedStyles(base_s);
+
+  const claimedCodes = new Set(
+    p.vouchers.map((voucher) => voucher.campaignCode).filter(Boolean) as string[],
+  );
+  const claimable = p.campaigns.filter(
+    (campaign) => !claimedCodes.has(campaign.code) && campaignClaimBlocked(campaign) === null,
+  );
 
   return (
     <Modal
@@ -60,9 +75,10 @@ export function VoucherPickerModal(p: Props) {
               </Text>
             </View>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={i18nT("Đóng")}
               onPress={p.close}
-              hitSlop={12}
+              style={extra.closeButton}
             >
               <MaterialIcons
                 name="close"
@@ -83,13 +99,20 @@ export function VoucherPickerModal(p: Props) {
               </View>
             ) : null}
             <Pressable
-              disabled={p.applyingCode !== null}
-              onPress={() => p.onApply("")}
-              style={[s.card, s.row, !p.selectedCode && s.selected]}
+              disabled={p.applyingKey !== null}
+              onPress={() => p.onApply({ id: null, code: "" })}
+              accessibilityRole="radio"
+              accessibilityLabel={i18nT("Không dùng ưu đãi")}
+              accessibilityState={{
+                selected: !p.selectedCode && p.selectedId == null,
+                checked: !p.selectedCode && p.selectedId == null,
+                disabled: p.applyingKey !== null,
+              }}
+              style={[s.card, s.row, !p.selectedCode && p.selectedId == null && s.selected]}
             >
               <MaterialIcons
                 name={
-                  !p.selectedCode
+                  !p.selectedCode && p.selectedId == null
                     ? "radio-button-checked"
                     : "radio-button-unchecked"
                 }
@@ -97,18 +120,82 @@ export function VoucherPickerModal(p: Props) {
                 color={colors.primary}
               />
               <Text style={[s.text, s.flex]}>{i18nT("Không dùng ưu đãi")}</Text>
-              {p.applyingCode === "" ? <ActivityIndicator /> : null}
+              {p.applyingKey === "NONE" ? <ActivityIndicator /> : null}
             </Pressable>
-            {p.loading ? <ActivityIndicator color={colors.primary} /> : null}
-            {p.error ? (
+            {p.campaignsLoading ? <ActivityIndicator color={colors.primary} /> : null}
+            {p.campaignsError ? (
               <View style={s.errorBox}>
-                <Text style={s.error}>{i18nT(p.error)}</Text>
-                <Pressable onPress={p.onRetry}>
+                <Text style={s.error}>{i18nT(p.campaignsError)}</Text>
+                <Pressable accessibilityRole="button" style={extra.retryLink} onPress={p.retryCampaigns}>
                   <Text style={s.link}>{i18nT("Tải lại ưu đãi")}</Text>
                 </Pressable>
               </View>
             ) : null}
-            {!p.loading && !p.error && !p.vouchers.length ? (
+            {claimable.length ? (
+              <Text style={s.section}>{i18nT("Ưu đãi đang mở")}</Text>
+            ) : null}
+            {claimable.map((campaign) => {
+              const claiming = p.claimingCampaignId === campaign.id;
+              return (
+                <View key={campaign.id} style={s.card}>
+                  <View style={s.row}>
+                    <View style={[s.icon, extra.item6]}>
+                      <MaterialIcons
+                        name="campaign"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={s.flex}>
+                      <Text style={s.section}>
+                        {campaign.campaignTitle?.trim() || campaign.code}
+                      </Text>
+                      <Text style={s.muted}>
+                        {campaign.discountType === "PERCENT"
+                          ? i18nT("Giảm {0}%", { "0": campaign.value })
+                          : i18nT("Giảm {0}", { "0": money(campaign.value) })}
+                        {campaign.maxDiscount !== null
+                          ? i18nT(" · Tối đa {0}", {
+                              "0": money(campaign.maxDiscount),
+                            })
+                          : ""}
+                      </Text>
+                      <Text style={s.muted}>
+                        {i18nT("Chuyến từ")} {money(campaign.minimumOrderAmount)}{" "}
+                        {i18nT("· Hết hạn")}{" "}
+                        {new Date(campaign.validTo).toLocaleDateString(getLocale())}
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={i18nT("Nhận ưu đãi {0}", {
+                        0: campaign.campaignTitle?.trim() || campaign.code,
+                      })}
+                      disabled={claiming}
+                      onPress={() => p.claimVoucher(campaign.id)}
+                      hitSlop={8}
+                      style={extra.claimButton}
+                    >
+                      {claiming ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Text style={s.link}>{i18nT("Nhận")}</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+            {p.loading ? <ActivityIndicator color={colors.primary} /> : null}
+            {p.error ? (
+              <View style={s.errorBox}>
+                <Text style={s.error}>{i18nT(p.error)}</Text>
+                <Pressable accessibilityRole="button" style={extra.retryLink} onPress={p.onRetry}>
+                  <Text style={s.link}>{i18nT("Tải lại ưu đãi")}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            {!p.loading && !p.error && !p.campaignsLoading && !p.campaignsError && !p.vouchers.length && !claimable.length ? (
               <View style={s.empty}>
                 <MaterialIcons
                   name="local-offer"
@@ -125,19 +212,24 @@ export function VoucherPickerModal(p: Props) {
             ) : null}
             {p.vouchers.map((voucher) => {
               const reason = voucherUnavailable(voucher, p.subtotal);
+              const selected = isVoucherSelected(voucher, p.selectedCode, p.selectedId);
+              const applying = p.applyingKey === String(voucher.id);
+              const info = getVoucherPresentation(voucher);
               return (
                 <Pressable
                   key={voucher.id}
-                  disabled={Boolean(reason) || p.applyingCode !== null}
-                  onPress={() => p.onApply(voucher.code)}
+                  disabled={Boolean(reason) || p.applyingKey !== null}
+                  onPress={() => p.onApply({ id: voucher.id, code: voucher.code ?? "" })}
                   accessibilityRole="radio"
+                  accessibilityLabel={info.title}
                   accessibilityState={{
-                    selected: p.selectedCode === voucher.code,
-                    disabled: Boolean(reason),
+                    selected,
+                    checked: selected,
+                    disabled: Boolean(reason) || p.applyingKey !== null,
                   }}
                   style={[
                     s.card,
-                    p.selectedCode === voucher.code && s.selected,
+                    selected && s.selected,
                     reason ? extra.item5 : null,
                   ]}
                 >
@@ -151,29 +243,28 @@ export function VoucherPickerModal(p: Props) {
                     </View>
                     <View style={s.flex}>
                       <Text style={s.section}>
-                        {i18nT(
-                          voucher.discountType === "PERCENT"
-                            ? i18nT("Giảm {0}%", { "0": voucher.value })
-                            : i18nT("Giảm {0}", { "0": money(voucher.value) }),
-                        )}
+                        {voucher.discountType === "PERCENT"
+                          ? i18nT("Giảm {0}%", { "0": voucher.value })
+                          : i18nT("Giảm {0}", { "0": money(voucher.value) })}
                       </Text>
                       <Text style={s.muted}>
-                        {i18nT(voucher.code)}
-                        {i18nT(
-                          voucher.maxDiscount !== null
-                            ? i18nT(" · Tối đa {0}", {
-                                "0": money(voucher.maxDiscount),
-                              })
-                            : "",
-                        )}
+                        {info.title} ({info.badge})
+                        {voucher.maxDiscount !== null
+                          ? i18nT(" · Tối đa {0}", {
+                              "0": money(voucher.maxDiscount),
+                            })
+                          : ""}
                       </Text>
+                      {info.description && info.description !== info.title ? (
+                        <Text style={s.muted}>{info.description}</Text>
+                      ) : null}
                     </View>
-                    {p.applyingCode === voucher.code ? (
+                    {applying ? (
                       <ActivityIndicator />
                     ) : (
                       <MaterialIcons
                         name={
-                          p.selectedCode === voucher.code
+                          selected
                             ? "radio-button-checked"
                             : "radio-button-unchecked"
                         }
@@ -184,11 +275,9 @@ export function VoucherPickerModal(p: Props) {
                   </View>
                   <Text style={s.muted}>
                     {i18nT("Chuyến từ")}{" "}
-                    {i18nT(money(voucher.minimumOrderAmount))}{" "}
+                    {money(voucher.minimumOrderAmount)}{" "}
                     {i18nT("· Hết hạn")}{" "}
-                    {i18nT(
-                      new Date(voucher.validTo).toLocaleDateString(getLocale()),
-                    )}
+                    {new Date(voucher.validTo).toLocaleDateString(getLocale())}
                   </Text>
                   {reason ? (
                     <Text style={s.error}>{i18nT(reason)}</Text>
@@ -213,8 +302,20 @@ const extraStyles = (colors: ThemeColors) =>
       justifyContent: "flex-end",
     },
     item2: { flex: 1, minHeight: 48 },
-    item3: { maxHeight: "85%" },
+    item3: { flex: 0, maxHeight: "85%" },
     item4: { gap: 12, paddingBottom: 12 },
     item5: { opacity: 0.5 },
     item6: { backgroundColor: colors.primarySoft },
+    closeButton: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+    retryLink: { minHeight: 48, minWidth: 48, justifyContent: "center" },
+    claimButton: {
+      minHeight: 48,
+      minWidth: 48,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.primarySoft,
+    },
   });

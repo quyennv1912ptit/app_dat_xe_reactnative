@@ -1,5 +1,5 @@
 import { translate as t } from '@datxe/shared';
-import { Button, offerPalette as palette, Typography as Text, useLanguage, useReducedMotion } from '@datxe/ui';
+import { offerPalette as palette, typography, Typography as Text, useLanguage, useReducedMotion } from '@datxe/ui';
 import { useEffect } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, TouchableRipple } from 'react-native-paper';
@@ -61,37 +61,32 @@ function AcceptOfferButton({ expiresAt, secondsLeft, busy, onPress }: {
   );
 }
 
-export function OfferActions({ expiresAt, secondsLeft, busy, error, onAccept, onSkip }: {
+export function OfferActions({ expiresAt, secondsLeft, busy, error, onAccept }: {
   expiresAt: number;
   secondsLeft: number;
   busy: boolean;
   error: string;
   onAccept: () => void;
-  onSkip: () => void;
 }) {
-  const disabled = busy || secondsLeft <= 0;
   return (
     <View style={styles.actions}>
-      {error ? <Text accessibilityRole="alert" numberOfLines={2} style={styles.error}>{error}</Text> : null}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       <AcceptOfferButton expiresAt={expiresAt} secondsLeft={secondsLeft} busy={busy} onPress={onAccept} />
-      <Button label="Bỏ qua yêu cầu" variant="ghost" contentColor={palette.muted}
-        onPress={onSkip} disabled={disabled} dimWhenDisabled={false} style={styles.skip} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: { gap: 4 },
+  actions: { gap: 8 },
   accept: { borderRadius: 999, overflow: 'hidden', backgroundColor: palette.track },
   acceptContent: {
     minHeight: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     gap: 10, paddingHorizontal: 16, paddingVertical: 8,
   },
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: palette.acceptFill },
-  time: { minWidth: 28, color: palette.text, fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] },
-  acceptLabel: { flexShrink: 1, color: palette.text, fontSize: 18, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  time: { ...typography.caption, minWidth: 28, color: palette.text, fontVariant: ['tabular-nums'] },
+  acceptLabel: { ...typography.button, flexShrink: 1, color: palette.text, textAlign: 'center' },
   disabled: { backgroundColor: palette.disabled },
   disabledLabel: { color: palette.muted },
-  skip: { backgroundColor: palette.surface },
-  error: { color: palette.red, fontSize: 14, lineHeight: 18 },
+  error: { ...typography.bodySecondary, color: palette.red },
 });

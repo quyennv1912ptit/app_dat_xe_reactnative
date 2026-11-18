@@ -1,11 +1,16 @@
+import { request } from '@/lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { VehicleSpecifications } from '@datxe/shared';
 import { localizedAlert } from '@datxe/ui';
-import { translate as i18nT } from '@datxe/shared';
+import { getVehicleCatalog, vehicleCatalogQueryKey, translate as i18nT } from '@datxe/shared';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useEffect,useState } from 'react';
 import { createCustomerVehicle,deleteCustomerVehicleImage,getCustomerVehicles,updateCustomerVehicle,uploadCustomerVehicleImage } from '../api';
 export function useAddVehicle() {
 const router = useRouter();
+const client = useQueryClient();
+const { data: catalog } = useQuery({ queryKey: vehicleCatalogQueryKey, queryFn: ({ signal }) => getVehicleCatalog(request, signal), staleTime: 300_000 });
 const params = useLocalSearchParams<{ vehicleId?: string }>();
 const vehicleId = Number(Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId) || null;
 const [plate, setPlate] = useState('');
@@ -13,6 +18,11 @@ const [brand, setBrand] = useState('');
 const [model, setModel] = useState('');
 const [color, setColor] = useState('');
 const [engine, setEngine] = useState('');
+const [engineType, setEngineType] = useState<VehicleSpecifications['engineType']>(null);
+const [power, setPower] = useState('');
+const [seats, setSeats] = useState('');
+const [mass, setMass] = useState('');
+const [trailer, setTrailer] = useState('');
 const [transmission, setTransmission] = useState<'MANUAL' | 'AUTO'>('AUTO');
 const [vehicleType, setVehicleType] = useState<'CAR' | 'MOTORCYCLE'>('CAR');
 const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -36,7 +46,12 @@ useEffect(() => {
       setBrand(current.brand ?? '');
       setModel(current.model ?? '');
       setColor(current.color ?? '');
-      setEngine(current.engine_cc === null ? '' : String(current.engine_cc));
+      setEngine(current.engine_cc == null ? '' : String(current.engine_cc));
+      setEngineType(current.specifications?.engineType ?? null);
+      setPower(String(current.specifications?.electricMotorKw ?? ''));
+      setSeats(String(current.specifications?.passengerSeats ?? ''));
+      setMass(String(current.specifications?.designedMassKg ?? ''));
+      setTrailer(String(current.specifications?.trailerMassKg ?? ''));
       setTransmission(current.transmission_type === 'MANUAL' ? 'MANUAL' : 'AUTO');
       setVehicleType(current.vehicle_type === 'MOTORCYCLE' ? 'MOTORCYCLE' : 'CAR');
       setExistingImages(current.images);
@@ -75,7 +90,21 @@ const save = async () => {
       localizedAlert(i18nT("Thông tin vượt giới hạn"), i18nT("Biển số tối đa 20 ký tự, hãng/dòng xe tối đa 100 ký tự và màu xe tối đa 50 ký tự."));
       return;
     }
-    const engineCc = engine.trim() ? Number(engine) : null;
+    const electric = engineType === 'ELECTRIC';
+    const engineCc = vehicleType === 'MOTORCYCLE' && !electric && engine.trim() ? Number(engine) : null;
+    const floatPower = electric && power.trim() ? Number(power.trim().replace(',', '.')) : null;
+    const optionalInt = (value: string) => value.trim() ? Number(value) : null;
+    const seatCount = vehicleType === 'CAR' ? optionalInt(seats) : null;
+    const totalMass = vehicleType === 'CAR' ? optionalInt(mass) : null;
+    const trailerMass = vehicleType === 'CAR' ? optionalInt(trailer) : null;
+    if ((floatPower !== null && (!/^\d+(?:[.,]\d+)?$/.test(power.trim()) || !Number.isFinite(floatPower) || floatPower <= 0))
+      || (vehicleType === 'MOTORCYCLE' && (electric ? floatPower === null : engineCc === null))
+      || (seatCount !== null && (!Number.isInteger(seatCount) || seatCount < 1 || seatCount > 100))
+      || (totalMass !== null && (!Number.isInteger(totalMass) || totalMass < 1 || totalMass > 2_147_483_647))
+      || (trailerMass !== null && (!Number.isInteger(trailerMass) || trailerMass < 0 || trailerMass > 2_147_483_647))) {
+      localizedAlert(i18nT("Thông số xe chưa hợp lệ"), i18nT("Kiểm tra dung tích, công suất, số chỗ và khối lượng theo giấy tờ xe."));
+      return;
+    }
     if (engineCc !== null && (!/^\d+$/.test(engine.trim()) || !Number.isSafeInteger(engineCc) || engineCc <= 0 || engineCc > 2_147_483_647)) {
       localizedAlert(i18nT("Dung tích không hợp lệ"), i18nT("Nhập số nguyên cc lớn hơn 0."));
       return;
@@ -90,10 +119,14 @@ const save = async () => {
         brand: brand.trim() || null,
         model: model.trim() || null,
         color: color.trim() || null,
+        specifications: { engineType, electricMotorKw: floatPower, passengerSeats: seatCount,
+          designedMassKg: totalMass, trailerMassKg: trailerMass },
       };
       const vehicle = vehicleId
         ? await updateCustomerVehicle(vehicleId, payload)
         : await createCustomerVehicle(payload);
+      void client.invalidateQueries({ queryKey: ['customer', 'getCustomerVehicles'] });
+      void client.invalidateQueries({ queryKey: ['customer', 'bookingEstimate'] });
       if (photo) {
         try {
           await uploadCustomerVehicleImage(vehicle.id, { uri: photo.uri, fileName: photo.fileName, mimeType: photo.mimeType });
@@ -110,5 +143,7 @@ const save = async () => {
       setSaving(false);
     }
   };
-return { router, vehicleId, plate, setPlate, brand, setBrand, model, setModel, color, setColor, engine, setEngine, transmission, setTransmission, vehicleType, setVehicleType, photo, existingImages, deletingImageId, saving, loadingVehicle, loadError, retryVehicle, choosePhoto, removeImage, save };
+const selectModel = (brand: string, model: string) => { setBrand(brand); setModel(model); };
+return { router, vehicleId, catalog, selectModel, engineType, setEngineType, power, setPower, seats, setSeats,
+  mass, setMass, trailer, setTrailer, plate, setPlate, brand, setBrand, model, setModel, color, setColor, engine, setEngine, transmission, setTransmission, vehicleType, setVehicleType, photo, existingImages, deletingImageId, saving, loadingVehicle, loadError, retryVehicle, choosePhoto, removeImage, save };
 }

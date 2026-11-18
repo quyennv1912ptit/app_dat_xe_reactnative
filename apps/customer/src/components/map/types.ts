@@ -7,6 +7,7 @@ export type BookingMapProps = {
   pickup?: { coordinate: RideCoordinates } | null;
   dropoff?: { coordinate: RideCoordinates } | null;
   driver?: RideCoordinates | null;
+  vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
   route?: RideCoordinates[];
   interactive?: boolean;
   editablePin?: boolean;

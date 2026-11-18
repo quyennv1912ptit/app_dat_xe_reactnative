@@ -56,8 +56,7 @@ export const styles = (colors: ThemeColors) =>
     },
     fieldGroup: { gap: spacing.gap1_5 },
     fieldLabel: {
-      ...typography.labelLg,
-      fontSize: 13,
+      ...typography.label,
       color: colors.onSurface,
     },
     inputSurface: {
@@ -73,15 +72,14 @@ export const styles = (colors: ThemeColors) =>
       paddingHorizontal: spacing.px3_5,
     },
     dateInput: {
-      ...typography.bodyLg,
-      fontSize: 15,
+      ...typography.body,
       flex: 1,
       minWidth: 0,
       color: colors.onSurface,
     },
     datePlaceholder: { color: colors.onSurfaceVariant },
     fieldHint: {
-      ...typography.labelSm,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
     },
     genderOptions: {
@@ -101,12 +99,12 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.primaryContainer,
     },
     genderOptionText: {
-      ...typography.labelMd,
+      ...typography.label,
       color: colors.onSurfaceVariant,
     },
     genderOptionTextSelected: {
+      ...typography.button,
       color: colors.onPrimaryContainer,
-      fontWeight: "700",
     },
     infoRow: {
       flexDirection: "row",
@@ -117,31 +115,30 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.cardSurface,
     },
     infoCopy: { flex: 1 },
-    infoLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
+    infoLabel: { ...typography.caption, color: colors.onSurfaceVariant },
     infoValue: {
-      ...typography.labelMd,
+      ...typography.label,
       color: colors.onSurface,
       marginTop: spacing.py0_5,
     },
     helperText: {
-      ...typography.labelSm,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
     },
-    errorText: { ...typography.bodyMd, color: colors.error },
+    errorText: { ...typography.bodySecondary, color: colors.error },
     footer: {
       paddingHorizontal: spacing.margin,
       paddingBottom: spacing.spaceSm,
     },
     legalNotice: {
-      ...typography.labelSm,
+      ...typography.caption,
       color: colors.onSurfaceVariant,
       textAlign: "center",
-      lineHeight: 18,
       paddingHorizontal: spacing.spaceLg,
       paddingBottom: spacing.spaceSm,
     },
     legalLink: {
+      ...typography.label,
       color: colors.primary,
-      fontWeight: "600",
     },
   });

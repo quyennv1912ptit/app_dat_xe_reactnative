@@ -44,10 +44,18 @@ const markAll = async () => {
 const openNotification = async (item: CustomerNotification) => {
     await markRead(item);
     const payload = item.payload && typeof item.payload === 'object' ? item.payload as Record<string, unknown> : {};
+    if (item.type.toUpperCase() === 'VOUCHER_CAMPAIGN' || item.type.toUpperCase() === 'VOUCHER_GRANTED') {
+      router.push('/vouchers');
+      return;
+    }
     const rawRideId = payload.rideId ?? payload.ride_id;
     const rideId = typeof rawRideId === 'number' ? rawRideId : typeof rawRideId === 'string' ? Number(rawRideId) : NaN;
     if (Number.isSafeInteger(rideId) && rideId > 0) {
       router.push({ pathname: '/ride/[id]', params: { id: String(rideId), rideId: String(rideId), returnTo: 'notifications' } });
+      return;
+    }
+    if (item.type === 'VOUCHER_GRANTED' || item.type === 'VOUCHER_CAMPAIGN') {
+      router.push('/vouchers');
     }
   };
 const visible = items.filter((item) => filter === 'all' || category(item.type) === filter);

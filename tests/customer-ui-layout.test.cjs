@@ -30,7 +30,7 @@ function load(file, mocks) {
   return exports;
 }
 const native = {
-  Platform: { OS: "android" },
+  Platform: { OS: "android", select: (o) => o.android ?? o.default },
   StyleSheet: { create: (value) => value },
   View: "View",
 };
@@ -56,65 +56,6 @@ function fixture(dark) {
   };
   return { colors, ui };
 }
-
-test("pickup picker keeps day browsing separate from the chosen time and fits large text", () => {
-  const root = "apps/customer/src/features/booking";
-  const utils = load(`${root}/bookingUtils.ts`, { "@datxe/shared": shared });
-  const bookingStyles = load(`${root}/components/bookingStyles.ts`, { "@datxe/ui": tokens, "react-native": native });
-  const referenceTime = Date.parse("2026-11-10T07:09:00Z");
-  const selected = "2026-11-11T04:00:00.000Z";
-  const applied = [];
-  let closed = 0;
-
-  function renderPicker(width, fontScale, dark, time, expired = false) {
-    const { ui } = fixture(dark);
-    let dayKey;
-    const { SchedulePickerModal } = load(`${root}/components/SchedulePickerModal.tsx`, {
-      "@datxe/shared": shared,
-      "@datxe/ui": { ...ui, ScreenWrapper: "Sheet" },
-      "@expo/vector-icons": { MaterialIcons: "Icon" },
-      react: { useState: initial => [dayKey ??= initial(), key => { dayKey = key; }] },
-      "react-native": { ...native, Modal: "Modal", ScrollView: "ScrollView", useWindowDimensions: () => ({ width, fontScale }) },
-      "react/jsx-runtime": { jsx, jsxs: jsx },
-      "../bookingUtils": utils,
-      "./bookingStyles": bookingStyles,
-    });
-    const modal = SchedulePickerModal({
-      visible: true, close: () => { closed++; }, session: { referenceTime, expired }, selected: time,
-      onSelect: slot => applied.push(slot),
-    });
-    const content = all(modal).find(node => typeof node.type === "function");
-    return { modal, content: () => all(content.type(content.props)) };
-  }
-
-  const picker = renderPicker(390, 1, false, selected);
-  let nodes = picker.content();
-  const day = label => nodes.find(node => node.props.accessibilityRole === "tab" && node.props.children.props.children === label);
-  assert.equal(day("Ngày mai").props.accessibilityState.selected, true);
-  const selectedSlot = nodes.find(node => node.props.accessibilityLabel === "11:00, Ngày mai");
-  assert.equal(selectedSlot.props.accessibilityState.checked, true);
-  assert.ok(all(selectedSlot).some(node => node.type === "Icon" && node.props.name === "check"));
-  const grid = nodes.find(node => node.type === "ScrollView");
-  assert.ok(grid.props.contentOffset.y > 0);
-  assert.ok(!all(grid).some(node => node.props.children === "Đi ngay"));
-
-  day("Hôm nay").props.onPress();
-  nodes = picker.content();
-  assert.equal(day("Hôm nay").props.accessibilityState.selected, true);
-  assert.deepEqual(applied, []);
-  picker.modal.props.onRequestClose();
-  assert.equal(closed, 1);
-  nodes.find(node => node.props.accessibilityLabel === "14:30, Hôm nay").props.onPress();
-  assert.equal(applied[0], "2026-11-10T07:30:00.000Z");
-  nodes.find(node => node.props.accessibilityRole === "radio" && node.props.accessibilityLabel === "Đi ngay").props.onPress();
-  assert.equal(applied[1], null);
-
-  const compact = renderPicker(320, 1.8, true, null, true).content();
-  const compactSlot = compact.find(node => node.props.accessibilityLabel === "14:30, Hôm nay");
-  assert.ok(compactSlot.props.style[1].width >= 72 * 1.8);
-  assert.ok(compactSlot.props.style[1].height >= 48);
-  assert.ok(compact.some(node => node.props.accessibilityRole === "alert"));
-});
 
 test("customer payment summary uses the persisted amount and distinguishes unpaid from collected cash", () => {
   const { ui } = fixture(true);
@@ -246,11 +187,13 @@ test("fixed-height buttons do not gain an extra padding frame from legacy caller
   const content = flatten(button.props.children.props.style);
   assert.equal(frame.borderWidth, 0);
   assert.equal(frame.borderLeftWidth, 0);
-  assert.equal(frame.height, 48);
+  assert.equal(frame.height, undefined);
+  assert.equal(frame.minHeight, 48);
   assert.equal(frame.paddingVertical, 0);
   assert.equal(frame.paddingHorizontal, 0);
-  assert.equal(content.height, 48);
-  assert.equal(content.paddingVertical, 0);
+  assert.equal(content.height, undefined);
+  assert.equal(content.minHeight, 48);
+  assert.equal(content.paddingVertical, 8);
   assert.equal(button.props.onPress, onPress);
   assert.equal(
     all(button).find((node) => node.type === "Text").props.numberOfLines,
@@ -300,4 +243,63 @@ test("OTP keeps six rectangular cells and focus feedback while preserving digit 
   input.props.onChangeText("1a2 3456789");
   assert.equal(code, "123456");
   assert.equal(input.props.autoComplete, "sms-otp");
+});
+
+test("pickup picker keeps day browsing separate from the chosen time and fits large text", () => {
+  const root = "apps/customer/src/features/booking";
+  const utils = load(`${root}/bookingUtils.ts`, { "@datxe/shared": { ...shared, formatMoney: v => `${v} đ` } });
+  const bookingStyles = load(`${root}/components/bookingStyles.ts`, { "@datxe/ui": tokens, "react-native": native });
+  const referenceTime = Date.parse("2026-11-10T07:09:00Z");
+  const selected = "2026-11-11T04:00:00.000Z";
+  const applied = [];
+  let closed = 0;
+
+  function renderPicker(width, fontScale, dark, time, expired = false) {
+    const { ui } = fixture(dark);
+    let dayKey;
+    const { SchedulePickerModal } = load(`${root}/components/SchedulePickerModal.tsx`, {
+      "@datxe/shared": shared,
+      "@datxe/ui": { ...ui, ScreenWrapper: "Sheet" },
+      "@expo/vector-icons": { MaterialIcons: "Icon" },
+      react: { useState: initial => [dayKey ??= initial(), key => { dayKey = key; }] },
+      "react-native": { ...native, Modal: "Modal", ScrollView: "ScrollView", useWindowDimensions: () => ({ width, fontScale }) },
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "../bookingUtils": utils,
+      "./bookingStyles": bookingStyles,
+    });
+    const modal = SchedulePickerModal({
+      visible: true, close: () => { closed++; }, session: { referenceTime, expired }, selected: time,
+      onSelect: slot => applied.push(slot),
+    });
+    const content = all(modal).find(node => typeof node.type === "function");
+    return { modal, content: () => all(content.type(content.props)) };
+  }
+
+  const picker = renderPicker(390, 1, false, selected);
+  let nodes = picker.content();
+  const day = label => nodes.find(node => node.props.accessibilityRole === "tab" && node.props.children.props.children === label);
+  assert.equal(day("Ngày mai").props.accessibilityState.selected, true);
+  const selectedSlot = nodes.find(node => node.props.accessibilityLabel === "11:00, Ngày mai");
+  assert.equal(selectedSlot.props.accessibilityState.checked, true);
+  assert.ok(all(selectedSlot).some(node => node.type === "Icon" && node.props.name === "check"));
+  const grid = nodes.find(node => node.type === "ScrollView");
+  assert.ok(grid.props.contentOffset.y > 0);
+  assert.ok(!all(grid).some(node => node.props.children === "Đi ngay"));
+
+  day("Hôm nay").props.onPress();
+  nodes = picker.content();
+  assert.equal(day("Hôm nay").props.accessibilityState.selected, true);
+  assert.deepEqual(applied, []);
+  picker.modal.props.onRequestClose();
+  assert.equal(closed, 1);
+  nodes.find(node => node.props.accessibilityLabel === "14:30, Hôm nay").props.onPress();
+  assert.equal(applied[0], "2026-11-10T07:30:00.000Z");
+  nodes.find(node => node.props.accessibilityRole === "radio" && node.props.accessibilityLabel === "Đi ngay").props.onPress();
+  assert.equal(applied[1], null);
+
+  const compact = renderPicker(320, 1.8, true, null, true).content();
+  const compactSlot = compact.find(node => node.props.accessibilityLabel === "14:30, Hôm nay");
+  assert.ok(compactSlot.props.style[1].width >= 72 * 1.8);
+  assert.ok((compactSlot.props.style[1].minHeight ?? compactSlot.props.style[1].height) >= 48);
+  assert.ok(compact.some(node => node.props.accessibilityRole === "alert"));
 });

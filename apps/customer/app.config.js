@@ -14,6 +14,7 @@ module.exports = ({ config }) => {
     '@maplibre/maplibre-react-native',
     'expo-status-bar',
     '../../packages/config/plugins/with-short-cmake-paths',
+    '../../packages/config/plugins/with-system-nav-bar-sync',
     ['../../packages/config/plugins/with-team-dev-signing', {
       keystoreFile: 'team-dev-customer.jks',
       keyAlias: 'team-dev-customer',
@@ -23,7 +24,7 @@ module.exports = ({ config }) => {
       {
         android: { kotlinVersion: '2.4.0' },
         // Firebase qua SPM yêu cầu dynamic linkage để tránh trùng symbol.
-        ios: { useFrameworks: 'dynamic' },
+        ios: { useFrameworks: process.env.USE_FRAMEWORKS ?? 'dynamic', usePrecompiledModules: false },
       },
     ],
   ];
@@ -45,7 +46,13 @@ module.exports = ({ config }) => {
   }
 
   const googleServicesFile = path.join(__dirname, 'google-services.json');
-  const googleServiceInfoFile = path.join(__dirname, 'GoogleServiceCustomer-Info.plist');
+  const namedIosPlist = path.join(__dirname, 'GoogleServiceCustomer-Info.plist');
+  const genericIosPlist = path.join(__dirname, 'GoogleService-Info.plist');
+  const iosPlistPath = fs.existsSync(namedIosPlist)
+    ? './GoogleServiceCustomer-Info.plist'
+    : fs.existsSync(genericIosPlist)
+      ? './GoogleService-Info.plist'
+      : null;
 
   return {
     ...config,
@@ -56,7 +63,7 @@ module.exports = ({ config }) => {
     },
     ios: {
       ...config.ios,
-      ...(fs.existsSync(googleServiceInfoFile) ? { googleServicesFile: './GoogleServiceCustomer-Info.plist' } : {}),
+      ...(iosPlistPath ? { googleServicesFile: iosPlistPath } : {}),
     },
     plugins: process.env.CI_RELEASE === '1'
       ? [...plugins, '../../packages/config/plugins/with-release-signing']

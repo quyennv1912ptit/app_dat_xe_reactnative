@@ -19,8 +19,14 @@ export function DriverSettingsProvider({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, []);
   const saveMode = async (next: ThemeMode) => {
-    await AsyncStorage.setItem(storageKey, next);
+    const previous = mode;
     setMode(next);
+    try {
+      await AsyncStorage.setItem(storageKey, next);
+    } catch (error) {
+      setMode(previous);
+      throw error;
+    }
   };
   if (!loaded) return null;
   return (

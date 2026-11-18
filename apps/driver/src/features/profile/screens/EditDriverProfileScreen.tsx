@@ -66,7 +66,7 @@ export default function EditDriverProfileScreen() {
     },
   });
   return (
-    <DriverPage title="Thông tin cá nhân" loading={session.isLoading || bank.isLoading} error={session.error?.message || bank.error?.message || save.error?.message} retry={session.error || bank.error ? () => Promise.all([session.refetch(), bank.refetch()]) : undefined}>
+    <DriverPage form title="Thông tin cá nhân" loading={session.isLoading || bank.isLoading} error={session.error?.message || bank.error?.message || save.error?.message} retry={session.error || bank.error ? () => Promise.all([session.refetch(), bank.refetch()]) : undefined}>
       {profile && bank.data && !bank.isError ? (
         <>
           <SectionHeading title="Thông tin liên hệ" />
@@ -74,13 +74,13 @@ export default function EditDriverProfileScreen() {
             <TextInput label="Họ và tên" mode="flat" underlineColor={colors.transparent} defaultValue={initialName}
               maxLength={AUTH_FULL_NAME_MAX_LENGTH} editable={!save.isPending} error={Boolean(currentValidation?.nameError)}
               onChangeText={(fullName) => updateDraft({ fullName })} />
-            {currentValidation?.nameError ? <Typography style={{ color: colors.error }}>{currentValidation.nameError}</Typography> : null}
+            {currentValidation?.nameError ? <Typography accessibilityRole="alert" style={{ color: colors.error }}>{currentValidation.nameError}</Typography> : null}
             <TextInput label="Email liên hệ" mode="flat" underlineColor={colors.transparent} defaultValue={initialEmail}
               keyboardType="email-address" autoCapitalize="none" autoCorrect={false} maxLength={255}
               editable={!save.isPending} error={Boolean(currentValidation?.emailError)} onChangeText={(value) => updateDraft({ email: value })} />
-            {currentValidation?.emailError ? <Typography style={{ color: colors.error }}>Email không hợp lệ.</Typography> : null}
-            <Typography style={{ fontSize: 13, color: colors.onSurfaceVariant }}>Số điện thoại đã xác minh</Typography>
-            <Typography>{profile.phoneNumber ?? "Chưa có số điện thoại"}</Typography>
+            {currentValidation?.emailError ? <Typography accessibilityRole="alert" style={{ color: colors.error }}>Email không hợp lệ.</Typography> : null}
+            <Typography variant="caption" style={{ color: colors.onSurfaceVariant }}>Số điện thoại đã xác minh</Typography>
+            <Typography selectable>{profile.phoneNumber ?? "Chưa có số điện thoại"}</Typography>
           </Card>
           <SectionHeading title="Tài khoản nhận tiền" />
           <Card key={`bank:${profile.id}:${initialBankName}:${initialBankAccount}`} style={styles.form}>

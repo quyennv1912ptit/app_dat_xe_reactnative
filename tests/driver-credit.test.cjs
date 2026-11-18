@@ -34,6 +34,7 @@ test('online action rechecks balance before changing availability', async () => 
   const calls = [];
   load('apps/driver/src/features/offers/hooks/useHome.ts', {
     '@/lib/useDriverCredit': { useDriverCredit: () => ({ allowed: false, refetch: async () => balance }) },
+    '@/lib/driverCapabilities': { capabilitiesKey: ['driver', 'capabilities'], getCapabilities: async () => null },
     '@/lib/driverOffer': { usePendingOffer: () => ({}) },
     '@/lib/driverApi': { driverApi: {} }, '@/lib/store': {}, '@/lib/useRefreshOnFocus': { useRefreshOnFocus: () => {} },
     '@tanstack/react-query': { useQuery: () => ({}), useQueryClient: () => ({}), useMutation: options => { availability = options; return {}; } },

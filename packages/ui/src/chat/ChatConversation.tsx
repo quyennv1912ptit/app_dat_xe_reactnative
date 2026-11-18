@@ -1,12 +1,14 @@
 import { getLocale, translate as t } from "@datxe/shared";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMemo, useRef, useState } from "react";
-import { FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { FlatList, Image, Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet, View } from "react-native";
 import { ActivityIndicator, Appbar, Avatar, IconButton, TouchableRipple } from "react-native-paper";
 import { Button } from "../components/Button";
+import { MotionPressable } from "../components/MotionPressable";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { ThemedTextInput } from "../components/ThemedTextInput";
 import { Typography as Text } from "../components/Typography";
+import { typography } from "../theme/colors";
 import { useThemedStyles, type ThemeColors } from "../theme/ThemeProvider";
 import { useLanguage } from "../useLanguage";
 import { ChatImageViewer } from "./ChatImageViewer";
@@ -36,6 +38,7 @@ type Props = {
   emptyTitle: string;
   emptyHint?: string;
   error?: string | null;
+  quickReplies?: readonly string[];
   hasMore: boolean;
   loadingOlder: boolean;
   onBack: () => void;
@@ -54,7 +57,7 @@ const deliveryLabels = {
 
 export function ChatConversation({
   title, subtitle, avatar, rows, draft, onDraftChange, loading, busy, enabled,
-  notice, emptyTitle, emptyHint, error, hasMore, loadingOlder,
+  notice, emptyTitle, emptyHint, error, quickReplies, hasMore, loadingOlder,
   onBack, onRefresh, onLoadOlder, onSend, onAttach,
 }: Props) {
   useLanguage();
@@ -83,7 +86,7 @@ export function ChatConversation({
         </View>
         <Appbar.Action style={s.action} icon="refresh" accessibilityLabel={t("Làm mới tin nhắn")} onPress={onRefresh} />
       </Appbar.Header>
-      <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={s.fill} behavior="padding">
         {error ? (
           <View style={s.notice}>
             <Text accessibilityRole="alert" style={s.error}>{error}</Text>
@@ -163,6 +166,29 @@ export function ChatConversation({
           </View>
         ) : null}
         {!enabled && notice ? <Text style={s.closed}>{notice}</Text> : null}
+        {enabled && quickReplies?.length ? (
+          <View style={s.quickReplyBar}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={s.quickReplyRow}
+            >
+              {quickReplies.map((reply) => (
+                <MotionPressable
+                  key={reply}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Điền tin nhắn mẫu: ${reply}`}
+                  disabled={busy}
+                  onPress={() => onDraftChange(reply)}
+                  style={s.quickReplyChip}
+                >
+                  <Text style={s.quickReplyText}>{reply}</Text>
+                </MotionPressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
         {enabled ? (
           <View style={s.composer}>
             <IconButton
@@ -231,25 +257,26 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   header: { backgroundColor: c.cardSurface },
   avatar: { backgroundColor: c.primaryContainer },
   accent: { color: c.onPrimaryContainer },
-  title: { fontSize: 18, fontWeight: "600" },
+  title: { ...typography.sectionTitle },
   identity: { flex: 1, minWidth: 0, marginLeft: 12 },
-  subtitle: { fontSize: 12, color: c.onSurfaceVariant },
+  subtitle: { ...typography.caption, color: c.onSurfaceVariant },
   list: { paddingHorizontal: 16, paddingVertical: 12 },
   row: { paddingTop: 10 },
   groupedRow: { paddingTop: 3 },
   day: {
+    ...typography.caption,
     alignSelf: "center", marginVertical: 10, paddingHorizontal: 12, paddingVertical: 4,
-    borderRadius: 999, fontSize: 12, color: c.onSurfaceVariant, backgroundColor: c.surfaceContainerHigh,
+    borderRadius: 999, color: c.onSurfaceVariant, backgroundColor: c.surfaceContainerHigh,
   },
   bubble: { maxWidth: "84%", borderRadius: 24, paddingHorizontal: 14, paddingVertical: 10, overflow: "hidden" },
   mine: { alignSelf: "flex-end", backgroundColor: c.primaryContainer, borderBottomRightRadius: 8 },
   theirs: { alignSelf: "flex-start", backgroundColor: c.surfaceContainerHigh, borderBottomLeftRadius: 8 },
   photoBubble: { paddingHorizontal: 4, paddingVertical: 4 },
   caption: { paddingHorizontal: 8, paddingBottom: 4 },
-  message: { fontSize: 15, lineHeight: 22, color: c.onSurface },
+  message: { ...typography.body, color: c.onSurface },
   mineText: { color: c.onPrimaryContainer },
   messageMeta: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 4, marginTop: 4 },
-  meta: { flexShrink: 1, fontSize: 11, color: c.onSurfaceVariant },
+  meta: { ...typography.caption, flexShrink: 1, color: c.onSurfaceVariant },
   mineMeta: { color: c.onPrimaryContainer },
   read: { color: c.onPrimaryContainer },
   thumbnail: { borderRadius: 20, overflow: "hidden", backgroundColor: c.surfaceContainerHighest, width: 226, maxWidth: "100%" },
@@ -257,13 +284,20 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   expand: { position: "absolute", right: 8, bottom: 8, padding: 4, borderRadius: 999, backgroundColor: c.scrim70 },
   expandIcon: { color: c.onScrim },
   empty: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24, gap: 10 },
-  emptyTitle: { textAlign: "center", fontSize: 18, fontWeight: "600" },
-  emptyHint: { textAlign: "center", color: c.onSurfaceVariant },
+  emptyTitle: { ...typography.sectionTitle, textAlign: "center" },
+  emptyHint: { ...typography.bodySecondary, textAlign: "center", color: c.onSurfaceVariant },
   notice: { flexDirection: "row", alignItems: "center", paddingLeft: 16, backgroundColor: c.errorContainer },
   error: { flex: 1, color: c.onErrorContainer },
-  closed: { textAlign: "center", padding: 12, fontSize: 13, color: c.onSurfaceVariant, backgroundColor: c.cardSurface },
+  closed: { ...typography.caption, textAlign: "center", padding: 12, color: c.onSurfaceVariant, backgroundColor: c.cardSurface },
   jump: { alignSelf: "center", marginVertical: 4 },
   composer: { flexDirection: "row", alignItems: "flex-end", gap: 8, padding: 12, backgroundColor: c.cardSurface },
+  quickReplyBar: { backgroundColor: c.cardSurface, paddingTop: 8 },
+  quickReplyRow: { paddingHorizontal: 12, gap: 8 },
+  quickReplyChip: {
+    minHeight: 48, justifyContent: "center", paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 999, backgroundColor: c.surfaceContainerHigh, maxWidth: 260,
+  },
+  quickReplyText: { ...typography.label, color: c.onSurface },
   action: { margin: 0, width: 48, height: 48, borderRadius: 999 },
   sending: { width: 48, height: 48, justifyContent: "center", alignItems: "center" },
   input: {

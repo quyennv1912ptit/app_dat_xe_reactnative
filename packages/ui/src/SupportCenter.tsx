@@ -5,13 +5,15 @@ import type {
   SupportTicket,
   SupportStatusFilter,
 } from "@datxe/shared";
+import { Image } from "expo-image";
 import { Fragment, useRef, useState } from "react";
 import { Divider, List, RadioButton } from "react-native-paper";
-import { Image, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { Button } from "./components/Button";
 import { Card } from "./components/Card";
 import { Typography as Text } from "./components/Typography";
 import { ThemedTextInput as TextInput } from "./components/ThemedTextInput";
+import { typography } from "./theme/colors";
 import { useThemedStyles, type ThemeColors } from "./theme/ThemeProvider";
 import { ScreenWrapper } from "./components/ScreenWrapper";
 
@@ -77,6 +79,8 @@ export function EvidenceEditor({
         <View key={image.publicId} style={s.stack}>
           <Image
             source={{ uri: image.fileUrl }}
+            cachePolicy="memory"
+            contentFit="cover"
             style={s.image}
             accessibilityLabel={`Ảnh đính kèm ${index + 1}`}
           />
@@ -389,6 +393,8 @@ export function SupportCenter({
                 <Image
                   key={image.publicId}
                   source={{ uri: image.fileUrl }}
+                  cachePolicy="memory"
+                  contentFit="cover"
                   style={s.image}
                   accessibilityLabel="Ảnh yêu cầu hỗ trợ"
                 />
@@ -497,30 +503,25 @@ const styles = (c: ThemeColors) =>
     form: { gap: 12, padding: 16 },
     topics: { gap: 8, padding: 16 },
     title: {
-      fontSize: 18,
-      lineHeight: 26,
-      fontWeight: "500",
+      ...typography.sectionTitle,
       color: c.onSurface,
     },
     rowTitle: {
-      fontSize: 16,
-      lineHeight: 24,
-      fontWeight: "500",
+      ...typography.body,
       color: c.onSurface,
     },
     listRow: { minHeight: 56, paddingHorizontal: 0, paddingVertical: 8 },
     selected: { color: c.primary },
-    meta: { color: c.onSurfaceMuted, fontSize: 14, lineHeight: 22 },
+    meta: { ...typography.bodySecondary, color: c.onSurfaceMuted },
     divider: { backgroundColor: c.outlineSubtle },
     warning: { gap: 8, padding: 16, backgroundColor: c.safetyContainer },
     warningTitle: {
+      ...typography.cardTitle,
       color: c.onSafetyContainer,
-      fontSize: 16,
-      lineHeight: 24,
-      fontWeight: "500",
     },
-    warningBody: { color: c.onSafetyContainer, fontSize: 14, lineHeight: 22 },
+    warningBody: { ...typography.bodySecondary, color: c.onSafetyContainer },
     input: {
+      ...typography.body,
       minHeight: 144,
       textAlignVertical: "top",
       borderWidth: 1,
@@ -528,14 +529,12 @@ const styles = (c: ThemeColors) =>
       backgroundColor: c.inputSurface,
       borderRadius: 24,
       padding: 16,
-      fontSize: 16,
-      lineHeight: 24,
     },
-    counter: { color: c.onSurfaceMuted, fontSize: 12, lineHeight: 18 },
+    counter: { ...typography.caption, color: c.onSurfaceMuted, fontVariant: ["tabular-nums"] },
     attachments: { gap: 12, marginTop: 12 },
     action: { minHeight: 48, marginVertical: 12 },
     image: { width: "100%", height: 180, borderRadius: 24 },
-    error: { color: c.error, lineHeight: 22 },
+    error: { ...typography.bodySecondary, color: c.error },
     flex: { flex: 1, minWidth: 0 },
     refresh: { width: "auto", alignSelf: "flex-start" },
     ticketHeadingRow: {

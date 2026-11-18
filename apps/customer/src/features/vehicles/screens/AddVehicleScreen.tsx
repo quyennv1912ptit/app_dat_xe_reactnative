@@ -12,7 +12,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Image } from "expo-image";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import {
   Choice,
@@ -30,6 +31,7 @@ export default function AddVehicleScreen() {
   const {
     router,
     vehicleId,
+    catalog, selectModel, engineType, setEngineType, power, setPower, seats, setSeats, mass, setMass, trailer, setTrailer,
     plate,
     setPlate,
     brand,
@@ -61,7 +63,7 @@ export default function AddVehicleScreen() {
         title={i18nT(vehicleId ? "Sửa xe" : "Thêm xe")}
         onBack={() => router.back()}
       />
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -76,6 +78,36 @@ export default function AddVehicleScreen() {
           {loadError ? <CustomerNotice onRetry={retryVehicle}>{loadError}</CustomerNotice>
             : loadingVehicle ? <ActivityIndicator color={colors.primary} />
             : <>
+              <View style={styles.group}>
+                <Text style={styles.label}>{i18nT("Loại xe")}</Text>
+                <View style={styles.choices}>
+                  <Choice
+                    label={catalog?.bookingTypes.CAR ?? i18nT("Ô tô")}
+                    active={vehicleType === "CAR"}
+                    onPress={() => setVehicleType("CAR")}
+                  />
+                  <Choice
+                    label={catalog?.bookingTypes.MOTORCYCLE ?? i18nT("Xe máy")}
+                    active={vehicleType === "MOTORCYCLE"}
+                    onPress={() => setVehicleType("MOTORCYCLE")}
+                  />
+                </View>
+              </View>
+              <View style={styles.group}>
+                <Text style={styles.label}>{i18nT("Hộp số")}</Text>
+                <View style={styles.choices}>
+                  <Choice
+                    label={catalog?.transmissions.AUTO ?? i18nT("Số tự động")}
+                    active={transmission === "AUTO"}
+                    onPress={() => setTransmission("AUTO")}
+                  />
+                  <Choice
+                    label={catalog?.transmissions.MANUAL ?? i18nT("Số sàn")}
+                    active={transmission === "MANUAL"}
+                    onPress={() => setTransmission("MANUAL")}
+                  />
+                </View>
+              </View>
               <Card style={styles.card}>
                 <Field
                   label={i18nT("Biển số xe *")}
@@ -85,6 +117,10 @@ export default function AddVehicleScreen() {
                   autoCapitalize="characters"
                   maxLength={20}
                 />
+                {catalog?.models?.filter(item => item.vehicleType === vehicleType).map(item => (
+                  <Choice key={item.brand + item.model} label={item.brand + " " + item.model}
+                    active={brand === item.brand && model === item.model} onPress={() => selectModel(item.brand, item.model)} />
+                ))}
                 <Field
                   label={i18nT("Hãng xe")}
                   value={brand}
@@ -106,23 +142,44 @@ export default function AddVehicleScreen() {
                   placeholder={i18nT("Ví dụ: Trắng")}
                   maxLength={50}
                 />
-                <Field
+                <Text style={styles.label}>{i18nT("Thông số do bạn khai theo giấy tờ xe")}</Text>
+                <View style={styles.choices}>
+                  <Choice label={i18nT("Xăng")} active={engineType === "COMBUSTION"} onPress={() => setEngineType("COMBUSTION")} />
+                  <Choice label={i18nT("Điện")} active={engineType === "ELECTRIC"} onPress={() => setEngineType("ELECTRIC")} />
+                </View>
+                <View style={styles.choices}>
+                  <Choice label={i18nT("Hybrid")} active={engineType === "HYBRID"} onPress={() => setEngineType("HYBRID")} />
+                  <Choice label={i18nT("Chưa rõ")} active={!engineType} onPress={() => setEngineType(null)} />
+                </View>
+                {vehicleType === "CAR" ? <>
+                  <Field label={i18nT("Số chỗ hành khách")} value={seats} onChangeText={setSeats}
+                    placeholder={i18nT("Không tính ghế tài xế")} keyboardType="numeric" />
+                  <Field label={i18nT("Khối lượng toàn bộ theo thiết kế (kg)")} value={mass} onChangeText={setMass}
+                    placeholder="Không bắt buộc" keyboardType="numeric" />
+                  <Field label={i18nT("Khối lượng rơ-moóc (kg)")} value={trailer} onChangeText={setTrailer}
+                    placeholder={i18nT("Nhập 0 nếu không kéo rơ-moóc")} keyboardType="numeric" />
+                </> : null}
+                {engineType === "ELECTRIC" ? <Field label={i18nT("Công suất động cơ (kW)")} value={power} onChangeText={setPower}
+                  placeholder={vehicleType === "MOTORCYCLE" ? i18nT("Theo giấy tờ xe") : i18nT("Không bắt buộc")} keyboardType="numeric" /> : null}
+                {vehicleType === "MOTORCYCLE" && engineType !== "ELECTRIC" ? <Field
                   label={i18nT("Dung tích động cơ (cc)")}
                   value={engine}
                   onChangeText={setEngine}
-                  placeholder={i18nT("Không bắt buộc")}
+                  placeholder={i18nT("Theo giấy tờ xe")}
                   keyboardType="numeric"
                   maxLength={10}
-                />
+                /> : null}
               </Card>
               <View style={styles.group}>
                 <Text style={styles.label}>{i18nT("Ảnh xe (không bắt buộc)")}</Text>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={i18nT("Chọn ảnh xe")}
                   onPress={() => void choosePhoto()}
                   style={styles.photoPicker}
                 >
                   {photo ? (
-                    <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+                    <Image source={{ uri: photo.uri }} cachePolicy="memory" contentFit="cover" style={styles.photoPreview} />
                   ) : (
                     <MaterialIcons
                       name="add-a-photo"
@@ -140,10 +197,13 @@ export default function AddVehicleScreen() {
                   <View key={image.id} style={styles.existingImageRow}>
                     <Image
                       source={{ uri: image.secure_url }}
+                      cachePolicy="memory"
+                      contentFit="cover"
                       style={styles.photoPreview}
                     />
                     <Text style={styles.photoText}>{i18nT("Ảnh đã lưu")}</Text>
                     <Pressable
+                      accessibilityRole="button"
                       accessibilityLabel={i18nT("Xóa ảnh xe")}
                       disabled={deletingImageId !== null}
                       onPress={() => removeImage(image.id)}
@@ -162,36 +222,7 @@ export default function AddVehicleScreen() {
                   </View>
                 ))}
               </View>
-              <View style={styles.group}>
-                <Text style={styles.label}>{i18nT("Loại xe")}</Text>
-                <View style={styles.choices}>
-                  <Choice
-                    label={i18nT("Ô tô")}
-                    active={vehicleType === "CAR"}
-                    onPress={() => setVehicleType("CAR")}
-                  />
-                  <Choice
-                    label={i18nT("Xe máy")}
-                    active={vehicleType === "MOTORCYCLE"}
-                    onPress={() => setVehicleType("MOTORCYCLE")}
-                  />
-                </View>
-              </View>
-              <View style={styles.group}>
-                <Text style={styles.label}>{i18nT("Hộp số")}</Text>
-                <View style={styles.choices}>
-                  <Choice
-                    label={i18nT("Số tự động")}
-                    active={transmission === "AUTO"}
-                    onPress={() => setTransmission("AUTO")}
-                  />
-                  <Choice
-                    label={i18nT("Số sàn")}
-                    active={transmission === "MANUAL"}
-                    onPress={() => setTransmission("MANUAL")}
-                  />
-                </View>
-              </View>
+
           </>}
         </ScrollView>
         {!loadingVehicle && !loadError ? <View style={styles.footer}>

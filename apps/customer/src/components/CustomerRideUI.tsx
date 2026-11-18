@@ -1,22 +1,22 @@
-import { getLocale, translate as t } from "@datxe/shared";
-import { Button, Card, Typography as Text, useThemeColors, useLanguage } from "@datxe/ui";
+import { translate as t } from "@datxe/shared";
+import { Button, Card, MoneyText as SharedMoneyText, typography, Typography as Text, useThemeColors, useLanguage } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type TextStyle } from "react-native";
 
 export const customerType = StyleSheet.create({
-  heading: { fontSize: 22, lineHeight: 29, fontWeight: "700" },
-  address: { fontSize: 16, lineHeight: 23 },
-  meta: { fontSize: 13, lineHeight: 19 },
-  amount: { fontSize: 36, lineHeight: 44, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  metric: { fontSize: 22, lineHeight: 28, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  heading: { ...typography.sectionTitle },
+  address: { ...typography.body },
+  meta: { ...typography.bodySecondary },
+  amount: { ...typography.moneyDisplay },
+  metric: { ...typography.sectionTitle, fontVariant: ["tabular-nums"] },
   numbers: { fontVariant: ["tabular-nums"] },
   target: { minWidth: 48, minHeight: 48, justifyContent: "center" },
 });
 
-export function MoneyText({ value, style }: { value: number; style?: StyleProp<TextStyle> }) {
+export function MoneyText({ value, signed, style }: { value: number; signed?: boolean; style?: StyleProp<TextStyle> }) {
   useLanguage();
-  return <Text style={[customerType.amount, style]}>{t("{0} đ", { "0": value.toLocaleString(getLocale(), { maximumFractionDigits: 0 }) })}</Text>;
+  return <SharedMoneyText value={value} signed={signed} variant="display" style={[customerType.amount, style]} />;
 }
 
 export function RideEndpoints({ pickup, dropoff }: { pickup?: string | null; dropoff?: string | null }) {

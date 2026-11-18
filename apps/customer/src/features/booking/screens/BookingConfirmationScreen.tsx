@@ -1,31 +1,35 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import { List, RadioButton } from "react-native-paper";
-import { customerType, MoneyText } from "@/components/CustomerRideUI";
-import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { formatMoney, translate as i18nT } from "@datxe/shared";
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { List } from 'react-native-paper';
+import { MoneyText } from '@/components/CustomerRideUI';
+import { MapSheetLayout } from '@datxe/ui/goong-map';
+import { formatMoney, translate as i18nT } from '@datxe/shared';
 import {
   Button,
   Card,
   type ThemeColors,
   MotionPressable as Pressable,
   Typography as Text,
+  typography,
   ThemedTextInput as TextInput,
   useLanguage,
   useThemeColors,
   useThemedStyles,
-} from "@datxe/ui";
-import { MaterialIcons } from "@expo/vector-icons";
-import type { ComponentProps } from "react";
-import { StyleSheet, View } from "react-native";
+} from '@datxe/ui';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useState, type ComponentProps } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { BookingMap } from "@/components/map/BookingMap";
-import { activeRideDestination, DEFAULT_MAP_CENTER, formatScheduledPickup } from "../bookingUtils";
-import { bookingStyles as base_s } from "../components/bookingStyles";
-import { FareDetails } from "../components/FareDetails";
-import { RouteSummary } from "../components/RouteSummary";
-import { SchedulePickerModal } from "../components/SchedulePickerModal";
-import { VoucherPickerModal } from "../components/VoucherPickerModal";
-import { useBookingConfirmation } from "../hooks/useBookingConfirmation";
+import { BookingMap } from '@/components/map/BookingMap';
+import { activeRideDestination, DEFAULT_MAP_CENTER, formatScheduledPickup } from '../bookingUtils';
+import { bookingStyles as base_s } from '../components/bookingStyles';
+import { checkoutStyles } from '../components/checkoutStyles';
+import { FareDetails } from '../components/FareDetails';
+import { PaymentMethodModal } from '../components/PaymentMethodModal';
+import { RideRouteBar } from '../components/RideRouteBar';
+import { SchedulePickerModal } from '../components/SchedulePickerModal';
+import { VoucherPickerModal } from '../components/VoucherPickerModal';
+import { useBookingConfirmation } from '../hooks/useBookingConfirmation';
+import { getVoucherPresentation } from '@/lib/voucherPresentation';
 // The sheet uses Gesture Handler's native TextInput. Its adapter forwards the
 // same editor used by the uncontrolled draft component, with an optional ref value.
 const SheetDraftInput = BottomSheetTextInput as unknown as NonNullable<ComponentProps<typeof TextInput>["inputComponent"]>;
@@ -38,16 +42,29 @@ export default function BookingConfirmationScreen() {
   const colors = useThemeColors();
 
   const s = useThemedStyles(base_s);
+  const checkout = useThemedStyles(checkoutStyles);
 
   const h = useBookingConfirmation();
-  const pickupTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : i18nT("Đi ngay");
+  const [paymentVisible, setPaymentVisible] = useState(false);
+  const scheduleTime = h.scheduledAt ? formatScheduledPickup(h.scheduledAt) : '';
+  const voucherLabel = h.selectedVoucher
+    ? getVoucherPresentation(h.selectedVoucher).title
+    : h.draft.voucherCode || (h.draft.voucherId != null ? i18nT("Đã chọn ưu đãi") : "");
+  const discount = h.estimate?.discountAmount ?? 0;
   return (
     <>
       <MapSheetLayout
-        title={i18nT("Xác nhận chuyến đi")}
         initialSnap={0}
-        snapPoints={["68%", "95%"]}
-        onBack={() => h.router.back()}
+        snapPoints={["72%", "95%"]}
+        topContent={(
+          <RideRouteBar
+            pickup={h.draft.pickup}
+            dropoff={h.draft.dropoff}
+            onBack={() => h.router.back()}
+            onPickup={() => h.router.push({ pathname: '/ride/pickup', params: { edit: '1' } })}
+            onDropoff={() => h.router.push({ pathname: '/ride/destination', params: { edit: '1' } })}
+          />
+        )}
         renderMap={viewport => (
           <BookingMap
             center={h.draft.pickup?.coordinate ?? DEFAULT_MAP_CENTER}
@@ -58,72 +75,132 @@ export default function BookingConfirmationScreen() {
           />
         )}
         footer={(
-          <View style={extra.summary}>
-            <View style={extra.summaryRow}>
-              <Text style={s.muted}>{i18nT("Tổng thanh toán")}</Text>
-              {h.estimating ? (
-                <Text style={s.muted}>{i18nT("Đang cập nhật giá chuyến…")}</Text>
-              ) : h.estimate && !h.error ? (
-                <MoneyText value={h.estimate.payableFare} style={extra.summaryAmount} />
-              ) : (
-                <Text style={s.muted}>{i18nT("Chưa có giá")}</Text>
-              )}
+          <View style={checkout.footerPanel}>
+            <View style={checkout.totalRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={i18nT("Phương thức thanh toán")}
+                disabled={h.submitting}
+                onPress={() => setPaymentVisible(true)}
+                style={extra.paymentCompact}
+              >
+                <MaterialIcons
+                  name={h.paymentMethod === 'CASH' ? 'payments' : 'account-balance-wallet'}
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={checkout.optionLabel}>
+                  {i18nT(h.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Ví ứng dụng')}
+                </Text>
+                <MaterialIcons name="expand-more" size={16} color={colors.onSurfaceVariant} />
+              </Pressable>
+              <View style={extra.totalCopy}>
+                <Text style={checkout.totalLabel}>{i18nT("Tổng thanh toán")}</Text>
+                {h.estimating ? (
+                  <Text style={s.muted}>{i18nT("Đang tính…")}</Text>
+                ) : h.estimate && !h.error ? (
+                  <MoneyText value={h.estimate.payableFare} style={checkout.totalAmount} />
+                ) : (
+                  <Text style={s.muted}>{i18nT("Chưa có giá")}</Text>
+                )}
+              </View>
             </View>
-            <Button
-              label={h.scheduledAt ? "Xác nhận đặt lịch" : "Đặt chuyến lái hộ"}
-              disabled={!h.ready}
-              loading={h.submitting}
-              onPress={h.book}
-              icon="arrow-forward"
-            />
+            {h.paymentMethod === 'WALLET' && h.paymentError ? (
+              <Text accessibilityRole="alert" style={s.error}>{i18nT(h.paymentError)}</Text>
+            ) : null}
+            {h.schedulePendingSelection ? (
+              <View style={extra.scheduleActions}>
+                <Button
+                  label="Chọn giờ đón"
+                  disabled={h.submitting}
+                  onPress={h.openSchedule}
+                  icon="schedule"
+                  style={extra.flexAction}
+                />
+                <Button
+                  variant="secondary"
+                  label="Đặt ngay"
+                  disabled={h.submitting}
+                  onPress={() => h.draft.clearScheduleRequest()}
+                  style={extra.flexAction}
+                />
+              </View>
+            ) : (
+              <Button
+                label={h.scheduledAt ? "Xác nhận đặt lịch" : "Đặt chuyến lái hộ"}
+                disabled={!h.ready}
+                loading={h.submitting}
+                onPress={h.book}
+                icon="arrow-forward"
+                style={checkout.footerCta}
+              />
+            )}
           </View>
         )}
       >
         <View style={extra.details}>
-          <View style={s.between}>
-            <Text style={s.label}>
-              {i18nT("Bước 4/4 · Kiểm tra chuyến đi")}
-            </Text>
+          <Text style={s.label}>
+            {i18nT("Bước 4/4 · Kiểm tra chuyến đi")}
+          </Text>
+          {h.schedulePendingSelection ? (
+            <View style={[s.card, { backgroundColor: colors.warningContainer }]}>
+              <Text style={[s.label, { color: colors.onWarningContainer }]}>
+                {i18nT("Bạn đang chọn đặt chuyến hẹn giờ. Vui lòng chọn giờ đón hoặc chuyển sang Đặt ngay.")}
+              </Text>
+            </View>
+          ) : null}
+          {h.activeRide ? (
+            <View style={s.errorBox}>
+              <Text style={s.error}>
+                {i18nT("Bạn đang có một chuyến chưa hoàn tất.")}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                style={extra.targetLink}
+                onPress={() =>
+                  h.router.replace(activeRideDestination(h.activeRide!))
+                }
+              >
+                <Text style={s.link}>
+                  {i18nT("Theo dõi chuyến hiện tại")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <View style={checkout.footerOptions}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={i18nT("Chọn giờ đón") + ", " + pickupTime}
+              accessibilityLabel={i18nT("Chọn thời gian tài xế đến đón")}
+              disabled={h.submitting}
               onPress={h.openSchedule}
-              style={[s.row, s.chip]}
+              style={[checkout.optionCell, (Boolean(h.scheduledAt) || h.schedulePendingSelection) && checkout.optionCellActive]}
             >
-              <MaterialIcons
-                name={h.scheduledAt ? "event" : "schedule"}
-                size={17}
-                color={colors.primary}
-              />
-              <Text style={s.link}>{pickupTime}</Text>
-              <MaterialIcons
-                name="expand-more"
-                size={18}
-                color={colors.primary}
-              />
+              <MaterialIcons name="event" size={18} color={colors.primary} />
+              <Text style={[checkout.optionLabel, (Boolean(h.scheduledAt) || h.schedulePendingSelection) && checkout.optionLabelActive]}>
+                {h.scheduledAt ? scheduleTime : h.schedulePendingSelection ? i18nT("Chọn giờ đón") : i18nT("Đặt ngay")}
+              </Text>
+              <MaterialIcons name="chevron-right" size={16} color={colors.onSurfaceVariant} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={i18nT("Chọn ưu đãi cho chuyến đi")}
+              disabled={h.submitting}
+              onPress={() => h.setVoucherVisible(true)}
+              style={[checkout.optionCell, Boolean(voucherLabel) && checkout.optionCellActive]}
+            >
+              <MaterialIcons name="local-offer" size={18} color={colors.primary} />
+              <Text style={[checkout.optionLabel, Boolean(voucherLabel) && checkout.optionLabelActive]}>
+                {voucherLabel
+                  ? discount > 0
+                    ? `${voucherLabel} (-${formatMoney(discount, { nonBreaking: true })})`
+                    : voucherLabel
+                  : i18nT('Ưu đãi')}
+              </Text>
+              <MaterialIcons name="chevron-right" size={16} color={colors.onSurfaceVariant} />
             </Pressable>
           </View>
-          <RouteSummary
-            pickup={h.draft.pickup}
-            dropoff={h.draft.dropoff}
-            onPickup={() =>
-              h.router.push({
-                pathname: "/ride/pickup",
-                params: { edit: "1" },
-              })
-            }
-            onDropoff={() =>
-              h.router.push({
-                pathname: "/ride/destination",
-                params: { edit: "1" },
-              })
-            }
-          />
-          <Pressable accessibilityRole="button" style={customerType.target}
-            onPress={() => h.router.push({ pathname: "/ride/map-picker", params: { kind: "pickup", edit: "1" } })}>
-            <Text style={s.link}>{i18nT("Chỉnh ghim điểm đón trên bản đồ")}</Text>
-          </Pressable>
           <Pressable
+            accessibilityRole="button"
             onPress={() =>
               h.router.push({
                 pathname: "/ride/vehicle",
@@ -132,19 +209,11 @@ export default function BookingConfirmationScreen() {
             }
             style={[s.card, s.row]}
           >
-            <View style={s.icon}>
-              <MaterialIcons
-                name={
-                  h.vehicle?.vehicle_type === "MOTORCYCLE"
-                    ? "two-wheeler"
-                    : "directions-car"
-                }
-                size={26}
-                color={colors.primary}
-              />
-            </View>
             <View style={s.flex}>
-              <Text style={s.label}>{i18nT("Phương tiện của bạn")}</Text>
+              <Text style={s.label}>
+                {i18nT("Phương tiện của bạn")}
+                {h.vehicle ? ` · ${i18nT(h.vehicle.vehicle_type === "MOTORCYCLE" ? "Xe máy" : "Ô tô")}` : ""}
+              </Text>
               <Text style={[s.text, extra.item4]}>
                 {h.vehicle
                   ? `${[h.vehicle.brand, h.vehicle.model].filter(Boolean).join(" ") || i18nT("Xe")} · ${h.vehicle.plate_number ?? ""}`
@@ -157,76 +226,14 @@ export default function BookingConfirmationScreen() {
               color={colors.onSurfaceVariant}
             />
           </Pressable>
-          <Card style={s.card}>
-            <Text style={s.label}>Phương thức thanh toán</Text>
-            <RadioButton.Group value={h.paymentMethod} onValueChange={value => { if (!h.submitting && (value === 'CASH' || value === 'WALLET')) h.setPaymentMethod(value); }}>
-              <RadioButton.Item label="Tiền mặt · Trả trực tiếp cho tài xế" value="CASH" disabled={h.submitting} />
-              <RadioButton.Item label="Ví ứng dụng" value="WALLET" disabled={h.submitting} />
-            </RadioButton.Group>
-            <Text style={s.muted}>{h.walletBalance === undefined ? 'Chưa tải được số dư ví' : `Số dư ví: ${formatMoney(h.walletBalance)}`}</Text>
-            {h.paymentError ? <Text accessibilityRole="alert" style={s.text}>{h.paymentError}</Text> : null}
-            {h.paymentMethod === 'WALLET' ? <>
-              <Button variant="secondary" label="Nạp tiền vào ví" disabled={h.submitting} onPress={() => h.router.push('/wallet/top-up')} />
-              <Button variant="ghost" label="Kiểm tra lại số dư" disabled={h.submitting} onPress={() => void h.retryWallet()} />
-            </> : null}
-            <View style={s.divider} />
-            <Pressable
-              accessibilityLabel={i18nT("Chọn ưu đãi cho chuyến đi")}
-              onPress={() => h.setVoucherVisible(true)}
-              style={[s.row, customerType.target]}
-            >
-              <MaterialIcons
-                name="local-offer"
-                size={24}
-                color={colors.primary}
-              />
-              <View style={s.flex}>
-                <Text style={[s.text, extra.item5]}>
-                  {i18nT(
-                    h.draft.voucherCode
-                      ? (h.selectedVoucher?.code ?? h.draft.voucherCode)
-                      : "Chọn ưu đãi",
-                  )}
-                </Text>
-                <Text style={s.muted}>
-                  {i18nT(
-                    h.draft.voucherCode
-                      ? "Nhấn để đổi hoặc bỏ ưu đãi"
-                      : "Xem ưu đãi dành cho chuyến đi này",
-                  )}
-                </Text>
-              </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={22}
-                color={colors.onSurfaceVariant}
-              />
-            </Pressable>
-          </Card>
-          {h.activeRide ? (
-            <View style={s.errorBox}>
-              <Text style={s.error}>
-                {i18nT("Bạn đang có một chuyến chưa hoàn tất.")}
-              </Text>
-              <Pressable
-                onPress={() =>
-                  h.router.replace(activeRideDestination(h.activeRide!))
-                }
-              >
-                <Text style={s.link}>
-                  {i18nT("Theo dõi chuyến hiện tại")}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
           <FareDetails
             estimate={h.estimate}
             loading={h.estimating}
             error={h.error}
             retry={() => void h.retryPrice()}
           />
-          {h.error && h.draft.voucherCode ? (
-            <Pressable onPress={() => h.draft.setVoucher("")}>
+          {h.error && (h.draft.voucherCode || h.draft.voucherId != null) ? (
+            <Pressable accessibilityRole="button" style={extra.targetLink} onPress={() => h.draft.setVoucher("", null)}>
               <Text style={s.link}>{i18nT("Bỏ ưu đãi và tính lại giá")}</Text>
             </Pressable>
           ) : null}
@@ -267,6 +274,20 @@ export default function BookingConfirmationScreen() {
           </Card>
         </View>
       </MapSheetLayout>
+      <PaymentMethodModal
+        visible={paymentVisible}
+        close={() => setPaymentVisible(false)}
+        method={h.paymentMethod}
+        onChange={h.setPaymentMethod}
+        balance={h.walletBalance}
+        error={h.paymentError}
+        submitting={h.submitting}
+        onTopUp={() => {
+          setPaymentVisible(false);
+          h.router.push('/wallet/top-up');
+        }}
+        onRetryWallet={() => void h.retryWallet()}
+      />
       <VoucherPickerModal
         visible={h.voucherVisible}
         close={() => h.setVoucherVisible(false)}
@@ -275,12 +296,20 @@ export default function BookingConfirmationScreen() {
         error={h.vouchersError}
         applyError={h.voucherError}
         selectedCode={h.draft.voucherCode}
-        applyingCode={h.applyingCode}
+        selectedId={h.draft.voucherId}
+        applyingKey={h.applyingKey}
         subtotal={h.estimate?.estimatedFare}
-        onApply={(code) => void h.applyVoucher(code)}
+        onApply={(selection) => void h.applyVoucher(selection)}
         onRetry={() => void h.retryVouchers()}
+        campaigns={h.campaigns}
+        campaignsLoading={h.campaignsLoading}
+        campaignsError={h.campaignsError}
+        retryCampaigns={() => void h.retryCampaigns()}
+        claimVoucher={(id) => void h.claimVoucher(id)}
+        claimingCampaignId={h.claimingCampaignId}
       />
       <SchedulePickerModal
+        key={h.scheduleVisible ? 'schedule-open' : 'schedule-closed'}
         visible={h.scheduleVisible}
         close={h.closeSchedule}
         selected={h.scheduledAt}
@@ -296,13 +325,24 @@ const extraStyles = (colors: ThemeColors) =>
     noteToggle: { minHeight: 48 },
     notes: { gap: 12 },
     details: { gap: 16 },
-    summary: { gap: 8 },
-    summaryRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
-    summaryAmount: { fontSize: 28, lineHeight: 34, fontWeight: "700", marginLeft: "auto", textAlign: "right" },
+    paymentCompact: {
+      minHeight: 48,
+      flexGrow: 1,
+      flexBasis: 140,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceContainerHigh,
+    },
+    totalCopy: { flexGrow: 1, flexBasis: 140, alignItems: "flex-end", gap: 2 },
+    scheduleActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    flexAction: { flexGrow: 1, flexBasis: 140 },
+    targetLink: { minHeight: 48, minWidth: 48, justifyContent: "center" },
     item3: { minHeight: 72, textAlignVertical: "top", padding: 12, borderRadius: 16, backgroundColor: colors.inputSurface },
-    item4: { fontWeight: "700" },
-    item5: { fontWeight: "600" },
+    item4: { ...typography.cardTitle },
     item6: { minHeight: 72, textAlignVertical: "top", padding: 12, borderRadius: 16, backgroundColor: colors.inputSurface },
     item7: { alignSelf: "flex-end" },
-
   });

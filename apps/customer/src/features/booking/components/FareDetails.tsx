@@ -1,9 +1,9 @@
 import { CustomerNotice, customerType } from "@/components/CustomerRideUI";
-import { getLocale, translate as t, type RideEstimate } from "@datxe/shared";
-import { Card, Typography as Text, useLanguage, useThemeColors, useThemedStyles } from "@datxe/ui";
+import { formatMoney, getLocale, translate as t, type RideEstimate } from "@datxe/shared";
+import { Card, KeyValueRow, Typography as Text, useLanguage, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { StyleSheet, View } from "react-native";
 import { ActivityIndicator, List } from "react-native-paper";
-import { minimumFareAdjustment, money } from "../bookingUtils";
+import { minimumFareAdjustment } from "../bookingUtils";
 import { bookingStyles } from "./bookingStyles";
 
 export function FareDetails({ estimate, loading, error, retry }: {
@@ -25,6 +25,8 @@ export function FareDetails({ estimate, loading, error, retry }: {
     </Card>
   );
 
+  const subtotalAfterDiscount = Math.max(0, estimate.estimatedFare - estimate.discountAmount);
+  const roundingAdjustment = estimate.payableFare - subtotalAfterDiscount;
   const fees = [
     { label: "Giá mở đầu", value: estimate.baseFare },
     { label: "Cước quãng đường", value: estimate.distanceFare },
@@ -35,6 +37,8 @@ export function FareDetails({ estimate, loading, error, retry }: {
       { label: "Điều chỉnh cước tối thiểu", value: minimumFareAdjustment(estimate) },
     ].filter(({ value }) => value > 0),
     ...(estimate.discountAmount > 0 ? [{ label: "Ưu đãi", value: -estimate.discountAmount }] : []),
+    ...(roundingAdjustment !== 0 ? [{ label: "Làm tròn bội 1.000 đ", value: roundingAdjustment }] : []),
+    { label: "Tổng thanh toán", value: estimate.payableFare },
   ];
   return (
     <Card style={s.card}>
@@ -46,10 +50,12 @@ export function FareDetails({ estimate, loading, error, retry }: {
       <List.Accordion title={t("Chi tiết giá")} style={styles.accordion} theme={{ colors: { background: c.transparent } }}>
         <View style={styles.breakdown}>
           {fees.map(({ label, value }) => (
-            <View key={label} style={s.between}>
-              <Text style={[s.text, styles.label]}>{t(label)}</Text>
-              <Text style={[s.text, customerType.numbers]}>{value < 0 ? `−${money(-value)}` : money(value)}</Text>
-            </View>
+            <KeyValueRow
+              key={label}
+              label={t(label)}
+              value={formatMoney(value, { locale: getLocale(), signed: value < 0, nonBreaking: true })}
+              tabular
+            />
           ))}
           <Text style={s.muted}>{t("Giá được tính theo lộ trình và bảng giá đang áp dụng.")}</Text>
         </View>

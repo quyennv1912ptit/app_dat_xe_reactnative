@@ -23,7 +23,7 @@ export default function TicketChatScreen() {
       loading={detail.isLoading || messages.isLoading}
       sending={send.isPending}
       error={error}
-      onBack={() => router.back()}
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/tickets'))}
       onRefresh={() => { void detail.refetch(); void messages.refetch(); }}
       onPickImage={pickTicketImage}
       onSend={async ({ body, image }) => {

@@ -11,13 +11,25 @@ export function useTripHistory() {
  const router=useRouter();
  const focused=useScreenFocused();
  const [filter,setFilter]=useState<Filter>('all');
+ const [search, setSearch] = useState('');
+ const [days, setDays] = useState(0);
+ const [createdFrom, setCreatedFrom] = useState<string>();
+ const setPeriod = (next: number) => {
+   setDays(next);
+   if (!next) { setCreatedFrom(undefined); return; }
+   const start = new Date();
+   start.setHours(0, 0, 0, 0);
+   start.setDate(start.getDate() - next + 1);
+   setCreatedFrom(start.toISOString());
+ };
+ const q = search.trim();
  const [refreshing,setRefreshing]=useState(false);
  const status=filter==='completed'?'COMPLETED':filter==='cancelled'?'CANCELLED,NO_DRIVER_FOUND,EXPIRED,FAILED_SYSTEM':undefined;
- const query=useInfiniteQuery({queryKey:['customer','getCustomerRides',status],initialPageParam:0,queryFn:({pageParam})=>getCustomerRides(pageParam,20,status),getNextPageParam:last=>last.hasNext?last.page+1:undefined,refetchOnMount:'always',refetchInterval:focused?POLL_INTERVAL_MS:false});
+ const query=useInfiniteQuery({queryKey:['customer','getCustomerRides',status,q,createdFrom],initialPageParam:0,queryFn:({pageParam})=>getCustomerRides(pageParam,20,status,{q,createdFrom}),getNextPageParam:last=>last.hasNext?last.page+1:undefined,refetchOnMount:'always',refetchInterval:focused?POLL_INTERVAL_MS:false});
  const unread=useQuery({queryKey:['customer','getUnreadNotificationCount'],queryFn:getUnreadNotificationCount,refetchOnMount:'always',refetchInterval:focused?POLL_INTERVAL_MS:false});
  useRefreshOnFocus(query.refetch);useRefreshOnFocus(unread.refetch);
  const pages=query.data?.pages ?? [];
  const load=(_nextPage=0,append=false)=>append?query.fetchNextPage():query.refetch();
  const refresh=async()=>{setRefreshing(true);try{await Promise.all([query.refetch(),unread.refetch()]);}finally{setRefreshing(false);}};
- return {router,filter,setFilter,rides:pages.flatMap(page=>page.content),total:pages[0]?.totalElements ?? 0,page:pages.at(-1)?.page ?? 0,hasNext:query.hasNextPage,loading:query.isLoading,loadingMore:query.isFetchingNextPage,refreshing,refresh,error:query.error?.message ?? '',unreadCount:unread.data ?? 0,load};
+ return {router,filter,setFilter,search,setSearch,days,setPeriod,filtered:filter!=='all'||Boolean(q)||days>0,rides:pages.flatMap(page=>page.content),total:pages[0]?.totalElements ?? 0,page:pages.at(-1)?.page ?? 0,hasNext:query.hasNextPage,loading:query.isLoading,loadingMore:query.isFetchingNextPage,refreshing,refresh,error:query.error?.message ?? '',unreadCount:unread.data ?? 0,load};
 }

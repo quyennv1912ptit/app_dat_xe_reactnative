@@ -11,7 +11,8 @@
       "bundleIdentifier": "com.datxe.driver",
       "googleServicesFile": "./GoogleServiceDriver-Info.plist",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "PtitGo Tài Xế"
       }
     },
     "android": {
@@ -38,6 +39,14 @@
           "backgroundColor": "#07B378",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 160
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp giấy tờ và ảnh chân dung xác minh.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
       ],
       [

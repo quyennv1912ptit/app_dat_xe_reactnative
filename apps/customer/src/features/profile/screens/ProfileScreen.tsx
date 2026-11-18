@@ -1,4 +1,3 @@
-import { useWalletOverview } from '@/lib/useWallet';
 import { ActivityIndicator, Divider, IconButton } from "react-native-paper";
 import { CustomerTabBar } from "@/components/CustomerTabBar";
 import {
@@ -11,6 +10,7 @@ import {
   getCustomerInitials,
 } from "@/lib/customerName";
 import { useTranslation } from "@/lib/settings/i18n";
+import { useWalletOverview } from "@/lib/useWallet";
 import { formatMoney, walletBalance, translate as i18nT, signOutFirebase } from "@datxe/shared";
 import type { ProfileScreenMenuItem } from "@datxe/ui";
 import {
@@ -29,7 +29,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Image, Modal, ScrollView, View } from "react-native";
+import { Image } from "expo-image";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   getApiErrorMessage,
@@ -124,7 +125,7 @@ export default function ProfileScreen() {
           <ActivityIndicator color={colors.primary} />
         ) : null}
         {loadError ? (
-          <Pressable onPress={() => void refresh()} style={styles.loadErrorBox}>
+          <Pressable accessibilityRole="button" onPress={() => void refresh()} style={styles.loadErrorBox}>
             <Text accessibilityRole="alert" style={styles.loadErrorText}>
               {i18nT(loadError)}
             </Text>
@@ -149,6 +150,8 @@ export default function ProfileScreen() {
               {profile?.avatar_url ? (
                 <Image
                   source={{ uri: profile.avatar_url }}
+                  cachePolicy="memory"
+                  contentFit="cover"
                   style={styles.avatar}
                 />
               ) : (
@@ -171,7 +174,7 @@ export default function ProfileScreen() {
               </View>
             </Pressable>
             <View style={styles.identityCopy}>
-              <Text style={styles.userName} numberOfLines={2}>
+              <Text style={styles.userName}>
                 {getCustomerDisplayName(profile?.full_name) ||
                   i18nT("Khách hàng")}
               </Text>
@@ -190,7 +193,7 @@ export default function ProfileScreen() {
                   </Text>
                 </Pressable>
               )}
-              <Text style={styles.userEmail} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <Text style={styles.userEmail}>
                 {i18nT(profile?.email || "Chưa cập nhật email")}
               </Text>
             </View>
@@ -336,6 +339,7 @@ export default function ProfileScreen() {
             ) : null}
             <View style={styles.dialogActions}>
               <Pressable
+                accessibilityRole="button"
                 disabled={deletingAccount}
                 onPress={() => setDeleteVisible(false)}
                 style={[styles.dialogButton, styles.dialogButtonGhost]}
@@ -345,6 +349,7 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 disabled={deletingAccount}
                 onPress={() => void confirmDeleteAccount()}
                 style={[
@@ -372,11 +377,14 @@ export default function ProfileScreen() {
         transparent
         visible={logoutVisible}
       >
-        <Pressable
-          onPress={() => setLogoutVisible(false)}
-          style={styles.dialogOverlay}
-        >
-          <Pressable style={styles.dialogCard}>
+        <View style={styles.dialogOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={i18nT("Đóng")}
+            onPress={() => setLogoutVisible(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.dialogCard}>
             <View style={styles.dialogIcon}>
               <MaterialIcons
                 name="logout"
@@ -396,6 +404,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.dialogActions}>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setLogoutVisible(false)}
                 style={[styles.dialogButton, styles.dialogButtonGhost]}
               >
@@ -404,6 +413,7 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => {
                   void signOutFirebase()
                     .then(() => {
@@ -424,8 +434,8 @@ export default function ProfileScreen() {
                 </Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

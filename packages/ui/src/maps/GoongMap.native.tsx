@@ -68,7 +68,7 @@ export function GoongMap({
   }, [bottom, cameraVersion, east, editablePin, lat, lng, north, south, status, top, west, selectionEvents]);
 
   return (
-    <View style={styles.fill}>
+    <View style={[styles.fill, { backgroundColor: colors.background }]}>
       {style && status !== 'failed' ? (
         <Map
           style={StyleSheet.absoluteFill} mapStyle={style} androidView="texture"
@@ -132,16 +132,28 @@ export function GoongMap({
               </GeoJSONSource>
             </>
           ) : null}
-          {markers.map(({ id, coordinate, kind }) => {
+          {markers.map(({ id, coordinate, kind, vehicleType }) => {
             if (kind === 'pickup' || kind === 'dropoff') return null;
-            const color = kind === 'nearby' ? colors.error : colors.primary;
+            const nearby = kind === 'nearby';
+            const color = nearby ? colors.secondary : colors.primary;
+            const label = nearby
+              ? t('Tài xế gần bạn')
+              : vehicleType === 'MOTORCYCLE'
+                ? t('Tài xế xe máy')
+                : t('Tài xế');
             return (
-              <ViewAnnotation key={id} id={id} lngLat={lngLat(coordinate)} anchor={kind === 'nearby' ? 'bottom' : 'center'}>
-                <View collapsable={false} accessible accessibilityLabel={t('Tài xế')}
-                  style={[styles.markerRing, { backgroundColor: color }]}>
+              <ViewAnnotation key={id} id={id} lngLat={lngLat(coordinate)} anchor="center">
+                <View
+                  collapsable={false}
+                  accessible
+                  accessibilityLabel={label}
+                  style={[nearby ? styles.nearbyRing : styles.markerRing, { backgroundColor: color }]}
+                >
                   <View style={[styles.markerFace, { backgroundColor: colors.cardSurface }]}>
-                    {kind === 'nearby' ? <Text style={styles.car}>🚘</Text> : (
-                      <MaterialIcons name="directions-car" size={22} color={color} />
+                    {nearby ? (
+                      <View style={[styles.nearbyDot, { backgroundColor: color }]} />
+                    ) : (
+                      <MaterialIcons name="navigation" size={18} color={color} />
                     )}
                   </View>
                 </View>
@@ -151,7 +163,7 @@ export function GoongMap({
         </Map>
       ) : null}
       {status !== 'ready' ? (
-        <View style={[styles.placeholder, { backgroundColor: colors.surfaceContainer, top, bottom }]} pointerEvents="none">
+        <View style={[styles.placeholder, { backgroundColor: colors.background, paddingTop: top, paddingBottom: bottom }]} pointerEvents="none">
           {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : null}
           <Text>{t(status === 'loading' ? 'Đang tải bản đồ…' : 'Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.')}</Text>
         </View>
@@ -163,7 +175,8 @@ export function GoongMap({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   placeholder: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 8 },
-  markerRing: { width: 36, height: 36, borderRadius: 18, padding: 2 },
-  markerFace: { flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  car: { fontSize: 20, lineHeight: 24 },
+  markerRing: { width: 32, height: 32, borderRadius: 16, padding: 2 },
+  nearbyRing: { width: 20, height: 20, borderRadius: 10, padding: 2 },
+  markerFace: { flex: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  nearbyDot: { width: 8, height: 8, borderRadius: 4 },
 });

@@ -1,6 +1,6 @@
 import { DriverPhoto } from "@/components/DriverPhoto";
 import { rideStyles } from "@/components/rideStyles";
-import { Button, GroupedList, Typography as Text, useThemeColors, useThemedStyles } from "@datxe/ui";
+import { Button, GroupedList, Typography as Text, borderRadius, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import { ProgressBar } from "react-native-paper";
@@ -8,8 +8,9 @@ import { PHOTO_ANGLES } from "../photoAngles";
 
 export const requiredHandoverAngles = PHOTO_ANGLES.filter(([angle]) => angle !== "DASHBOARD");
 
-export function HandoverPhotoChecklist({ photos, uploading, saving, error, onCapture }: {
+export function HandoverPhotoChecklist({ photos, pending, uploading, saving, error, onCapture }: {
   photos: { angle: string; uri: string }[];
+  pending: string[];
   uploading: string | null;
   saving: boolean;
   error: { angle: string; message: string } | null;
@@ -20,12 +21,17 @@ export function HandoverPhotoChecklist({ photos, uploading, saving, error, onCap
   const done = requiredHandoverAngles.filter(([angle]) => photos.some((photo) => photo.angle === angle)).length;
   return (
     <GroupedList title={`Ảnh bắt buộc · ${done}/${requiredHandoverAngles.length}`}>
-      <ProgressBar progress={done / requiredHandoverAngles.length} accessibilityLabel={`${done} trên ${requiredHandoverAngles.length} ảnh bắt buộc đã tải lên`} />
+      <ProgressBar
+        progress={done / requiredHandoverAngles.length}
+        color={c.primary}
+        style={{ backgroundColor: c.surfaceContainerHigh, borderRadius: borderRadius.full }}
+        accessibilityLabel={`${done} trên ${requiredHandoverAngles.length} ảnh bắt buộc đã tải lên`}
+      />
       {PHOTO_ANGLES.map(([angle, label]) => {
         const photo = photos.find((item) => item.angle === angle);
         const busy = uploading === angle;
         const problem = error?.angle === angle ? error.message : undefined;
-        const action = problem ? "Thử chụp lại" : photo ? "Chụp lại" : "Chụp ảnh";
+        const action = pending.includes(angle) ? "Tải lại ảnh" : problem ? "Thử chụp lại" : photo ? "Chụp lại" : "Chụp ảnh";
         return (
           <View key={angle} style={styles.row}>
             <View style={styles.main}>

@@ -1,4 +1,5 @@
-import { DocumentForm } from "../components/DocumentForm";
+import { Redirect } from "expo-router";
+
 export default function LicenseUploadScreen() {
-  return <DocumentForm />;
+  return <Redirect href="/profile/verification" />;
 }

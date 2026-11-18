@@ -6,6 +6,7 @@ export type GoongMapMarker = {
   id: string;
   coordinate: RideCoordinates;
   kind: 'nearby' | 'driver' | 'pickup' | 'dropoff';
+  vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
 };
 export type GoongMapProps = {
   mapKey?: string;

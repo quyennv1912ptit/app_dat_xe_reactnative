@@ -5,6 +5,7 @@ import {
   PaperTextInput as TextInput,
   localizedAlert,
   ScreenWrapper,
+  typography,
   useDebouncedTextChange,
   useLanguage,
   useThemeColors,
@@ -16,7 +17,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AppState, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, KeyboardAvoidingView, Linking, ScrollView, StyleSheet, View } from "react-native";
 import {
   ActivityIndicator,
   Button,
@@ -192,6 +193,7 @@ export default function SettingsScreen() {
         title={i18nT(validSection ? sections[validSection] : "Cài đặt")}
         onBack={() => router.back()}
       />
+      <KeyboardAvoidingView style={settings.flex} behavior="padding">
       <ScrollView
         contentContainerStyle={settings.content}
         keyboardShouldPersistTaps="handled"
@@ -508,12 +510,14 @@ export default function SettingsScreen() {
           </Text>
         ) : null}
       </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenWrapper>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
+    flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: colors.background },
     content: {
       padding: 16,
@@ -524,11 +528,10 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       alignSelf: "center",
     },
     row: { minHeight: 48, paddingVertical: 8, paddingHorizontal: 0, borderRadius: 24 },
-    rowTitle: { color: colors.onSurface, fontSize: 16, fontWeight: "500" },
+    rowTitle: { ...typography.cardTitle, color: colors.onSurface },
     rowDescription: {
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
-      fontSize: 14,
-      lineHeight: 20,
     },
     trailing: { alignSelf: "center", justifyContent: "center" },
     divider: {
@@ -537,9 +540,9 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       marginVertical: 4,
     },
     helper: {
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
       marginBottom: 16,
-      lineHeight: 22,
     },
     input: { backgroundColor: colors.inputSurface },
     inputOutline: { borderRadius: 24 },

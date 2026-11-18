@@ -70,7 +70,7 @@ const serviceItems = ProfileScreenSERVICE_SECTION.map((item) => {
     if (item.id === 'vehicles') {
       const count = vehicleCount;
       return {
-        ...item,
+        ...item, title: "Phương tiện của tôi",
         subtitle: count === null ? i18nT("Đang tải dữ liệu xe") : i18nT("{0} xe đã lưu", {"0": count}),
         badge: { label: count === null ? '…' : `${count} xe` },
       };

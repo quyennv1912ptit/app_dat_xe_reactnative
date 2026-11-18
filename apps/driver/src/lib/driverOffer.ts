@@ -21,7 +21,9 @@ export type DriverOffer = {
   estDurationMin: number;
   fareEstimate: number;
   driverEarning: number;
-  customer: { displayName: string };
+  paymentMethod?: 'CASH' | 'WALLET' | string | null;
+  paymentStatus?: 'PENDING' | 'PAID' | string | null;
+  customer: { displayName: string; rating?: number | null };
   vehicle: { type: string; transmission: string };
 };
 

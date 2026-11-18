@@ -10,6 +10,7 @@ import {
   Card,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
+  SharedStatusBadge,
   Typography as Text,
   useLanguage,
   useThemeColors,
@@ -41,11 +42,23 @@ export default function RideDetailScreen() {
           <>
             <Card style={styles.card}>
               <Text style={styles.heading}>
-                {i18nT("Chuyến #")} {i18nT(ride.id)}
+                {i18nT("Chuyến #{0}", { 0: ride.id })}
               </Text>
-              <Text style={styles.body}>
-                {i18nT("Trạng thái:")} {i18nT(statusLabel(ride.status))}
-              </Text>
+              <View style={{ alignSelf: "flex-start" }}>
+                <SharedStatusBadge
+                  label={i18nT(statusLabel(ride.status))}
+                  tone={
+                    ride.status === "CANCELLED" ||
+                    ride.status === "FAILED_SYSTEM" ||
+                    ride.status === "NO_DRIVER_FOUND" ||
+                    ride.status === "EXPIRED"
+                      ? "danger"
+                      : ride.status === "COMPLETED"
+                        ? "success"
+                        : "active"
+                  }
+                />
+              </View>
               <Text style={styles.meta}>
                 {i18nT(
                   ride.type === "INSTANT"
@@ -78,7 +91,11 @@ export default function RideDetailScreen() {
                       {i18nT(
                         new Date(entry.createdAt).toLocaleString(getLocale()),
                       )}{" "}
-                      {i18nT(entry.note ? ` · ${entry.note}` : "")}
+                      {i18nT(
+                        entry.note
+                          ? ` · ${(entry.note === "Khởi tạo ride" ? "Tạo yêu cầu chuyến" : entry.note).replace(/\bcho ride\b/gi, "cho chuyến")}`
+                          : "",
+                      )}
                     </Text>
                   </View>
                 </View>
@@ -114,7 +131,7 @@ export default function RideDetailScreen() {
             ))}
             {ride.status === "COMPLETED" ? (
               <Button
-                label={i18nT("Xem tổng kết chuyến")}
+                label={i18nT(ride.customerHasRatedDriver === false && ride.driverId ? "Đánh giá tài xế" : "Xem tổng kết chuyến")}
                 onPress={() => router.push({
                   pathname: "/ride/completed",
                   params: { rideId: String(ride.id) },
@@ -127,7 +144,10 @@ export default function RideDetailScreen() {
               <Button
                 onPress={() =>
                   router.push({
-                    pathname: "/ride/tracking",
+                    pathname:
+                      ride.status === "PENDING" || ride.status === "SEARCHING"
+                        ? "/ride/find-driver"
+                        : "/ride/tracking",
                     params: { rideId: String(ride.id) },
                   })
                 }
@@ -138,6 +158,7 @@ export default function RideDetailScreen() {
             ) : null}
             {ride.driverId && chatStatuses.includes(ride.status) ? (
               <Pressable
+                accessibilityRole="button"
                 onPress={() =>
                   router.push({
                     pathname: "/chat",
