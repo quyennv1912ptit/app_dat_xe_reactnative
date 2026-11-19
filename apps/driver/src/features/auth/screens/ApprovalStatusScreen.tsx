@@ -6,7 +6,6 @@ import { Button, Card, GroupedList, Typography as Text, borderRadius, spacing, t
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import { ProgressBar } from "react-native-paper";
 import { useApprovalStatus } from "../hooks/useApprovalStatus";
 
 export default function ApprovalStatusScreen() {
@@ -27,15 +26,13 @@ export default function ApprovalStatusScreen() {
 
   return (
     <DriverPage title="Xét duyệt hồ sơ" loading={v.isLoading || d.isLoading}
-      error={v.error?.message || d.error?.message} retry={reload}>
+      error={v.error?.message || d.error?.message} retry={reload}
+      footer={v.data ? (
+        <Button variant="secondary" label="Kiểm tra lại kết quả" loading={v.isFetching || d.isFetching}
+          onPress={() => void reload()} />
+      ) : undefined}>
       {v.data ? (
         <Card style={s.card}>
-          <Text style={[styles.stepBadge, { color: colors.primary }]}>Theo dõi kết quả xét duyệt</Text>
-          <ProgressBar
-            progress={1}
-            color={colors.primary}
-            style={[styles.progressBar, { backgroundColor: colors.surfaceContainerHigh }]}
-          />
           <StatusBadge kind="approval" value={v.data.verification_status} />
           <Text style={[styles.summaryHeadline, { color: colors.onSurface }]}>
             {approved ? "Hồ sơ của bạn đã sẵn sàng"
@@ -92,15 +89,11 @@ export default function ApprovalStatusScreen() {
           ))}
         </GroupedList>
       ) : null}
-      <Button variant="secondary" label="Kiểm tra lại kết quả" loading={v.isFetching || d.isFetching}
-        onPress={() => void reload()} />
     </DriverPage>
   );
 }
 
 const styles = StyleSheet.create({
-  stepBadge: { ...typography.label },
-  progressBar: { height: 4, borderRadius: borderRadius.full },
   summaryHeadline: { ...typography.screenTitle, marginTop: spacing.spaceXs },
   row: { gap: spacing.spaceSm, paddingVertical: spacing.px3 },
   rowHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.spaceSm },

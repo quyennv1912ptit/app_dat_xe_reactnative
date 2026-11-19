@@ -9,6 +9,7 @@ import { cacheFileSize, removeCacheFile } from './captureFiles';
 import {
   assessCapture, mimeFromUri, summarizeChecks, type CaptureKind, type CheckState, type QualityCheck,
 } from './captureQuality';
+import { DOCUMENT_JPEG_QUALITY, optimizeCapturedImage } from './imageOptimization';
 
 /** ISO/IEC 7810 ID-1 card (CCCD, GPLX): 85.6 x 54 mm (~1.585:1). */
 export const ID1_RATIO = 85.6 / 54;
@@ -83,6 +84,7 @@ function CaptureSession({
   const [error, setError] = useState('');
   const [mountError, setMountError] = useState(false);
   const [captured, setCaptured] = useState<CapturedPhoto | null>(null);
+  const [showCheckDetails, setShowCheckDetails] = useState(false);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const selfie = kind === 'selfie';
   const baseLabel = label.replace(/\s+(?:trước|sau)$/i, '');
@@ -126,16 +128,34 @@ function CaptureSession({
     setServerResult(null);
     try {
       const picture = await withTimeout(camera.takePictureAsync({
-        quality: 0.9, exif: true, skipProcessing: false, shutterSound: true,
+        quality: DOCUMENT_JPEG_QUALITY, exif: true, skipProcessing: false, shutterSound: true,
       }), CAPTURE_TIMEOUT_MS);
       if (!mounted.current) { removeCacheFile(picture.uri); return; }
-      const bytes = cacheFileSize(picture.uri);
-      const mimeType = mimeFromUri(picture.uri) || 'image/jpeg';
+      const rawBytes = cacheFileSize(picture.uri);
+      const rawMime = mimeFromUri(picture.uri) || 'image/jpeg';
+      const normalized = await optimizeCapturedImage(
+        { uri: picture.uri, width: picture.width, height: picture.height, mimeType: rawMime, fileSize: rawBytes },
+        { kind, statSize: cacheFileSize, cleanup: removeCacheFile },
+      );
+      if (!mounted.current) { removeCacheFile(normalized.uri); return; }
       const photo: CapturedPhoto = {
-        uri: picture.uri, width: picture.width, height: picture.height, fileSize: bytes, mimeType,
-        checks: assessCapture({ width: picture.width, height: picture.height, bytes, mimeType, exif: picture.exif }, kind),
+        uri: normalized.uri,
+        width: normalized.width,
+        height: normalized.height,
+        fileSize: normalized.fileSize,
+        mimeType: normalized.mimeType,
+        checks: assessCapture(
+          {
+            width: normalized.width,
+            height: normalized.height,
+            bytes: normalized.fileSize,
+            mimeType: normalized.mimeType,
+            exif: picture.exif,
+          },
+          kind,
+        ),
       };
-      capturedUri.current = picture.uri;
+      capturedUri.current = normalized.uri;
       setCaptured(photo);
       setTorch(false);
     } catch (cause) {
@@ -182,6 +202,7 @@ function CaptureSession({
     inspectController.current = null;
     setInspecting(false);
     setServerResult(null);
+    setShowCheckDetails(false);
     if (capturedUri.current) removeCacheFile(capturedUri.current);
     capturedUri.current = null;
     setCaptured(null);
@@ -337,41 +358,68 @@ function CaptureSession({
         <View style={styles.previewFooter}>
           {summary.blocking ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.errorContainer }]}>
-              <Text style={[styles.verdictText, { color: colors.onErrorContainer }]}>Ảnh chưa dùng được. Hãy chụp lại.</Text>
+              <Text style={[styles.verdictText, { color: colors.onErrorContainer }]}>Ảnh chưa đạt kích thước hoặc định dạng. Hãy chụp lại.</Text>
             </View>
           ) : summary.hasWarning || (serverResult?.warnings.length ?? 0) > 0 ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.warningContainer }]}>
-              <Text style={[styles.verdictText, { color: colors.onWarningContainer }]}>Có cảnh báo chất lượng. Bạn nên chụp lại.</Text>
+              <Text style={[styles.verdictText, { color: colors.onWarningContainer }]}>Có lưu ý về độ rõ hoặc ánh sáng. Bạn nên chụp lại nếu chữ bị mờ.</Text>
             </View>
           ) : serverResult?.verified ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.successContainer }]}>
-              <Text style={[styles.verdictText, { color: colors.onSuccessContainer }]}>Ảnh đã qua kiểm tra máy và máy chủ</Text>
+              <Text style={[styles.verdictText, { color: colors.onSuccessContainer }]}>Ảnh đã qua kiểm tra máy và máy chủ.</Text>
             </View>
           ) : (
-            <Text style={styles.verdictNeutral}>Kết quả kiểm tra trên máy (chưa phải kết luận cuối cùng)</Text>
+            <Text style={styles.verdictNeutral}>Ảnh rõ kích thước trên máy. Hãy xem chữ/khuôn mặt rồi bấm Dùng ảnh này.</Text>
           )}
-          <ScrollView style={styles.previewPanelScroll} contentContainerStyle={styles.checkList}>
-            {effectiveChecks.map(check => (
+
+          {effectiveChecks
+            .filter(c => c.state === 'warn' || c.state === 'fail')
+            .map(check => (
               <View key={check.id} style={styles.checkRow}>
-                <MaterialIcons name={checkIcon[check.state]} size={20} importantForAccessibility="no"
-                  color={colors.onScrim} />
+                <MaterialIcons name={checkIcon[check.state]} size={20} importantForAccessibility="no" color={colors.onScrim} />
                 <Text style={styles.checkText}>
                   <Text style={styles.checkLabel}>{check.label}: </Text>
                   {check.detail ?? ''}
                 </Text>
               </View>
             ))}
-            {serverResult?.note ? <Text style={styles.disclaimer}>{serverResult.note}</Text> : null}
-            {serverResult?.warnings.map(warning => (
-              <View key={warning.code} style={[styles.verdictBanner, { backgroundColor: colors.warningContainer }]}>
-                <Text style={[styles.verdictText, { color: colors.onWarningContainer }]}>{warning.message}</Text>
-              </View>
-            ))}
-            {onInspectServer && !summary.blocking ? (
-              <Button variant="secondary" label={inspecting ? 'Đang kiểm tra qua máy chủ…' : 'Kiểm tra chất lượng qua máy chủ'}
-                disabled={inspecting} onPress={() => void runServerCheck()} />
-            ) : null}
-          </ScrollView>
+
+          {serverResult?.note ? <Text style={styles.disclaimer}>{serverResult.note}</Text> : null}
+          {serverResult?.warnings.map(warning => (
+            <View key={warning.code} style={[styles.verdictBanner, { backgroundColor: colors.warningContainer }]}>
+              <Text style={[styles.verdictText, { color: colors.onWarningContainer }]}>{warning.message}</Text>
+            </View>
+          ))}
+
+          {showCheckDetails ? (
+            <ScrollView style={styles.previewPanelScroll} contentContainerStyle={styles.checkList}>
+              {effectiveChecks.map(check => (
+                <View key={check.id} style={styles.checkRow}>
+                  <MaterialIcons name={checkIcon[check.state]} size={20} importantForAccessibility="no" color={colors.onScrim} />
+                  <Text style={styles.checkText}>
+                    <Text style={styles.checkLabel}>{check.label}: </Text>
+                    {check.detail ?? ''}
+                  </Text>
+                </View>
+              ))}
+              {onInspectServer && !summary.blocking ? (
+                <Button
+                  variant="secondary"
+                  label={inspecting ? 'Đang kiểm tra qua máy chủ…' : 'Kiểm tra chất lượng qua máy chủ'}
+                  disabled={inspecting}
+                  onPress={() => void runServerCheck()}
+                />
+              ) : null}
+            </ScrollView>
+          ) : (
+            <Button
+              variant="ghost"
+              label="Xem chi tiết kiểm tra ảnh"
+              contentColor={colors.onScrim}
+              onPress={() => setShowCheckDetails(true)}
+            />
+          )}
+
           <View style={styles.actions}>
             <Button label="Dùng ảnh này" disabled={summary.blocking || inspecting} onPress={usePhoto} />
             <Button variant="secondary" label="Chụp lại" onPress={retake} />

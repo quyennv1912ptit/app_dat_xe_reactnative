@@ -44,9 +44,9 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp giấy tờ và ảnh chân dung xác minh.",
+          "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp giấy tờ, quét mã QR CCCD và ảnh chân dung xác minh.",
           "recordAudioAndroid": false,
-          "barcodeScannerEnabled": false
+          "barcodeScannerEnabled": true
         }
       ],
       [
