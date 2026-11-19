@@ -3,10 +3,28 @@ import type { Extraction, QrDocumentSide, QrDocumentType, SlotKey } from './work
 
 export const METADATA_TIMEOUT_MS = 15_000;
 export const UPLOAD_TIMEOUT_MS = 45_000;
-export const EXTRACT_TIMEOUT_MS = 65_000;
+export const EXTRACT_TIMEOUT_MS = 80_000;
 export const QR_SCAN_TIMEOUT_MS = 15_000;
 export const FACE_QUALITY_TIMEOUT_MS = 45_000;
 export const SUBMIT_TIMEOUT_MS = 25_000;
+
+export const QR_ZOOM_MIN = 0;
+export const QR_ZOOM_MAX = 0.6;
+export const QR_ZOOM_STEP = 0.1;
+export const DEFAULT_QR_ZOOM_GPLX = 0.2;
+export const DEFAULT_QR_ZOOM_CCCD = 0;
+
+export function stepQrZoom(current: number, delta: number): number {
+  if (!Number.isFinite(current) || !Number.isFinite(delta)) return QR_ZOOM_MIN;
+  const clamped = Math.min(QR_ZOOM_MAX, Math.max(QR_ZOOM_MIN, current + delta));
+  return Math.round(clamped * 100) / 100;
+}
+
+export function formatQrZoomPercent(zoom: number): string {
+  if (!Number.isFinite(zoom)) return '0%';
+  const bounded = Math.min(1, Math.max(0, zoom));
+  return `${Math.round(bounded * 100)}%`;
+}
 
 export const TASK_STATUS_UPLOADING = 'Đang tải ảnh…';
 export const TASK_STATUS_EXTRACTING = 'Đang đọc thông tin giấy tờ. Quá trình này có thể mất một lúc.';

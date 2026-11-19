@@ -658,7 +658,7 @@ test('verification timeouts, QR decoupling, server proposal hydration, and statu
 
   assert.equal(METADATA_TIMEOUT_MS, 15_000);
   assert.equal(UPLOAD_TIMEOUT_MS, 45_000);
-  assert.equal(EXTRACT_TIMEOUT_MS, 65_000);
+  assert.equal(EXTRACT_TIMEOUT_MS, 80_000);
   assert.equal(QR_SCAN_TIMEOUT_MS, 15_000);
   assert.equal(FACE_QUALITY_TIMEOUT_MS, 45_000);
   assert.equal(SUBMIT_TIMEOUT_MS, 25_000);
@@ -730,4 +730,54 @@ test('verification timeouts, QR decoupling, server proposal hydration, and statu
 
   const scanner = read('features/verification/QrScannerScreen.tsx');
   assert.match(scanner, /Đang kiểm tra thông tin QR…/);
+});
+
+test('Server-owned extraction enforcement (no client CCCD back skip) and QrScanner zoom/anti-glare controls', async () => {
+  const { readFileSync } = require('node:fs');
+  const { join } = require('node:path');
+  const read = name => readFileSync(join(__dirname, '../apps/driver/src', name), 'utf8');
+
+  const helpersMod = await import('../apps/driver/src/features/verification/reliabilityHelpers.ts');
+  const {
+    DEFAULT_QR_ZOOM_CCCD,
+    DEFAULT_QR_ZOOM_GPLX,
+    EXTRACT_TIMEOUT_MS,
+    QR_SCAN_TIMEOUT_MS,
+    UPLOAD_TIMEOUT_MS,
+    formatQrZoomPercent,
+    stepQrZoom,
+  } = helpersMod;
+
+  assert.equal(EXTRACT_TIMEOUT_MS, 80_000);
+  assert.equal(QR_SCAN_TIMEOUT_MS, 15_000);
+  assert.equal(UPLOAD_TIMEOUT_MS, 45_000);
+  assert.equal('shouldSkipCccdBackExtraction' in helpersMod, false);
+
+  // Driver always uploads and calls POST /extract/{slot} for cccd_back (server owns ocr_mode policy).
+  const screen = read('features/verification/VerificationScreen.tsx');
+  const uploadIdx = screen.indexOf('base = await upload(key, base, signal);');
+  const extractIdx = screen.indexOf("await api.json<ProposalResponse>(appPath(base.id) + '/extract/' + key", uploadIdx);
+  assert.ok(uploadIdx > 0 && extractIdx > uploadIdx, 'Required upload must run before POST /extract/{slot}');
+  assert.doesNotMatch(screen, /shouldSkipCccdBackExtraction/);
+  assert.match(screen, /EXTRACTION_REQUIRED/);
+
+  const transportSrc = read('features/verification/transport.ts');
+  assert.match(transportSrc, /EXTRACTION_REQUIRED/);
+
+  // Zoom helpers & QrScannerScreen UI contract.
+  assert.equal(DEFAULT_QR_ZOOM_GPLX, 0.2);
+  assert.equal(DEFAULT_QR_ZOOM_CCCD, 0);
+  assert.equal(stepQrZoom(0.2, 0.1), 0.3);
+  assert.equal(stepQrZoom(0.6, 0.2), 0.6);
+  assert.equal(stepQrZoom(0, -0.1), 0);
+  assert.equal(formatQrZoomPercent(0.2), '20%');
+
+  const scanner = read('features/verification/QrScannerScreen.tsx');
+  assert.match(scanner, /zoom=\{zoom\}/);
+  assert.match(scanner, /useState<number>\(isGplx \? DEFAULT_QR_ZOOM_GPLX : DEFAULT_QR_ZOOM_CCCD\)/);
+  assert.match(scanner, /const \[torch, setTorch\] = useState\(false\)/);
+  assert.match(scanner, /Đưa mã QR vào khung và nghiêng nhẹ thẻ để tránh ánh sáng phản chiếu\./);
+  assert.match(scanner, /accessibilityLabel="Giảm thu phóng"/);
+  assert.match(scanner, /accessibilityLabel="Tăng thu phóng"/);
+  assert.doesNotMatch(scanner, /\b1x\b|\b2x\b/);
 });

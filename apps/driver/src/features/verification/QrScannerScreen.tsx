@@ -17,6 +17,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Typography as Text, borderRadius, spacing, type ThemeColors, typography, useThemeColors, useThemedStyles } from '@datxe/ui';
+import {
+  DEFAULT_QR_ZOOM_CCCD,
+  DEFAULT_QR_ZOOM_GPLX,
+  QR_ZOOM_MAX,
+  QR_ZOOM_MIN,
+  QR_ZOOM_STEP,
+  formatQrZoomPercent,
+  stepQrZoom,
+} from './reliabilityHelpers';
 import type { QrCardVariant, QrDocumentSide, QrDocumentType, QrExtractionResult } from './workflow';
 
 const PREVIEW_RATIO = 4 / 3;
@@ -81,6 +90,7 @@ function QrScannerSession({
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   const [ready, setReady] = useState(false);
   const [torch, setTorch] = useState(false);
+  const [zoom, setZoom] = useState<number>(isGplx ? DEFAULT_QR_ZOOM_GPLX : DEFAULT_QR_ZOOM_CCCD);
   const [mountError, setMountError] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   const [statusMessage, setStatusMessage] = useState('');
@@ -197,7 +207,7 @@ function QrScannerSession({
 
   const squareSize = useMemo(() => {
     const minDim = Math.min(preview.width, preview.height);
-    return Math.max(0, minDim * 0.66);
+    return Math.max(0, minDim * 0.72);
   }, [preview]);
 
   const granted = permission?.granted === true;
@@ -312,6 +322,7 @@ function QrScannerSession({
                 style={StyleSheet.absoluteFill}
                 facing="back"
                 ratio="4:3"
+                zoom={zoom}
                 enableTorch={torch}
                 barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
                 onBarcodeScanned={handleBarcodeScanned}
@@ -365,9 +376,47 @@ function QrScannerSession({
           <Text style={styles.templateHint}>{templateGuide}</Text>
 
           {phase === 'scanning' ? (
+            <View style={styles.zoomBar}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Giảm thu phóng"
+                accessibilityState={{ disabled: zoom <= QR_ZOOM_MIN }}
+                disabled={zoom <= QR_ZOOM_MIN}
+                onPress={() => setZoom(current => stepQrZoom(current, -QR_ZOOM_STEP))}
+                style={[styles.zoomButton, zoom <= QR_ZOOM_MIN ? styles.zoomButtonDisabled : undefined]}
+              >
+                <MaterialIcons
+                  name="remove"
+                  size={22}
+                  color={zoom <= QR_ZOOM_MIN ? colors.onSurfaceVariant : colors.primary}
+                  importantForAccessibility="no"
+                />
+              </Pressable>
+              <Text style={styles.zoomLabel} accessibilityLiveRegion="polite">
+                {`Thu phóng · ${formatQrZoomPercent(zoom)}`}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Tăng thu phóng"
+                accessibilityState={{ disabled: zoom >= QR_ZOOM_MAX }}
+                disabled={zoom >= QR_ZOOM_MAX}
+                onPress={() => setZoom(current => stepQrZoom(current, QR_ZOOM_STEP))}
+                style={[styles.zoomButton, zoom >= QR_ZOOM_MAX ? styles.zoomButtonDisabled : undefined]}
+              >
+                <MaterialIcons
+                  name="add"
+                  size={22}
+                  color={zoom >= QR_ZOOM_MAX ? colors.onSurfaceVariant : colors.primary}
+                  importantForAccessibility="no"
+                />
+              </Pressable>
+            </View>
+          ) : null}
+
+          {phase === 'scanning' ? (
             <View style={[styles.banner, { backgroundColor: colors.surfaceContainerHigh }]}>
               <Text style={styles.bannerText} accessibilityLiveRegion="polite">
-                Giữ thẻ cố định trong khung vuông, tránh lóa sáng. Mã QR sẽ chỉ được gửi tới máy chủ xác minh, không tự mở liên kết ngoài.
+                Đưa mã QR vào khung và nghiêng nhẹ thẻ để tránh ánh sáng phản chiếu.
               </Text>
             </View>
           ) : null}
@@ -533,6 +582,27 @@ const makeStyles = (colors: ThemeColors) =>
     sideToggleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.spaceSm },
     sideButtonWrap: { flex: 1, minWidth: 140 },
     templateHint: { ...typography.label, color: colors.onSurface, textAlign: 'center' },
+    zoomBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surfaceContainerHigh,
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing.xxs,
+    },
+    zoomButton: {
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: borderRadius.full,
+    },
+    zoomButtonDisabled: { opacity: 0.38 },
+    zoomLabel: {
+      ...typography.label,
+      color: colors.onSurface,
+      fontVariant: ['tabular-nums'],
+    },
     banner: {
       flexDirection: 'row',
       alignItems: 'flex-start',

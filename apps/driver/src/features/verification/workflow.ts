@@ -77,6 +77,7 @@ export type Extraction = {
   ocrStatus: string;
   qr?: QrExtractionResult | null;
   warnings: string[];
+  conflictFields?: string[];
   candidates: {
     fieldKey: string;
     candidateValue?: unknown;

@@ -1086,7 +1086,7 @@ function Workflow({ uid }: { uid: string }) {
         ...body, headers: { ...body.headers, 'Idempotency-Key': request.key }, method: 'POST', signal, timeoutMs: SUBMIT_TIMEOUT_MS,
       });
     } catch (error) {
-      if (error instanceof VerificationError && ['REVISION_CONFLICT', 'INVALID_TRANSITION', 'FIELD_MISSING', 'WARNING_ACK_REQUIRED'].includes(error.code)) {
+      if (error instanceof VerificationError && ['REVISION_CONFLICT', 'INVALID_TRANSITION', 'FIELD_MISSING', 'EXTRACTION_REQUIRED', 'WARNING_ACK_REQUIRED'].includes(error.code)) {
         pendingRef.current = null;
         setPending(null);
         setConfirm(false);
