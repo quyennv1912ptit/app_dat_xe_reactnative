@@ -209,7 +209,7 @@ export const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     },
     userEmail: {
       ...typography.labelSm,
-      color: colors.outline,
+      color: colors.onSurfaceVariant,
     },
     memberPill: {
       flexDirection: "row",
@@ -318,12 +318,12 @@ export const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       backgroundColor: colors.primaryContainer,
     },
     menuBadgeText: {
-      ...typography.labelSm,
+      ...typography.badge,
       color: colors.primary,
     },
     menuBadgeTextHighlighted: {
+      ...typography.badge,
       color: colors.onPrimaryContainer,
-      fontWeight: "700",
     },
     logoutRow: {
       minHeight: 56,
@@ -407,12 +407,12 @@ export const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       backgroundColor: colors.error,
     },
     tabLabel: {
-      ...typography.labelSm,
+      ...typography.navigationLabel,
       color: colors.onSurfaceVariant,
     },
     tabLabelActive: {
+      ...typography.navigationLabel,
       color: colors.primary,
-      fontWeight: "600",
     },
     dialogOverlay: {
       flex: 1,

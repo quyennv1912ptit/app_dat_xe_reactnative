@@ -95,30 +95,41 @@ export function GoongMap({
   useEffect(() => {
     const instance = map.current;
     if (status !== 'ready' || !instance) return;
-    const items = (markers ?? []).map(({ coordinate, kind }) => {
+    const items = (markers ?? []).map(({ coordinate, kind, vehicleType }) => {
       const element = document.createElement('div');
       if (kind === 'pickup' || kind === 'dropoff') {
         const pin = new Marker({ color: TRIP_STOP_COLORS[kind], anchor: 'bottom' });
-        const element = pin.getElement();
-        element.setAttribute('role', 'img');
-        element.setAttribute('aria-label', t(kind === 'pickup' ? 'Điểm đón' : 'Điểm đến'));
+        const pinElement = pin.getElement();
+        pinElement.setAttribute('role', 'img');
+        pinElement.setAttribute('aria-label', t(kind === 'pickup' ? 'Điểm đón' : 'Điểm đến'));
         return pin.setLngLat(lngLat(coordinate)).addTo(instance);
       }
-      const color = kind === 'nearby' ? colors.error : colors.primary;
+      const nearby = kind === 'nearby';
+      const color = nearby ? colors.secondary : colors.primary;
       element.setAttribute('role', 'img');
-      element.setAttribute('aria-label', t('Tài xế'));
-      const glyph = MaterialIcons.getRawGlyphMap()['directions-car'];
-      element.textContent = kind === 'nearby' ? '🚘' : typeof glyph === 'number' ? String.fromCodePoint(glyph) : glyph;
-      Object.assign(element.style, {
-        width: '36px', height: '36px', boxSizing: 'border-box', borderRadius: '50%',
-        display: 'grid', placeItems: 'center', border: `2px solid ${color}`, background: colors.cardSurface,
-        color, fontFamily: MaterialIcons.getFontFamily(), fontSize: '22px', lineHeight: '1',
-      });
-      return new Marker({ element, anchor: kind === 'nearby' ? 'bottom' : 'center' })
+      element.setAttribute(
+        'aria-label',
+        nearby ? t('Tài xế gần bạn') : vehicleType === 'MOTORCYCLE' ? t('Tài xế xe máy') : t('Tài xế'),
+      );
+      if (nearby) {
+        Object.assign(element.style, {
+          width: '20px', height: '20px', boxSizing: 'border-box', borderRadius: '50%',
+          border: `3px solid ${colors.cardSurface}`, background: color,
+        });
+      } else {
+        const glyph = MaterialIcons.getRawGlyphMap().navigation;
+        element.textContent = typeof glyph === 'number' ? String.fromCodePoint(glyph) : glyph;
+        Object.assign(element.style, {
+          width: '32px', height: '32px', boxSizing: 'border-box', borderRadius: '50%',
+          display: 'grid', placeItems: 'center', border: `2px solid ${color}`, background: colors.cardSurface,
+          color, fontFamily: MaterialIcons.getFontFamily(), fontSize: '18px', lineHeight: '1',
+        });
+      }
+      return new Marker({ element, anchor: 'center' })
         .setLngLat(lngLat(coordinate)).addTo(instance);
     });
     return () => items.forEach(marker => marker.remove());
-  }, [colors.cardSurface, colors.error, colors.primary, markers, status]);
+  }, [colors.cardSurface, colors.primary, colors.secondary, markers, status]);
 
   useEffect(() => {
     const instance = map.current;
@@ -165,10 +176,10 @@ export function GoongMap({
   }, [route, status]);
 
   return (
-    <View style={styles.fill}>
+    <View style={[styles.fill, { backgroundColor: colors.background }]}>
       <div ref={container} style={{ position: 'absolute', inset: 0 }} />
       {status !== 'ready' ? (
-        <View style={[styles.placeholder, { backgroundColor: colors.surfaceContainer, top, bottom }]}>
+        <View style={[styles.placeholder, { backgroundColor: colors.background, paddingTop: top, paddingBottom: bottom }]}>
           {status === 'loading' ? <ActivityIndicator color={colors.primary} /> : null}
           <Text>{t(status === 'loading' ? 'Đang tải bản đồ…' : 'Bản đồ hiện chưa khả dụng. Vui lòng thử lại sau.')}</Text>
         </View>

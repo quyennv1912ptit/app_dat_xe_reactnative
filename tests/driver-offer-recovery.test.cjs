@@ -28,6 +28,7 @@ test('a live REST offer opens the driver screen without receiving a push', () =>
   const serverTime = 123_000;
   let appState = { currentState: 'active' };
   let pending = null;
+  let creditAllowed = true;
   const router = {
     navigate(destination) { navigated.push(destination.params.rideId); pathname = destination.pathname; },
     setParams(params) { navigated.push(params.rideId); },
@@ -35,9 +36,11 @@ test('a live REST offer opens the driver screen without receiving a push', () =>
   const timing = load('apps/driver/src/lib/offerTiming.ts', {});
   const { PushBridge } = load('apps/driver/src/components/PushBridge.tsx', {
     '@/lib/offerTiming': timing,
+    '@/lib/useDriverCredit': { useDriverCredit: () => ({ allowed: creditAllowed }) },
     '@/lib/driverOffer': {
       usePendingOffer(ready, poll) {
-        assert.ok(ready && poll, 'check for live offers while online outside Home');
+        assert.equal(ready, creditAllowed);
+        assert.equal(poll, creditAllowed);
         return { data: pending, dataUpdatedAt: Date.now() };
       },
     },
@@ -85,4 +88,11 @@ test('a live REST offer opens the driver screen without receiving a push', () =>
   pending = offer(12, serverTime + 25000);
   render();
   assert.deepEqual(navigated, ['10', '12']);
+  creditAllowed = false;
+  pending = offer(13, serverTime + 25000);
+  render();
+  assert.deepEqual(navigated, ['10', '12'], 'insufficient credit blocks cached offers too');
+  creditAllowed = true;
+  render();
+  assert.deepEqual(navigated, ['10', '12', '13']);
 });

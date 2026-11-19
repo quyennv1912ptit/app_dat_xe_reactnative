@@ -37,7 +37,7 @@ const TERMS_SECTIONS: LegalSection[] = [
     title: "3. Gửi yêu cầu chuyến",
     paragraphs: [
       "Trước khi xác nhận, hãy kiểm tra điểm đón, điểm đến, xe đã chọn, thời gian đặt lịch và ghi chú. Ứng dụng hiển thị ước tính giá trước khi gửi yêu cầu; giá và trạng thái chuyến được cập nhật trong ứng dụng theo dữ liệu chuyến.",
-      "Hiện tại ứng dụng hỗ trợ thanh toán tiền mặt. Mã ưu đãi chỉ áp dụng khi đáp ứng điều kiện được hiển thị trong ứng dụng.",
+      "Ứng dụng hỗ trợ thanh toán bằng tiền mặt hoặc ví PtitGo (bạn có thể chọn trước khi đặt hoặc đổi trước khi hoàn tất chuyến). Mã ưu đãi chỉ áp dụng khi đáp ứng điều kiện được hiển thị trong ứng dụng.",
     ],
   },
   {
@@ -225,20 +225,19 @@ const base_styles = (colors: ThemeColors) =>
       paddingBottom: spacing.spaceXl,
       gap: spacing.spaceLg,
     },
-    updated: { ...typography.labelSm, fontSize: 13, color: colors.onSurfaceVariant },
+    updated: { ...typography.caption, color: colors.onSurfaceVariant },
     intro: {
-      ...typography.bodyLg,
+      ...typography.body,
       color: colors.onSurface,
       backgroundColor: colors.primaryFixedTint,
       padding: 16,
       borderRadius: 24,
     },
     section: { gap: spacing.spaceSm },
-    sectionTitle: { ...typography.headlineSm, color: colors.onSurface },
+    sectionTitle: { ...typography.sectionTitle, color: colors.onSurface },
     body: {
-      ...typography.bodyLg,
+      ...typography.body,
       color: colors.onSurfaceVariant,
-      lineHeight: 24,
     },
     bulletRow: {
       flexDirection: "row",

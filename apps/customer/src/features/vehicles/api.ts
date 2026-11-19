@@ -30,6 +30,10 @@ export async function uploadCustomerVehicleImage(vehicleId: number, file: Custom
   });
 }
 
+export async function setDefaultCustomerVehicle(id: number): Promise<void> {
+  await request(`/customer/vehicles/${id}/default`, { method: 'PUT' });
+}
+
 export async function deleteCustomerVehicle(id: number): Promise<void> {
   await request(`/customer/vehicles/${id}`, { method: 'DELETE', allowNull: true });
 }

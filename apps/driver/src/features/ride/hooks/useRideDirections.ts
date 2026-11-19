@@ -6,6 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { isTerminalRideStatus, ridePresentation } from '../ridePresentation';
+
 async function readOrigin() {
   let permission = await Location.getForegroundPermissionsAsync();
   if (!permission.granted && permission.canAskAgain) permission = await Location.requestForegroundPermissionsAsync();
@@ -28,8 +30,10 @@ export function useRideDirections() {
     queryKey: ['driver', 'rideDirectionsDetail', rideId],
     queryFn: () => driverApi.ride(rideId!),
     enabled: Boolean(rideId && stop),
+    refetchInterval: 10000,
   });
-  const point = stop ? ride.data?.[stop] : null;
+  const allowedStop = ridePresentation(ride.data, !ride.isError && !ride.isPaused)?.navigation;
+  const point = stop && stop === allowedStop ? ride.data?.[stop] : null;
   const destination = point && validDirectionsPoint(point) ? point : null;
   const vehicleType = ride.data?.vehicleType ?? ride.data?.route?.vehicleType;
   const origin = useQuery({
@@ -50,9 +54,27 @@ export function useRideDirections() {
     retry: false,
     staleTime: 300000,
   });
+  const terminal = isTerminalRideStatus(ride.data?.status);
   const error = !rideId || !stop ? 'Thiếu thông tin chuyến để chỉ đường.'
+    : ride.isPaused ? 'Chưa đồng bộ được tuyến đường. Kiểm tra kết nối rồi thử lại.'
     : ride.error?.message ?? origin.error?.message ?? directions.error?.message ??
-      (ride.isSuccess && (!destination || !vehicleType) ? 'Chuyến chưa có tọa độ hoặc loại phương tiện hợp lệ.' : '');
+      (ride.isSuccess && stop !== allowedStop
+        ? terminal
+          ? 'Chuyến đi đã kết thúc nên không còn chỉ đường.'
+          : 'Chỉ đường không còn khả dụng ở giai đoạn này.'
+        : ride.isSuccess && (!destination || !vehicleType)
+          ? 'Chuyến chưa có tọa độ hoặc loại phương tiện hợp lệ.'
+          : '');
+  const fallback = terminal && ride.data
+    ? { route: { pathname: '/ride/complete' as const, params: { rideId: String(ride.data.id) } }, label: 'Xem chi tiết chuyến' }
+    : ride.data
+      ? { route: '/ride/in-progress' as const, label: 'Về chuyến đang thực hiện' }
+      : { route: '/(tabs)/home' as const, label: 'Về trang chủ' };
+  const canRetry = Boolean(
+    rideId &&
+      stop &&
+      (ride.isError || ride.isPaused || origin.isError || directions.isError),
+  );
   const refresh = () => {
     if (ride.isError || !destination) { if (rideId && stop) void ride.refetch(); }
     else if (origin.isError || !origin.data) void origin.refetch();
@@ -60,9 +82,9 @@ export function useRideDirections() {
     else void origin.refetch();
   };
   return {
-    router, stop, destination, origin: origin.data, directions: directions.data,
+    router, stop, destination, origin: destination ? origin.data : undefined, directions: destination ? directions.data : undefined,
     address: stop === 'pickup' ? ride.data?.pickupAddress : ride.data?.dropoffAddress,
     loading: ride.isLoading || origin.isFetching || directions.isFetching,
-    error, refresh,
+    canRetry, error, fallback, refresh,
   };
 }

@@ -8,7 +8,7 @@ import { useRideQuery } from './useRideQuery';
 
 export function useTripCompleted() {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   const params = useLocalSearchParams<{ rideId?: string }>();
   const rideId = Number(Array.isArray(params.rideId) ? params.rideId[0] : params.rideId);
   const query = useRideQuery(rideId);
@@ -23,12 +23,13 @@ export function useTripCompleted() {
   });
 
   const existingRating = existingRatingQuery.data;
-  const alreadyRated = Boolean(existingRating || ride?.hasRated);
-
   const [draftStars, setStars] = useState(5);
   const [draftComment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
-
+  const [submittedRating, setSubmittedRating] = useState(false);
+  const alreadyRated = Boolean(
+    existingRating || ride?.customerHasRatedDriver === true || ride?.hasRated || submittedRating,
+  );
   const lockedStars = existingRating?.stars ?? (ride?.hasRated ? ride.myRatingStars : null);
   const stars = alreadyRated && lockedStars ? lockedStars : draftStars;
   const comment = existingRating
@@ -42,34 +43,45 @@ export function useTripCompleted() {
   };
 
   const error = !valid
-    ? i18nT("Không có mã chuyến để tải hóa đơn và gửi đánh giá.")
-    : query.error?.message ?? (query.isSuccess && !ride ? i18nT("Không tìm thấy chuyến đi.") : '');
+    ? i18nT('Không có mã chuyến để tải hóa đơn và gửi đánh giá.')
+    : query.error?.message ?? (query.isSuccess && !ride ? i18nT('Không tìm thấy chuyến đi.') : '');
+
+  const canGoBack = typeof router.canGoBack === 'function' && router.canGoBack();
+  const leave = () => {
+    if (canGoBack) router.back();
+    else router.replace('/(tabs)/home');
+  };
 
   const finish = async (skipRating = false) => {
     if (saving) return;
     if (!rideId || skipRating || alreadyRated) {
-      router.replace('/(tabs)/home');
+      leave();
       return;
     }
     setSaving(true);
     try {
       await rateCustomerRide(rideId, { stars, comment: comment.trim() || null, tags: null, tip: 0 });
+      setSubmittedRating(true);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['customer', 'ride', rideId] }),
-        queryClient.invalidateQueries({ queryKey: ['customer', 'ride', rideId, 'my-rating'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer', 'rides'] }),
+        client.invalidateQueries({ queryKey: ['customer'] }),
+        existingRatingQuery.refetch(),
       ]);
-      localizedAlert(i18nT("Cảm ơn bạn!"), i18nT("Đánh giá ẩn danh của bạn đã được ghi nhận."));
-      router.replace('/(tabs)/home');
+      localizedAlert(i18nT('Cảm ơn bạn!'), i18nT('Đánh giá ẩn danh của bạn đã được ghi nhận.'));
+      leave();
     } catch (err) {
       if (err instanceof AuthApiError && err.code === 'RATING_ALREADY_EXISTS') {
-        await existingRatingQuery.refetch();
-        localizedAlert(i18nT("Đánh giá chuyến đi"), i18nT("Bạn đã đánh giá chuyến đi này rồi."));
+        setSubmittedRating(true);
+        await Promise.all([
+          client.invalidateQueries({ queryKey: ['customer'] }),
+          existingRatingQuery.refetch(),
+        ]);
+        localizedAlert(i18nT('Đánh giá chuyến đi'), i18nT('Bạn đã đánh giá chuyến đi này rồi.'));
+        leave();
         return;
       }
       localizedAlert(
-        i18nT("Chưa gửi được đánh giá"),
-        err instanceof Error ? err.message : i18nT("Vui lòng thử lại."),
+        i18nT('Chưa gửi được đánh giá'),
+        err instanceof Error ? err.message : i18nT('Vui lòng thử lại.'),
       );
     } finally {
       setSaving(false);
@@ -85,8 +97,11 @@ export function useTripCompleted() {
     setComment,
     saving,
     alreadyRated,
+    hasRatingDetail: Boolean(lockedStars),
     checkingRating: existingRatingQuery.isLoading,
     error,
+    canGoBack,
+    leave,
     refresh,
     finish,
   };

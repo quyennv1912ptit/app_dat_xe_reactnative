@@ -10,6 +10,7 @@ import {
 import { driverRealtime } from "@/lib/realtime";
 import { useSessionStore } from "@/lib/store";
 import type { AuthProfile, CustomerRideDetail } from "@datxe/shared";
+import { ensureForegroundLocationPermission } from "@datxe/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { useEffect, useRef } from "react";
@@ -33,6 +34,7 @@ export function DriverRealtimeBridge() {
     queryKey: ["driver", "session"],
     queryFn: () => request<AuthProfile>("/auth/me"),
     enabled: Boolean(userId),
+    refetchInterval: !rideId && user?.status === "BUSY" ? 3000 : false,
   });
   const availableOrBusy = user?.status === "ONLINE" || user?.status === "BUSY";
   const retryVersion = useDriverHealth(state => state.retryVersion);
@@ -43,9 +45,10 @@ export function DriverRealtimeBridge() {
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
       refreshLocation.current?.();
+      if (userId) void client.invalidateQueries({ queryKey: ["driver", "session"] });
     });
     return () => sub.remove();
-  }, []);
+  }, [client, userId]);
   useEffect(() => {
     useSessionStore.getState().setActiveRide(ride.data ?? null);
   }, [ride.data]);
@@ -77,10 +80,10 @@ export function DriverRealtimeBridge() {
       if (cancelled || checking || (AppState.currentState && AppState.currentState !== 'active')) return;
       checking = true;
       try {
-        let foreground = await Location.getForegroundPermissionsAsync();
+        let foreground: { granted: boolean; canAskAgain: boolean } = await Location.getForegroundPermissionsAsync();
         if (!foreground.granted && foreground.canAskAgain && prompt && !foregroundPermissionAsked && !cancelled) {
           foregroundPermissionAsked = true;
-          foreground = await Location.requestForegroundPermissionsAsync();
+          foreground = await ensureForegroundLocationPermission(Location);
         }
         const servicesEnabled = await Location.hasServicesEnabledAsync();
         if (cancelled) return;

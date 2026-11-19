@@ -2,18 +2,29 @@ import { useDriverHealth } from "@/lib/driverHealth";
 import { useSessionStore } from "@/lib/store";
 import { Button, Card, Typography as Text } from "@datxe/ui";
 import { useEffect, useState } from "react";
-import { Linking, StyleSheet } from "react-native";
+import { AppState, Linking, StyleSheet } from "react-native";
 
 export function DriverReceptionStatus({ detailed = false, onDetails }: { detailed?: boolean; onDetails?: () => void } = {}) {
   const health = useDriverHealth();
   const user = useSessionStore((state) => state.user);
   const active = useSessionStore((state) => state.activeRide);
   const [now, setNow] = useState(Date.now);
+  const [appActive, setAppActive] = useState(() => !AppState?.currentState || AppState.currentState === "active");
   const [settingsError, setSettingsError] = useState("");
+  const needsTiming = Boolean(user) && (user?.status === "ONLINE" || Boolean(active) || (detailed && health.lastSampleAt != null));
   useEffect(() => {
+    const subscription = AppState?.addEventListener?.("change", (state) => {
+      const next = state === "active";
+      setAppActive(next);
+      if (next) setNow(Date.now());
+    });
+    return () => { subscription?.remove(); };
+  }, []);
+  useEffect(() => {
+    if (!needsTiming || !appActive) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [appActive, needsTiming]);
   if (!user) return null;
 
   const online = user.status === "ONLINE";

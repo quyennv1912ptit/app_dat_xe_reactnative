@@ -1,19 +1,32 @@
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { formatMoney, getLocale, translate as i18nT, type CustomerVoucher } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
 
 export const money = (amount: number) =>
-  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale()).format(amount) });
+  formatMoney(amount, { nonBreaking: true });
 
 export const date = (value: string) =>
   new Date(value).toLocaleDateString(getLocale());
+
+export const voucherLabel = (
+  voucher: Pick<CustomerVoucher, "code" | "campaignTitle" | "description" | "milestone">,
+) => {
+  const code = voucher.code?.trim();
+  if (code) return code;
+  const title = voucher.campaignTitle?.trim();
+  if (title) return title;
+  if (voucher.milestone && voucher.milestone > 0) {
+    return i18nT("Ưu đãi mốc {0} chuyến", { "0": voucher.milestone });
+  }
+  return voucher.description?.trim() || i18nT("Ưu đãi cá nhân");
+};
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.margin, gap: 14, paddingBottom: 28 },
-    intro: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+    intro: { ...typography.bodySecondary, color: colors.onSurfaceVariant },
     voucher: {
       flexDirection: "row",
       gap: 12,
@@ -32,24 +45,24 @@ export const styles = (colors: ThemeColors) =>
     },
     details: { flex: 1, gap: 5 },
     titleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },
-    code: { ...typography.labelLg, color: colors.primary, fontWeight: "700" },
+    code: { ...typography.cardTitle, color: colors.primary, fontWeight: "700" },
     badge: {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 999,
-      backgroundColor: colors.primarySoft ?? colors.primaryFixedTint,
+      backgroundColor: colors.primaryContainer,
     },
     badgeText: {
-      ...typography.labelSm,
-      color: colors.primary,
-      fontWeight: "700",
+      ...typography.badge,
+      color: colors.onPrimaryContainer,
     },
-    description: { ...typography.bodyMd, color: colors.onSurface, fontStyle: "italic" },
-    discount: { ...typography.labelMd, color: colors.onSurface, fontWeight: "600" },
-    meta: { ...typography.bodyMd, color: colors.onSurfaceVariant },
-    use: { alignSelf: "flex-start", paddingVertical: 6 },
-    useText: { ...typography.labelMd, color: colors.primary, fontWeight: "700" },
+    description: { ...typography.bodySecondary, color: colors.onSurfaceVariant },
+    discount: { ...typography.label, color: colors.onSurface, fontVariant: ["tabular-nums"] },
+    meta: { ...typography.bodySecondary, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] },
+    use: { alignSelf: "flex-start", minHeight: 48, minWidth: 48, justifyContent: "center", paddingVertical: 6 },
+    useText: { ...typography.label, color: colors.primary },
     empty: { alignItems: "center", gap: 8, padding: 24 },
-    heading: { ...typography.headlineSm, color: colors.onSurface },
-    error: { ...typography.bodyMd, color: colors.error },
+    heading: { ...typography.sectionTitle, color: colors.onSurface },
+    sectionHeading: { ...typography.cardTitle, color: colors.onSurface, marginTop: 4 },
+    error: { ...typography.bodySecondary, color: colors.error },
   });

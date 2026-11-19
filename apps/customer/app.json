@@ -23,7 +23,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#FF4752",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "single",
@@ -50,15 +51,6 @@
         {
           "locationWhenInUsePermission": "Cho phép PtitGo dùng vị trí để chọn điểm đón và theo dõi chuyến đi."
         }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "dynamic",
-            "usePrecompiledModules": false
-          }
-        }
       ]
     ],
     "experiments": {
@@ -75,9 +67,8 @@
         }
       },
       "eas": {
-        "projectId": "08bea57c-6510-4a87-8643-d5a1e96a52bd"
+        "projectId": "e2bbaed7-3b76-4729-80ff-4791800a925d"
       }
-    },
-    "owner": "haidoan1s-team"
+    }
   }
 }

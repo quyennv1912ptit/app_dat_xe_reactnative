@@ -1,34 +1,26 @@
 import { env } from '@/config/env';
-import type { MapDirections, RideCoordinates } from '@datxe/shared';
-import { Camera, GeoJSONSource, Layer, Map, type CameraRef } from '@maplibre/maplibre-react-native';
+import { formatRemainingMeters, normalizeStepDistances, providerScale } from '@/lib/navigationMetrics';
+import { getLocale, type MapDirections, type RideCoordinates } from '@datxe/shared';
+import { MotionPressable as Pressable, Typography as Text, borderRadius, spacing, typography, useReducedMotion, useThemeColors, useThemedStyles, type ThemeColors } from '@datxe/ui';
+import { distanceMeters, projectOnRoute, routeCumulativeMeters, type MapViewportInsets } from '@datxe/ui/goong-map';
+import { Camera, Map, type CameraRef } from '@maplibre/maplibre-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
+import { DriverRouteLayers } from './DriverRouteLayers';
 
 type Props = {
   destination: RideCoordinates;
   targetLabel?: string;
   directions?: MapDirections | null;
+  viewport?: MapViewportInsets;
   onRefresh?: () => void;
 };
 
-function distanceMeters(a: RideCoordinates, b: RideCoordinates): number {
-  const radius = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * radius * Math.asin(Math.sqrt(h));
-}
-
-function formatDistance(meters: number): string {
-  if (!Number.isFinite(meters) || meters <= 0) return '';
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
-}
+/** Khớp với nhịp GPS 1 giây để chấm và camera di chuyển liền mạch. */
+const POSITION_SMOOTH_MS = 1000;
 
 function arrowFor(instruction: string): string {
   const value = instruction.toLowerCase();
@@ -69,20 +61,36 @@ function roadName(instruction: string): string {
   return (match ? match[1] : instruction).trim();
 }
 
-export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón', directions, onRefresh }: Props) {
+export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón', directions, viewport, onRefresh }: Props) {
+  const colors = useThemeColors();
+  const styles = useThemedStyles(themedStyles);
+  const reducedMotion = useReducedMotion();
+  const smoothingMs = reducedMotion ? 0 : POSITION_SMOOTH_MS;
   const camera = useRef<CameraRef>(null);
   const [current, setCurrent] = useState<RideCoordinates | null>(null);
   const [voiceMuted, setVoiceMuted] = useState(false);
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [voiceId, setVoiceId] = useState<string | undefined>(undefined);
   const announced = useRef<Set<number>>(new Set());
   const announcedAhead = useRef<Set<string>>(new Set());
-  // Route mới (re-route) phải đọc lại từ đầu.
-  useEffect(() => { announced.current.clear(); announcedAhead.current.clear(); }, [directions]);
-  const voiceMutedRef = useRef(false);
+  const lastSpokenStepAt = useRef(0);
   const overviewShown = useRef(false);
   const mapStyle = env.goongStyleUrl;
 
-  useEffect(() => { voiceMutedRef.current = voiceMuted; }, [voiceMuted]);
+  useEffect(() => {
+    if (voiceMuted) void Speech.stop();
+  }, [voiceMuted]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      const nextActive = nextState === 'active';
+      setIsAppActive(nextActive);
+      if (!nextActive) void Speech.stop();
+    });
+    return () => {
+      subscription.remove();
+      void Speech.stop();
+    };
+  }, []);
 
   // Chọn giọng đọc tiếng Việt có sẵn trên thiết bị.
   useEffect(() => {
@@ -103,93 +111,102 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
       const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       if (active) setCurrent({ lat: initial.coords.latitude, lng: initial.coords.longitude });
       subscription = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+        // Cập nhật mỗi ~1 giây; hook nội suy sẽ làm mượt phần giữa các lần nhận.
+        { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 1000 },
         position => { if (active) setCurrent({ lat: position.coords.latitude, lng: position.coords.longitude }); },
       );
     })().catch(() => undefined);
     return () => { active = false; subscription?.remove(); };
   }, []);
 
-  const coordinates = directions?.coordinates ?? [];
-  const steps = directions?.steps ?? [];
+  const coordinates = useMemo(() => directions?.coordinates ?? [], [directions?.coordinates]);
+  const steps = useMemo(() => directions?.steps ?? [], [directions?.steps]);
+  const routeSignature = useMemo(
+    () => `${destination.lat},${destination.lng}:${steps.map(step => `${step.instruction}:${Math.round(step.distanceMeters)}`).join('|')}`,
+    [destination.lat, destination.lng, steps],
+  );
+  // Route mới (re-route hoặc đổi đích đón/trả) đọc lại từ đầu; refetch cùng tuyến giữ nguyên trạng thái đã đọc.
+  useEffect(() => {
+    announced.current.clear();
+    announcedAhead.current.clear();
+    lastSpokenStepAt.current = 0;
+  }, [routeSignature]);
 
-  const routeCumulative = useMemo(() => {
-    const cumulative = [0];
-    for (let index = 1; index < coordinates.length; index += 1) {
-      cumulative.push(cumulative[index - 1] + distanceMeters(coordinates[index - 1], coordinates[index]));
+  const routeCumulative = useMemo(() => routeCumulativeMeters(coordinates), [coordinates]);
+
+  // Chiếu vị trí lên polyline (không làm tròn về đỉnh) để tiến độ và phần đường
+  // đã đi bám đúng chỗ tài xế đang đứng.
+  const projection = useMemo(
+    () => (current && coordinates.length > 0 ? projectOnRoute(coordinates, routeCumulative, current) : null),
+    [current, coordinates, routeCumulative],
+  );
+  const progress = projection?.alongMeters ?? 0;
+
+  // Quy đổi mọi con số hiển thị/đọc lên sang mét của provider (Goong) để
+  // "còn X m" chạy đúng tốc độ và về 0 đúng lúc tới đích như Google Maps.
+  const routeTotal = routeCumulative[routeCumulative.length - 1] ?? 0;
+  const providerTotal = directions?.distance && directions.distance > 0 ? directions.distance : routeTotal;
+  const scaledProgress = progress * providerScale(routeTotal, providerTotal);
+
+  const stepDistances = useMemo(
+    () => normalizeStepDistances(steps, providerTotal),
+    [steps, providerTotal],
+  );
+  const stepEnds = useMemo(() => {
+    const ends: number[] = [];
+    let sum = 0;
+    for (const distance of stepDistances) {
+      sum += distance;
+      ends.push(sum);
     }
-    return cumulative;
-  }, [coordinates]);
-
-  const { progress, nearestIndex } = useMemo(() => {
-    if (!current || coordinates.length === 0) return { progress: 0, nearestIndex: 0 };
-    let best = 0;
-    let bestDistance = Infinity;
-    for (let index = 0; index < coordinates.length; index += 1) {
-      const value = distanceMeters(coordinates[index], current);
-      if (value < bestDistance) { bestDistance = value; best = index; }
-    }
-    return { progress: routeCumulative[best] ?? 0, nearestIndex: best };
-  }, [current, coordinates, routeCumulative]);
-
-  // Khoảng cách dọc polyline (haversine) nhỏ hơn khoảng cách thực do provider trả.
-  // Quy đổi tiến độ theo tổng khoảng cách thực để chọn đúng bước.
-  const scaledProgress = useMemo(() => {
-    const routeTotal = routeCumulative[routeCumulative.length - 1] ?? 0;
-    const actualTotal = directions?.distance ?? routeTotal;
-    return routeTotal > 0 && actualTotal > 0 ? (progress / routeTotal) * actualTotal : progress;
-  }, [progress, routeCumulative, directions?.distance]);
+    return ends;
+  }, [stepDistances]);
 
   const stepIndex = useMemo(() => {
-    if (steps.length === 0) return 0;
-    let cumulative = 0;
-    for (let cursor = 0; cursor < steps.length; cursor += 1) {
-      cumulative += steps[cursor].distanceMeters;
-      if (scaledProgress <= cumulative) return cursor;
-    }
-    return steps.length - 1;
-  }, [scaledProgress, steps]);
+    if (stepDistances.length === 0) return 0;
+    const found = stepEnds.findIndex(end => scaledProgress <= end);
+    return found === -1 ? stepEnds.length - 1 : found;
+  }, [scaledProgress, stepDistances.length, stepEnds]);
 
+  // Điều phối một lượt phát giọng nói duy nhất mỗi bước/ngưỡng, tránh tự hủy lời nhắc cùng render.
   useEffect(() => {
-    if (steps.length === 0) return;
-    if (!announced.current.has(stepIndex)) {
+    if (!isAppActive || !current || steps.length === 0 || voiceMuted) return;
+    const stepEnd = stepEnds[stepIndex] ?? 0;
+    const remaining = Math.max(0, stepEnd - scaledProgress);
+    const next = steps[stepIndex + 1];
+
+    if (next && remaining <= 20 && !announcedAhead.current.has(`${stepIndex}:now`)) {
+      announcedAhead.current.add(`${stepIndex}:now`);
       announced.current.add(stepIndex);
-      const text = localizeInstruction(steps[stepIndex]?.instruction ?? '').trim();
-      if (text && !voiceMutedRef.current) {
+      const text = `Bây giờ, ${localizeInstruction(next.instruction).trim()}`;
+      if (text.trim()) {
         void Speech.stop();
         Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
       }
+      return;
     }
-  }, [stepIndex, steps, voiceId]);
 
-  // Báo trước chặng kế ("Sau 300/100/30 m, ...") giống app dẫn đường.
-  useEffect(() => {
-    if (steps.length === 0 || voiceMutedRef.current) return;
-    const next = steps[stepIndex + 1];
-    if (!next) return;
-    const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
-    const remaining = Math.max(0, stepEnd - scaledProgress);
+    if (!announced.current.has(stepIndex)) {
+      const text = localizeInstruction(steps[stepIndex]?.instruction ?? '').trim();
+      if (text) {
+        announced.current.add(stepIndex);
+        lastSpokenStepAt.current = Date.now();
+        void Speech.stop();
+        Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
+      }
+      return;
+    }
+
+    if (!next || Date.now() - lastSpokenStepAt.current < 3500) return;
     const threshold = [300, 100, 30].find(value => remaining <= value && !announcedAhead.current.has(`${stepIndex}:${value}`));
     if (threshold === undefined) return;
-    announcedAhead.current.add(`${stepIndex}:${threshold}`);
-    const text = `Sau ${formatDistance(remaining)}, ${localizeInstruction(next.instruction).trim()}`;
+    for (const candidate of [300, 100, 30]) {
+      if (candidate >= threshold) announcedAhead.current.add(`${stepIndex}:${candidate}`);
+    }
+    const text = `Sau ${formatRemainingMeters(remaining, getLocale())}, ${localizeInstruction(next.instruction).trim()}`;
     void Speech.stop();
     Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
-  }, [scaledProgress, stepIndex, steps, voiceId]);
-
-  // Nhắc "Bây giờ, ..." khi tới sát chỗ rẽ (< 20 m).
-  useEffect(() => {
-    if (steps.length === 0 || voiceMutedRef.current) return;
-    const next = steps[stepIndex + 1];
-    if (!next) return;
-    const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
-    const remaining = Math.max(0, stepEnd - scaledProgress);
-    if (remaining > 20 || announcedAhead.current.has(`${stepIndex}:now`)) return;
-    announcedAhead.current.add(`${stepIndex}:now`);
-    const text = `Bây giờ, ${localizeInstruction(next.instruction).trim()}`;
-    void Speech.stop();
-    Speech.speak(text, { language: 'vi-VN', voice: voiceId, rate: 0.95, pitch: 1 });
-  }, [scaledProgress, stepIndex, steps, voiceId]);
+  }, [current, isAppActive, scaledProgress, stepEnds, stepIndex, steps, voiceId, voiceMuted]);
 
   useEffect(() => {
     if (!current) return;
@@ -199,12 +216,23 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
       const lats = coordinates.map(point => point.lat);
       camera.current?.fitBounds(
         [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
-        { padding: { top: 120, bottom: 180, left: 40, right: 40 }, duration: 500 },
+        { padding: { top: (viewport?.top ?? 80) + 120, bottom: (viewport?.bottom ?? 140) + 40, left: 40, right: 40 }, duration: reducedMotion ? 0 : 500 },
       );
       return;
     }
-    camera.current?.jumpTo({ center: [current.lng, current.lat], zoom: 17 });
-  }, [current, coordinates]);
+    // easeTo tuyến tính trong đúng khoảng GPS kế tiếp: camera trượt liên tục
+    // thay vì giật từng điểm như jumpTo.
+    if (reducedMotion || smoothingMs <= 0) {
+      camera.current?.jumpTo({ center: [current.lng, current.lat], zoom: 17 });
+    } else {
+      camera.current?.easeTo({
+        center: [current.lng, current.lat],
+        zoom: 17,
+        duration: smoothingMs,
+        easing: 'linear',
+      });
+    }
+  }, [current, coordinates, reducedMotion, smoothingMs, viewport?.top, viewport?.bottom]);
 
   // Tự cập nhật tuyến đường: lệch route > 40m, hoặc đã đi > 25m sau mỗi 20 giây.
   const lastRefresh = useRef<{ at: number; position: RideCoordinates } | null>(null);
@@ -213,26 +241,17 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
     const now = Date.now();
     const previous = lastRefresh.current;
     if (!previous) { lastRefresh.current = { at: now, position: current }; return; }
-    let nearest = Infinity;
-    for (const point of coordinates) nearest = Math.min(nearest, distanceMeters(point, current));
+    const nearest = projection?.offsetMeters ?? Infinity;
     const elapsed = now - previous.at;
     const moved = distanceMeters(previous.position, current);
     if ((nearest > 40 && elapsed > 5000) || (elapsed > 20000 && moved > 25)) {
       lastRefresh.current = { at: now, position: current };
       onRefresh();
     }
-  }, [current, coordinates, onRefresh]);
-
-  // Chỉ vẽ phần đường còn lại (từ vị trí tài xế tới đích), cập nhật mỗi lần GPS đổi.
-  const routeLine = useMemo(() => {
-    const remaining = coordinates.slice(nearestIndex);
-    return remaining.length > 1
-      ? { type: 'LineString' as const, coordinates: remaining.map(point => [point.lng, point.lat] as [number, number]) }
-      : null;
-  }, [coordinates, nearestIndex]);
+  }, [current, coordinates, onRefresh, projection]);
 
   const step = steps[stepIndex];
-  const stepEnd = steps.slice(0, stepIndex + 1).reduce((sum, value) => sum + value.distanceMeters, 0);
+  const stepEnd = stepEnds[stepIndex] ?? 0;
   const stepRemaining = Math.max(0, stepEnd - scaledProgress);
   const displayInstruction = localizeInstruction(step?.instruction ?? '') || `Đang đi tới ${targetLabel}`;
   const road = roadName(displayInstruction) || `Đi tới ${targetLabel}`;
@@ -253,93 +272,79 @@ export function DriverDirectionsMap({ destination, targetLabel = 'điểm đón'
       >
         <Camera ref={camera} maxZoom={19}
           initialViewState={{ center: [current?.lng ?? destination.lng, current?.lat ?? destination.lat], zoom: 17 }} />
-        {routeLine ? (
-          <GeoJSONSource id="driver-route" data={routeLine}>
-            <Layer id="driver-route-casing" type="line"
-              paint={{ 'line-color': '#FFFFFF', 'line-width': 8 }}
-              layout={{ 'line-cap': 'round', 'line-join': 'round' }} />
-            <Layer id="driver-route-line" type="line"
-              paint={{ 'line-color': '#1D4ED8', 'line-width': 5 }}
-              layout={{ 'line-cap': 'round', 'line-join': 'round' }} />
-          </GeoJSONSource>
-        ) : null}
-        {current ? (
-          <GeoJSONSource id="driver-position" data={{
-            type: 'Feature', geometry: { type: 'Point', coordinates: [current.lng, current.lat] }, properties: {},
-          }}>
-            <Layer id="driver-position-dot" type="circle" paint={{
-              'circle-radius': 8, 'circle-color': '#2563EB', 'circle-stroke-width': 3, 'circle-stroke-color': '#FFFFFF',
-            }} />
-          </GeoJSONSource>
-        ) : null}
-        <GeoJSONSource id="driver-destination" data={{
-          type: 'Feature', geometry: { type: 'Point', coordinates: [destination.lng, destination.lat] }, properties: {},
-        }}>
-          <Layer id="driver-destination-dot" type="circle" paint={{
-            'circle-radius': 9, 'circle-color': '#16A34A', 'circle-stroke-width': 3, 'circle-stroke-color': '#FFFFFF',
-          }} />
-        </GeoJSONSource>
+        <DriverRouteLayers
+          coordinates={coordinates}
+          target={current}
+          destination={destination}
+          destinationColor={colors.success}
+          smoothingMs={smoothingMs}
+          animate={!reducedMotion}
+        />
       </Map>
-      <View style={styles.maneuver}>
-        <View style={styles.maneuverRow}>
-          <Text style={styles.maneuverArrow}>{arrowFor(displayInstruction)}</Text>
-          <View style={styles.roadBadge}>
-            <Text style={styles.roadBadgeText} numberOfLines={1}>{road}</Text>
+      <View pointerEvents="box-none" style={[styles.topOverlay, { top: (viewport?.top ?? 0) + spacing.spaceSm }]}>
+        <View style={styles.maneuver}>
+          <View style={styles.maneuverRow}>
+            <Text style={styles.maneuverArrow}>{arrowFor(displayInstruction)}</Text>
+            <View style={styles.roadBadge}>
+              <Text style={styles.roadBadgeText} numberOfLines={1}>{road}</Text>
+            </View>
           </View>
+          <Text style={styles.maneuverInstruction} numberOfLines={2}>{displayInstruction}</Text>
+          <Text style={styles.maneuverDistance}>{step ? formatRemainingMeters(stepRemaining, getLocale()) : ''}</Text>
+          {nextRoad ? (
+            <>
+              <View style={styles.maneuverDivider} />
+              <Text style={styles.thenText} numberOfLines={1}>Sau đó {nextRoad}</Text>
+            </>
+          ) : null}
         </View>
-        <Text style={styles.maneuverInstruction} numberOfLines={2}>{displayInstruction}</Text>
-        <Text style={styles.maneuverDistance}>{step ? formatDistance(stepRemaining) : ''}</Text>
-        {nextRoad ? (
-          <>
-            <View style={styles.maneuverDivider} />
-            <Text style={styles.thenText} numberOfLines={1}>Sau đó {nextRoad}</Text>
-          </>
-        ) : null}
-      </View>
-      <View style={styles.mapControls}>
-        <Pressable
-          accessibilityLabel={voiceMuted ? 'Bật giọng chỉ đường' : 'Tắt giọng chỉ đường'}
-          style={styles.mapControl}
-          onPress={() => { const next = !voiceMuted; setVoiceMuted(next); if (next) void Speech.stop(); }}
-        >
-          <MaterialIcons name={voiceMuted ? 'volume-off' : 'volume-up'} size={22} color="#344054" />
-        </Pressable>
-        {onRefresh ? (
-          <Pressable accessibilityLabel="Cập nhật tuyến đường" style={styles.mapControl}
-            onPress={() => { overviewShown.current = false; onRefresh(); }}>
-            <MaterialIcons name="refresh" size={22} color="#344054" />
+        <View style={styles.mapControls}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voiceMuted ? 'Bật giọng chỉ đường' : 'Tắt giọng chỉ đường'}
+            style={styles.mapControl}
+            onPress={() => { const next = !voiceMuted; setVoiceMuted(next); if (next) void Speech.stop(); }}
+          >
+            <MaterialIcons name={voiceMuted ? 'volume-off' : 'volume-up'} size={22} color={colors.onSurface} />
           </Pressable>
-        ) : null}
-        <Pressable accessibilityLabel="Xem toàn bộ lộ trình" style={styles.mapControl}
-          onPress={() => {
-            if (coordinates.length < 2) return;
-            const lngs = coordinates.map(point => point.lng);
-            const lats = coordinates.map(point => point.lat);
-            camera.current?.fitBounds(
-              [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
-              { padding: { top: 120, bottom: 180, left: 40, right: 40 }, duration: 400 },
-            );
-          }}
-        >
-          <MaterialIcons name="alt-route" size={22} color="#344054" />
-        </Pressable>
+          {onRefresh ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Cập nhật tuyến đường" style={styles.mapControl}
+              onPress={() => { overviewShown.current = false; onRefresh(); }}>
+              <MaterialIcons name="refresh" size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Xem toàn bộ lộ trình" style={styles.mapControl}
+            onPress={() => {
+              if (coordinates.length < 2) return;
+              const lngs = coordinates.map(point => point.lng);
+              const lats = coordinates.map(point => point.lat);
+              camera.current?.fitBounds(
+                [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
+                { padding: { top: (viewport?.top ?? 80) + 120, bottom: (viewport?.bottom ?? 140) + 40, left: 40, right: 40 }, duration: 400 },
+              );
+            }}
+          >
+            <MaterialIcons name="alt-route" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F4F7', gap: 10, padding: 24 },
-  emptyText: { color: '#667085', textAlign: 'center' },
-  maneuver: { position: 'absolute', top: 4, left: 14, right: 14, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: '#14532D', elevation: 5, shadowColor: '#000000', shadowOpacity: 0.22, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, gap: 4 },
-  maneuverRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  maneuverArrow: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
-  roadBadge: { flexShrink: 1, backgroundColor: '#FFFFFF', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  roadBadgeText: { color: '#111827', fontSize: 15, fontWeight: '700' },
-  maneuverInstruction: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '600', marginTop: 2 },
-  maneuverDistance: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', marginLeft: 32 },
-  maneuverDivider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)', marginTop: 4 },
-  thenText: { color: 'rgba(255,255,255,0.92)', fontSize: 12, marginTop: 2 },
-  mapControls: { position: 'absolute', right: 14, top: 126, gap: 12 },
-  mapControl: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 5, shadowColor: '#000000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+const themedStyles = (c: ThemeColors) => StyleSheet.create({
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background, gap: spacing.px3, padding: spacing.spaceLg },
+  emptyText: { ...typography.bodySecondary, color: c.onSurfaceVariant, textAlign: 'center' },
+  topOverlay: { position: 'absolute', left: spacing.margin, right: spacing.margin, gap: spacing.spaceSm },
+  maneuver: { paddingHorizontal: spacing.spaceMd, paddingVertical: spacing.px3, borderRadius: borderRadius.default, backgroundColor: c.primary, gap: spacing.xxs },
+  maneuverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.spaceSm },
+  maneuverArrow: { ...typography.sectionTitle, color: c.onPrimary },
+  roadBadge: { flexShrink: 1, backgroundColor: c.surfaceContainerLowest, borderRadius: borderRadius.sm, paddingHorizontal: spacing.spaceSm, paddingVertical: spacing.xxs },
+  roadBadgeText: { ...typography.label, color: c.onSurface },
+  maneuverInstruction: { ...typography.body, color: c.onPrimary, marginTop: spacing.xxs },
+  maneuverDistance: { ...typography.label, color: c.onPrimary, marginLeft: spacing.spaceLg, fontVariant: ['tabular-nums'] },
+  maneuverDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.outlineVariant, marginTop: spacing.xxs },
+  thenText: { ...typography.bodySecondary, color: c.onPrimary, marginTop: spacing.xxs },
+  mapControls: { alignSelf: 'flex-end', gap: spacing.spaceSm },
+  mapControl: { width: 48, height: 48, borderRadius: borderRadius.full, backgroundColor: c.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center' },
 });

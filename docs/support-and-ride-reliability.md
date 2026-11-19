@@ -1,6 +1,6 @@
 # Hỗ trợ, điều chỉnh biên bản và độ tin cậy chuyến đi
 
-Triển khai F03–F08 ngày 05/11/2026 trong frontend và `D:\datxebackend`.
+Triển khai F03–F08 ngày 05/11/2026; đối chiếu lại hai app với backend và Web Admin ngày 08/11/2026.
 
 ## Backend và thứ tự cập nhật
 
@@ -14,14 +14,14 @@ Customer mở Trợ giúp/An toàn; Driver mở Hồ sơ → Trợ giúp. Biên 
 
 | API | Quyền / hành vi |
 | --- | --- |
-| `POST /api/support/tickets` | Customer/Driver; `clientRequestId` UUID, `rideId?`, `category`, `description`, `images: [{fileUrl, publicId}]`. Trả mã `HT-{id}`; retry cùng UUID không tạo yêu cầu/ảnh trùng. |
-| `GET /api/support/tickets?page=0` | 20 yêu cầu mới nhất/trang, chỉ đúng chủ và role. |
+| `POST /api/support/tickets` | Customer/Driver; `clientRequestId` UUID, `rideId?`, `category`, `description`, `images: [{fileUrl, publicId}]`. Trả mã `HT-{id}`; retry cùng UUID và cùng nội dung không tạo yêu cầu/ảnh trùng; dùng lại UUID cho nội dung khác trả 409. |
+| `GET /api/support/tickets?page=0&status=OPEN` | 20 yêu cầu/trang, lọc trạng thái ở server, chỉ đúng chủ và role; bỏ status để xem tất cả. |
 | `GET /api/support/tickets/{id}` | Đọc lại yêu cầu sau khi mở app lại. |
 | `GET /api/admin/support/tickets?page=0&status=OPEN` | Hàng đợi tiếp nhận của ADMIN; có thể bỏ filter status. |
 | `GET /api/admin/support/tickets/{id}` | ADMIN xem nội dung, ảnh, chủ yêu cầu. |
-| `PATCH /api/admin/support/tickets/{id}` | ADMIN gửi `{status, response}`; trạng thái `OPEN`, `IN_PROGRESS`, `RESOLVED`. Khi `RESOLVED` bắt buộc có phản hồi; lưu admin xử lý và thời điểm cập nhật. |
+| `PATCH /api/admin/support/tickets/{id}` | ADMIN gửi `{status, response, expectedUpdatedAt}`; bản cũ bị trả 409 nếu admin khác đã cập nhật; trạng thái `OPEN`, `IN_PROGRESS`, `RESOLVED`. Khi `RESOLVED` bắt buộc có phản hồi; lưu admin xử lý và thời điểm cập nhật. |
 
-App hiển thị trạng thái/ảnh/phản hồi thật và tải lại mỗi 30 giây khi màn hoạt động; có nút tải lại thủ công. Nhân viên có thể dùng API quản trị qua Swagger với tài khoản ADMIN. Repository mobile này chưa chứa dashboard hỗ trợ cho nhân viên; không thêm email/hotline giả. Cần phân công người trực và thống nhất thời gian phản hồi trước khi quảng bá dịch vụ hỗ trợ. Kênh hỗ trợ không phải SOS; chưa có quy trình vận hành khẩn cấp nên không hứa cứu hộ hoặc tạo nút khẩn cấp giả.
+Hai app hiển thị trạng thái/ảnh/phản hồi thật và tải lại mỗi 30 giây, khi quay lại màn và khi app trở lại foreground; có nút tải lại thủ công và thông báo lỗi tải dữ liệu. Bộ lọc dùng API nên không bỏ sót yêu cầu ở trang cũ. Web Admin nằm ở dự án `goAdmin`, trang `/support` và `/support/{id}`, tự cập nhật mỗi 15 giây. Admin giữ nội dung đang nhập khi nhận bản mới và phải nạp bản mới trước khi lưu; phiên bản dùng `updatedAt` trong DTO. Luồng này đồng bộ qua API/polling, chưa có push riêng cho phản hồi hỗ trợ. Không cần migration mới cho các điều chỉnh đồng bộ này. Không thêm email/hotline giả. Cần phân công người trực và thống nhất thời gian phản hồi trước khi quảng bá dịch vụ hỗ trợ. Kênh hỗ trợ không phải SOS; chưa có quy trình vận hành khẩn cấp nên không hứa cứu hộ hoặc tạo nút khẩn cấp giả.
 
 ## Biên bản có phiên bản
 
@@ -61,3 +61,19 @@ Kết quả đã chạy: `npm run check` đạt architecture/typecheck/lint và 
 Test tự động kiểm tra retry dữ liệu, khôi phục payment, version khi xác nhận/sửa, UUID support retry, chờ upload ảnh, chỉ báo online, cache và timestamp GPS cũ. Backend kiểm tra phân quyền, snapshot/phiên bản, chặn xác nhận cũ, TTL vị trí. Test PostgreSQL chạy toàn bộ migration trong schema riêng, rollback sau từng test; kiểm tra mã tiếp nhận bền vững, chống gửi lặp/ảnh trùng, phản hồi quản trị và thu tiền lặp. Không sửa dữ liệu hiện có.
 
 Chưa QA trực quan/E2E Android/iOS: hai tài khoản báo sai → sửa → xác nhận → bắt đầu/hoàn tất; mạng đứt sau server commit; gửi ảnh lỗi; app restart; thay đổi quyền GPS; chuyển app/khóa màn hình khi online hoặc có chuyến. Nội dung giải thích quyền vị trí iOS được cập nhật trong app config, cần native build mới để đổi lời nhắc hệ thống. Thiết lập nền phụ thuộc hệ điều hành và chính sách tiết kiệm pin.
+
+
+## Kiểm tra đồng bộ ngày 08/11/2026
+
+- Đã đối chiếu danh mục TRIP/PAYMENT/HANDOVER/ACCOUNT/OTHER và vòng đời
+  OPEN → IN_PROGRESS → RESOLVED giữa hai app và Web Admin.
+- Sửa lọc trạng thái ngay trên API cho cả CUSTOMER/DRIVER, phân trang 20 bản ghi;
+  không lẫn yêu cầu khi hai role có cùng ID.
+- Sửa trạng thái tải/lỗi trên app khách và dùng cùng component với tài xế.
+- Mở chuyến từ yêu cầu tài xế dựa vào trạng thái chuyến mới nhất, không luôn
+  chuyển tới màn hoàn tất. Lỗi mở chuyến hiển thị để người dùng thử lại.
+- Backend khóa bản ghi khi Admin sửa, so sánh expectedUpdatedAt và trả 409 với
+  bản cũ. Tương thích client cũ chưa gửi trường này; cần cập nhật goAdmin để
+  nhận đầy đủ bảo vệ chống ghi đè.
+- Kiểm thử PostgreSQL bao gồm tạo yêu cầu ở cả hai role, ảnh đúng chủ, phản hồi
+  qua từng trạng thái, lọc qua nhiều trang, xung đột Admin và retry UUID.

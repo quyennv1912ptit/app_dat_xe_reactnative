@@ -13,7 +13,8 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { useRef, type ComponentRef } from "react";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 import { ActivityIndicator } from "react-native-paper";
 
 import { styles as base_styles } from "../components/TripCompletedScreenParts";
@@ -25,7 +26,6 @@ export default function TripCompletedScreen() {
   const styles = useThemedStyles(base_styles);
 
   const {
-    router,
     ride,
     stars,
     setStars,
@@ -33,25 +33,26 @@ export default function TripCompletedScreen() {
     setComment,
     saving,
     alreadyRated,
+    hasRatingDetail,
     checkingRating,
     error,
+    canGoBack,
+    leave,
     refresh,
     finish,
   } = useTripCompleted();
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
         title={i18nT("Hoàn thành chuyến")}
-        backIcon="home"
-        backAccessibilityLabel={i18nT("Về trang chủ")}
-        onBack={() => router.replace("/(tabs)/home")}
+        backIcon={canGoBack ? undefined : "home"}
+        backAccessibilityLabel={i18nT(canGoBack ? "Quay lại" : "Về trang chủ")}
+        onBack={leave}
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           {ride?.status === "COMPLETED" ? (
             <View style={styles.success}>
               <MaterialIcons name="check-circle" size={54} color={colors.successStrong} />
@@ -89,6 +90,11 @@ export default function TripCompletedScreen() {
 
               {checkingRating ? (
                 <ActivityIndicator color={colors.primary} />
+              ) : alreadyRated && !hasRatingDetail ? (
+                <View style={styles.success}>
+                  <MaterialIcons name="verified" size={24} color={colors.successStrong} />
+                  <Text style={styles.section}>{i18nT("Bạn đã đánh giá tài xế cho chuyến đi này.")}</Text>
+                </View>
               ) : (
                 <>
                   <View style={styles.stars}>
@@ -97,8 +103,8 @@ export default function TripCompletedScreen() {
                         key={value}
                         disabled={alreadyRated || saving}
                         accessibilityRole="radio"
-                        accessibilityState={{ selected: value === stars, disabled: alreadyRated }}
-                        accessibilityLabel={i18nT(`${value} sao`)}
+                        accessibilityState={{ selected: value === stars, checked: value === stars, disabled: alreadyRated }}
+                        accessibilityLabel={i18nT("{0} sao", { 0: value })}
                         style={[customerType.target, styles.star]}
                         onPress={() => {
                           if (!alreadyRated) setStars(value);
@@ -121,13 +127,31 @@ export default function TripCompletedScreen() {
                     <>
                       <TextInput
                         multiline
+                        accessibilityLabel={i18nT("Nhận xét (không bắt buộc)")}
                         draftValue={comment}
                         onChangeText={setComment}
+                        onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
                         placeholder={i18nT("Nhận xét (không bắt buộc)")}
                         style={styles.input}
                         maxLength={2000}
                       />
                       <Text style={styles.counter}>{comment.length}/2000</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={saving || !ride || ride.status !== "COMPLETED" || !ride.driverId}
+                        onPress={() => void finish()}
+                        style={[
+                          styles.primary,
+                          { marginTop: 12 },
+                          (saving || !ride || ride.status !== "COMPLETED" || !ride.driverId) && styles.disabled,
+                        ]}
+                      >
+                        {saving ? (
+                          <ActivityIndicator color={colors.onPrimary} />
+                        ) : (
+                          <Text style={styles.primaryText}>{i18nT("Gửi đánh giá")}</Text>
+                        )}
+                      </Pressable>
                     </>
                   )}
                 </>
@@ -143,29 +167,22 @@ export default function TripCompletedScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          {ride?.status === "COMPLETED" && ride.driverId && !alreadyRated && !checkingRating ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={saving}
-              onPress={() => void finish()}
-              style={[styles.primary, saving && styles.disabled]}
-            >
-              {saving ? (
-                <ActivityIndicator color={colors.onPrimary} />
-              ) : (
-                <Text style={styles.primaryText}>{i18nT("Gửi đánh giá")}</Text>
-              )}
-            </Pressable>
-          ) : null}
-
           <Pressable
             accessibilityRole="button"
             disabled={saving}
             onPress={() => void finish(true)}
-            style={styles.skip}
+            style={alreadyRated ? styles.primary : styles.skip}
           >
-            <Text style={styles.skipText}>
-              {alreadyRated ? i18nT("Về trang chủ") : i18nT("Bỏ qua và về trang chủ")}
+            <Text style={alreadyRated ? styles.primaryText : styles.skipText}>
+              {i18nT(
+                canGoBack
+                  ? alreadyRated
+                    ? "Quay lại"
+                    : "Bỏ qua và quay lại"
+                  : alreadyRated
+                    ? "Về trang chủ"
+                    : "Bỏ qua và về trang chủ",
+              )}
             </Text>
           </Pressable>
         </View>

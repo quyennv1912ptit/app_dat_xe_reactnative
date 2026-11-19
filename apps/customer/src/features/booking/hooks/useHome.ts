@@ -1,16 +1,22 @@
 import { activeRideDestination } from '../bookingUtils';
 import { translate as i18nT } from '@datxe/shared';
+import { ensureForegroundLocationPermission } from '@datxe/ui';
 import { getCustomerDisplayName } from '@/lib/customerName';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import type { RideCoordinates } from '@datxe/shared';
 import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
-import { useFocusEffect,useRouter } from 'expo-router';
-import { useCallback,useRef,useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { Linking, Platform } from 'react-native';
-import { getActiveCustomerRide,getCustomerProfile,getCustomerRides,getCustomerVouchers,getNearbyCustomerDrivers,getUnreadNotificationCount,reverseBookingPlace } from '../api';
-import { getRecentDestinations } from '../components/HomeScreenParts';
-function getCustomerCoordinate(): Promise<RideCoordinates> {
+import { getActiveCustomerRide, getCustomerProfile, getCustomerRides, getCustomerVouchers, getNearbyCustomerDrivers, getUnreadNotificationCount, reverseBookingPlace } from '../api';
+import { getRecentDestinations, type RecentDestination } from '../components/HomeScreenParts';
+import { useBookingDraft } from '../store';
+import type { BookingPlace } from '../types';
+
+const LOCATION_TIMEOUT_MS = 8000;
+
+async function getCustomerCoordinate(): Promise<RideCoordinates> {
   if (Platform.OS === "web") {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
@@ -20,10 +26,33 @@ function getCustomerCoordinate(): Promise<RideCoordinates> {
       );
     });
   }
-  return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(({ coords }) => ({
-    lat: coords.latitude,
-    lng: coords.longitude,
-  }));
+  const lastKnown = typeof Location.getLastKnownPositionAsync === "function"
+    ? await Location.getLastKnownPositionAsync({ maxAge: 60_000 }).catch(() => null)
+    : null;
+  if (lastKnown?.coords) {
+    return { lat: lastKnown.coords.latitude, lng: lastKnown.coords.longitude };
+  }
+  return new Promise<RideCoordinates>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('GPS_TIMEOUT'));
+    }, LOCATION_TIMEOUT_MS);
+    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      .then(({ coords }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ lat: coords.latitude, lng: coords.longitude });
+      })
+      .catch((error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
 }
 
 let cachedLocation: { coordinate: RideCoordinates; label: string; updatedAt: number } | null = null;
@@ -34,7 +63,6 @@ const [currentLocation, setCurrentLocation] = useState(cachedLocation?.label ?? 
 const [currentCoordinates, setCurrentCoordinates] = useState<RideCoordinates | null>(cachedLocation?.coordinate ?? null);
 const [locationLoading, setLocationLoading] = useState(!cachedLocation);
 const [homeFocused, setHomeFocused] = useState(false);
-const locationPermissionRequested = useRef(false);
 const locationBusy = useRef(false);
 const refreshLocation = useCallback(async (requestPermission = false) => {
     if (locationBusy.current || (!requestPermission && cachedLocation && Date.now() - cachedLocation.updatedAt < 30000)) return;
@@ -42,11 +70,7 @@ const refreshLocation = useCallback(async (requestPermission = false) => {
     setLocationLoading(!cachedLocation);
     try {
       if (Platform.OS !== "web") {
-        let permission = await Location.getForegroundPermissionsAsync();
-        if (!permission.granted && permission.canAskAgain && (requestPermission || !locationPermissionRequested.current)) {
-          locationPermissionRequested.current = true;
-          permission = await Location.requestForegroundPermissionsAsync();
-        }
+        const permission = await ensureForegroundLocationPermission(Location, requestPermission);
 
         if (!permission.granted) {
           cachedLocation = null;
@@ -124,15 +148,35 @@ const greetingName = customerName === 'bạn'
     ? i18nT('bạn')
     : customerName.split(/\s+/).pop() || customerName;
 const activeVoucher = vouchers[0];
-const openBooking = (destination?: string) => {
+const openBooking = (destination?: string, intent?: "destination" | "schedule", dropoffPlace?: BookingPlace | null) => {
     if (activeRide) {
       router.push(activeRideDestination(activeRide));
       return;
     }
-    router.push({ pathname: '/ride/route-selection', params: {
-      ...(destination ? { destination } : {}),
-      ...(currentCoordinates && !locationLoading ? { pickupLat: String(currentCoordinates.lat), pickupLng: String(currentCoordinates.lng), pickupAddress: currentLocation } : {}),
-    } });
+    const pickup: BookingPlace | null = currentCoordinates && !locationLoading
+      ? { id: 'home-location', name: 'Vị trí hiện tại', address: currentLocation, coordinate: currentCoordinates }
+      : null;
+    const draft = useBookingDraft.getState();
+    draft.begin(destination ?? '', '', pickup, intent === 'schedule');
+    if (dropoffPlace) {
+      draft.setPlace('dropoff', dropoffPlace);
+      router.push(pickup ? '/ride/vehicle' : '/ride/pickup');
+      return;
+    }
+    router.push(pickup && intent ? '/ride/destination' : '/ride/pickup');
   };
-return { router, profile, activeRide, recentDestinations, unreadCount, loading, loadError, retryData, currentHour, currentLocation, currentCoordinates, nearbyDrivers, nearbyStatus, retryNearby, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking };
+const openRecentDestination = (recent: RecentDestination) => {
+    if (recent.coordinate) {
+      openBooking(recent.address, 'destination', {
+        id: `recent:${recent.coordinate.lng},${recent.coordinate.lat}`,
+        name: recent.title,
+        address: recent.address,
+        coordinate: recent.coordinate,
+        provider: 'goong',
+      });
+      return;
+    }
+    openBooking(recent.address, 'destination');
+  };
+return { router, profile, activeRide, recentDestinations, unreadCount, loading, loadError, retryData, currentHour, currentLocation, currentCoordinates, nearbyDrivers, nearbyStatus, retryNearby, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking, openRecentDestination };
 }

@@ -1,5 +1,12 @@
-import type { CustomerRideDetail, CustomerRideSummary } from "@datxe/shared";
+import type { CustomerRideDetail, CustomerRideSummary, RideCoordinates } from "@datxe/shared";
 import { getLocale, translate as i18nT } from "@datxe/shared";
+import { isCoordinate, placeTitle } from "../bookingUtils";
+
+export type RecentDestination = {
+  address: string;
+  title: string;
+  coordinate: RideCoordinates | null;
+};
 
 export function getGreeting(hour: number): string {
   if (hour < 11) return i18nT("Chào buổi sáng");
@@ -7,15 +14,26 @@ export function getGreeting(hour: number): string {
   return i18nT("Chào buổi tối");
 }
 
-export function getRecentDestinations(rides: CustomerRideSummary[]): string[] {
-  const addresses = new Map<string, string>();
+export function getRecentDestinations(rides: CustomerRideSummary[]): RecentDestination[] {
+  const destinations = new Map<string, RecentDestination>();
   for (const ride of rides) {
     if (["CANCELLED", "NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM"].includes(ride.status))
       continue;
     const address = ride.dropoffAddress?.trim();
-    if (address) addresses.set(address.toLocaleLowerCase(getLocale()), address);
+    if (!address) continue;
+    const key = address.toLocaleLowerCase(getLocale());
+    if (destinations.has(key)) continue;
+    const point =
+      ride.dropoffLat != null && ride.dropoffLng != null
+        ? { lat: ride.dropoffLat, lng: ride.dropoffLng }
+        : null;
+    destinations.set(key, {
+      address,
+      title: placeTitle(address),
+      coordinate: point && isCoordinate(point) ? point : null,
+    });
   }
-  return [...addresses.values()].slice(0, 3);
+  return [...destinations.values()].slice(0, 3);
 }
 
 export function getRideStatusLabel(

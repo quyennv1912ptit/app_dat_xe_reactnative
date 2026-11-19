@@ -2,7 +2,7 @@ import type { ProfileScreenMenuItem,ProfileScreenMenuTone } from './types';
 export const ProfileScreenSERVICE_SECTION: ProfileScreenMenuItem[] = [
   {
     id: 'vehicles',
-    icon: 'directions-car',
+    icon: 'tune',
     tone: 'primary',
     title: 'Xe của tôi',
     subtitle: '',

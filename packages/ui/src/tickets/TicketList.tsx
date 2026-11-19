@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { MotionPressable as Pressable } from '../components/MotionPressable';
 import { Typography as Text } from '../components/Typography';
+import { borderRadius, spacing, typography } from '../theme/colors';
 import { useThemedStyles, type ThemeColors } from '../theme/ThemeProvider';
 import { useLanguage } from '../useLanguage';
 
@@ -57,20 +58,20 @@ export function TicketList({ tickets, loading, refreshing, error, onRefresh, onR
           <Pressable accessibilityRole="button" accessibilityLabel={t('Mở yêu cầu {0}', { '0': item.code })} onPress={() => onOpen(item.id)}>
             <Card style={s.card}>
               <View style={s.row}>
-                <Text style={s.subject} numberOfLines={1}>{categoryLabels[item.category] ?? item.category}</Text>
+                <Text style={s.subject}>{t(categoryLabels[item.category] ?? item.category)}</Text>
                 <View style={[s.badge, statusTone(item.status, s)]}>
-                  <Text style={[s.badgeText, { color: statusTone(item.status, s).color }]}>{statusLabels[item.status]}</Text>
+                  <Text style={[s.badgeText, { color: statusTone(item.status, s).color }]}>{t(statusLabels[item.status])}</Text>
                 </View>
               </View>
-              <Text style={s.code}>{item.code}</Text>
+              <Text selectable style={s.code}>{item.code}</Text>
               <Text style={s.meta}>{t('Cập nhật')} · {new Date(item.updatedAt).toLocaleString('vi-VN')}</Text>
             </Card>
           </Pressable>
         )}
       />
-      <Pressable accessibilityRole="button" accessibilityLabel={t('Tạo yêu cầu hỗ trợ')} onPress={onCreate} style={s.fab}>
-        <MaterialIcons name="add" size={28} color={s.fabIcon.color} />
-      </Pressable>
+      <View style={s.footer}>
+        <Button label={t('Tạo yêu cầu hỗ trợ')} icon="add" iconPosition="leading" onPress={onCreate} />
+      </View>
     </View>
   );
 }
@@ -86,26 +87,25 @@ function statusTone(status: TicketStatus, s: ReturnType<typeof makeStyles>) {
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: 16, gap: 10, paddingBottom: 96 },
-  card: { padding: 16, gap: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  subject: { flex: 1, fontWeight: '700', fontSize: 16 },
-  code: { color: c.onSurfaceVariant, fontSize: 12 },
-  meta: { color: c.onSurfaceVariant, fontSize: 12 },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, color: c.onSurface },
-  badgeText: { fontSize: 11, fontWeight: '700' },
+  content: { padding: spacing.spaceMd, gap: spacing.px3, paddingBottom: spacing.spaceLg },
+  card: { padding: spacing.spaceMd, gap: spacing.spaceXs + spacing.xxs },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.spaceSm },
+  subject: { ...typography.cardTitle, flex: 1 },
+  code: { ...typography.caption, color: c.onSurfaceVariant, fontVariant: ['tabular-nums'] },
+  meta: { ...typography.bodySecondary, color: c.onSurfaceVariant },
+  badge: { borderRadius: borderRadius.full, paddingHorizontal: spacing.px3, paddingVertical: spacing.spaceXs, color: c.onSurface },
+  badgeText: { ...typography.badge },
   open: { backgroundColor: c.successContainer, color: c.onSuccessContainer },
   waiting: { backgroundColor: c.warningContainer, color: c.onWarningContainer },
   progress: { backgroundColor: c.primaryContainer, color: c.onPrimaryContainer },
   closed: { backgroundColor: c.surfaceContainerHigh, color: c.onSurfaceVariant },
-  errorCard: { margin: 16, gap: 8 },
-  error: { color: c.error },
-  loading: { marginTop: 48 },
-  empty: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 64 },
+  errorCard: { margin: spacing.spaceMd, gap: spacing.spaceSm },
+  error: { ...typography.body, color: c.error },
+  loading: { marginTop: spacing.spaceXl + spacing.spaceMd },
+  empty: { alignItems: 'center', justifyContent: 'center', gap: spacing.spaceSm, paddingVertical: spacing.spaceXl * 2 },
   emptyIcon: { color: c.onSurfaceVariant },
-  emptyTitle: { fontWeight: '700', fontSize: 16 },
-  emptyHint: { color: c.onSurfaceVariant, textAlign: 'center' },
+  emptyTitle: { ...typography.cardTitle },
+  emptyHint: { ...typography.bodySecondary, color: c.onSurfaceVariant, textAlign: 'center' },
   refresh: { tintColor: c.primary },
-  fab: { position: 'absolute', right: 20, bottom: 28, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary },
-  fabIcon: { color: c.onPrimary },
+  footer: { padding: spacing.spaceMd, backgroundColor: c.cardSurface },
 });

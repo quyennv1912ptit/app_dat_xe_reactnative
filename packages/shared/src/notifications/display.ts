@@ -100,9 +100,18 @@ const messages: Readonly<Record<string, NotificationText>> = {
     title: "Tin nhắn đã được đọc",
     description: "Tin nhắn của bạn đã được người nhận đọc.",
   },
-  VOUCHER_CAMPAIGN: { title: "Ưu đãi mới dành cho bạn", description: "Có chiến dịch voucher mới. Mở mục Voucher để xem và nhận ưu đãi." },
-  VOUCHER_GRANTED: { title: "Bạn vừa nhận được voucher", description: "Voucher đã được thêm vào Ưu đãi của tôi." },
-  RATING_RECEIVED: { title: "Bạn nhận được đánh giá mới", description: "Chạm để xem số sao và nhận xét ẩn danh." },
+  VOUCHER_GRANTED: {
+    title: "Bạn vừa nhận được ưu đãi",
+    description: "Ưu đãi mới đã được thêm vào mục Ưu đãi của tôi.",
+  },
+  VOUCHER_CAMPAIGN: {
+    title: "Chương trình ưu đãi mới",
+    description: "Có chương trình ưu đãi mới dành cho bạn.",
+  },
+  RATING_RECEIVED: {
+    title: "Bạn nhận được đánh giá mới",
+    description: "Chuyến đi của bạn vừa nhận được một đánh giá mới.",
+  },
   DEFAULT: {
     title: "Thông báo mới",
     description: "Bạn có thông báo mới từ hệ thống.",
@@ -160,33 +169,37 @@ export function getNotificationText(
       : {};
   const code = identifier(type);
   const status = identifier(payload.status);
-    if (code === 'RATING_RECEIVED') {
+  if (code === 'RATING_RECEIVED') {
     const starsVal = typeof payload.stars === 'number' ? payload.stars : Number(payload.stars);
     const starsLabel = Number.isFinite(starsVal) && starsVal > 0 ? ` (${starsVal}/5 sao)` : '';
     const commentText = typeof payload.comment === 'string' && payload.comment.trim() ? payload.comment.trim() : '';
+    const fallback = messages.RATING_RECEIVED;
     return {
-      title: t(typeof payload.title === 'string' ? payload.title : `Bạn nhận được đánh giá mới${starsLabel}`),
-      description: t(
-        typeof payload.body === 'string'
-          ? payload.body
-          : commentText
-            ? `Đánh giá ẩn danh${starsLabel}: "${commentText}"`
-            : `Chạm để xem chi tiết số sao và chú thích ẩn danh.`
-      ),
+      title: typeof payload.title === 'string' && payload.title.trim()
+        ? t(payload.title)
+        : t(starsLabel ? `Bạn nhận được đánh giá mới${starsLabel}` : fallback.title),
+      description: typeof payload.body === 'string' && payload.body.trim()
+        ? t(payload.body)
+        : commentText
+          ? t(`Đánh giá ẩn danh${starsLabel}: "${commentText}"`)
+          : t(fallback.description),
     };
   }
   if (code === 'PAYMENT_UPDATED') return {
     title: t(typeof payload.title === 'string' ? payload.title : 'Cập nhật thanh toán'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Phương thức hoặc trạng thái thanh toán đã thay đổi. Vui lòng kiểm tra hóa đơn.'),
   };
-  if (code === 'VOUCHER_CAMPAIGN') return {
-    title: t(typeof payload.title === 'string' ? payload.title : 'Ưu đãi mới dành cho bạn'),
-    description: t(typeof payload.body === 'string' ? payload.body : 'Mở mục Voucher để xem và nhận ưu đãi.'),
-  };
   if (code === 'WITHDRAWAL_REVIEWED') return {
     title: t(typeof payload.title === 'string' ? payload.title : status === 'SUCCESS' ? 'Rút tiền thành công' : 'Yêu cầu rút tiền bị từ chối'),
     description: t(typeof payload.body === 'string' ? payload.body : 'Mở yêu cầu rút tiền để xem kết quả xử lý.'),
   };
+  if (code === 'VOUCHER_GRANTED' || code === 'VOUCHER_CAMPAIGN') {
+    const fallback = messages[code];
+    return {
+      title: typeof payload.title === 'string' && payload.title.trim() ? t(payload.title) : t(fallback.title),
+      description: typeof payload.body === 'string' && payload.body.trim() ? t(payload.body) : t(fallback.description),
+    };
+  }
   const mapped =
     (code === "RIDE_UPDATED" && status === "SEARCHING" && typeof payload.redispatchCount === "number" && payload.redispatchCount > 0 ? messages.RIDE_REDISPATCHED : undefined) ??
     (["RIDE_UPDATED", "RIDE_NO_DRIVER"].includes(code) && rideStatuses.has(status)

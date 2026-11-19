@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PtitGoTaiXe",
+    "name": "PtitGoDriver",
     "slug": "drivemate-driver",
     "scheme": "drivemate-driver",
     "version": "1.0.0",
@@ -24,7 +24,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#07B378",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "single",
@@ -41,6 +42,14 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp giấy tờ và ảnh chân dung xác minh.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "Cho phép PtitGo Tài Xế dùng camera để chụp xe và giấy tờ.",
@@ -54,19 +63,10 @@
           "locationAlwaysAndWhenInUsePermission": "Cho phép PtitGo Tài Xế theo dõi vị trí trong suốt chuyến đi.",
           "isAndroidBackgroundLocationEnabled": true
         }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "dynamic",
-            "usePrecompiledModules": false
-          }
-        }
       ]
     ],
     "experiments": {
-      "typedRoutes": false,
+      "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
@@ -79,7 +79,7 @@
         }
       },
       "eas": {
-        "projectId": "f4c1c3a5-6e73-4502-b362-0724040bb358"
+        "projectId": "566b0724-9d68-4894-a085-72f530984077"
       }
     }
   }

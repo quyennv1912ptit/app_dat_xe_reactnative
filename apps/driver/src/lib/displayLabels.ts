@@ -67,6 +67,7 @@ const notificationTypes: Record<string, string> = {
   RIDE_NO_DRIVER: 'Chưa tìm được tài xế', RIDE_ASSIGNED: 'Chuyến đi đã có tài xế',
   DRIVER_DOCUMENT_REVIEWED: 'Kết quả kiểm tra giấy tờ', DRIVER_VERIFICATION_UPDATED: 'Cập nhật xét duyệt hồ sơ',
   DRIVER_FORCE_OFFLINE: 'Tạm ngừng nhận chuyến', CHAT_MESSAGE: 'Tin nhắn mới', CHAT_READ: 'Tin nhắn đã được đọc',
+  RATING_RECEIVED: 'Đánh giá mới', VOUCHER_GRANTED: 'Ưu đãi mới', VOUCHER_CAMPAIGN: 'Chương trình ưu đãi',
 };
 export const notificationTypeLabel = (value: string | null | undefined) => lookup(notificationTypes, value) ?? 'Thông báo từ hệ thống';
 const walletTypes: Record<string, string> = {

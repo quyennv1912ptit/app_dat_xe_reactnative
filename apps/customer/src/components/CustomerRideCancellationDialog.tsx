@@ -1,7 +1,7 @@
 import type { useCustomerRideCancellation } from "@/lib/useCustomerRideCancellation";
 import { translate as i18nT } from "@datxe/shared";
 import { Button, PaperTextInput, Typography, useThemeColors } from "@datxe/ui";
-import { ScrollView, StyleSheet } from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import { Dialog, Portal } from "react-native-paper";
 
 export function CustomerRideCancellationDialog({
@@ -15,6 +15,7 @@ export function CustomerRideCancellationDialog({
   const { visible, busy, canCancel, canSubmit, error, reason, setReason, dismiss, submit } = cancellation;
   return (
     <Portal>
+      <KeyboardAvoidingView behavior="padding" pointerEvents="box-none" style={styles.dialogHost}>
       <Dialog visible={visible} onDismiss={dismiss} dismissable={!busy} dismissableBackButton={!busy}
         style={{ borderRadius: 28, backgroundColor: colors.surfaceContainerHigh }}>
         <Dialog.Title>{i18nT("Hủy chuyến")}</Dialog.Title>
@@ -48,12 +49,14 @@ export function CustomerRideCancellationDialog({
           </ScrollView>
         </Dialog.ScrollArea>
       </Dialog>
+      </KeyboardAvoidingView>
     </Portal>
   );
 }
 
 const styles = StyleSheet.create({
+  dialogHost: { flex: 1, justifyContent: "center" },
   scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0 },
   content: { gap: 12, paddingHorizontal: 24 },
-  counter: { textAlign: "right" },
+  counter: { textAlign: "right", fontVariant: ["tabular-nums"] },
 });

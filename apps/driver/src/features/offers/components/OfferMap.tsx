@@ -1,6 +1,6 @@
 import { env } from '@/config/env';
 import type { DriverOffer } from '@/lib/driverOffer';
-import { offerPalette as palette, Typography as Text } from '@datxe/ui';
+import { offerPalette as palette, typography, Typography as Text } from '@datxe/ui';
 import { GoongMap, useDeviceHeading } from '@datxe/ui/goong-map';
 import { watchHeadingAsync } from 'expo-location';
 import { useIsFocused } from 'expo-router';
@@ -37,5 +37,5 @@ const styles = StyleSheet.create({
     position: 'absolute', right: 12, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 6, backgroundColor: palette.surface,
   },
-  label: { color: palette.text, fontSize: 13, lineHeight: 17 },
+  label: { ...typography.caption, color: palette.text },
 });

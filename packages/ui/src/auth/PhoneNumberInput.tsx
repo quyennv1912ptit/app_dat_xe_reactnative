@@ -1,7 +1,8 @@
 import { translate as i18nT } from "@datxe/shared";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { FlatList, Keyboard, Modal, StyleSheet, View } from "react-native";
+import { FlatList, Keyboard, KeyboardAvoidingView, Modal, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MotionPressable as Pressable,
   Typography as Text,
@@ -46,7 +47,7 @@ export function PhoneNumberInput({
   const language = useLanguage();
 
   const colors = useThemeColors();
-
+  const insets = useSafeAreaInsets();
   const styles = useThemedStyles(base_styles);
 
   const [value, setValue] = useState(defaultValue);
@@ -131,6 +132,7 @@ export function PhoneNumberInput({
             accessibilityLabel={i18nT("Xóa số đã nhập")}
             accessibilityRole="button"
             disabled={disabled}
+            hitSlop={10}
             onPress={() => changeNumber("")}
             style={styles.clearButton}
           >
@@ -150,14 +152,14 @@ export function PhoneNumberInput({
         transparent
         visible={pickerVisible}
       >
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView behavior="padding" style={styles.modalRoot}>
           <Pressable
             accessibilityLabel={i18nT("Đóng danh sách quốc gia")}
             accessibilityRole="button"
             onPress={closePicker}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { paddingBottom: Math.max(spacing.spaceXl, insets.bottom + 16) }]}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>
@@ -228,7 +230,7 @@ export function PhoneNumberInput({
               }
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -246,8 +248,7 @@ function normalizeSearch(value: string): string {
 const base_styles = (colors: ThemeColors) =>
   StyleSheet.create({
     label: {
-      ...typography.labelLg,
-      fontSize: 13,
+      ...typography.label,
       color: colors.onSurface,
       marginBottom: spacing.gap1_5,
     },
@@ -275,7 +276,7 @@ const base_styles = (colors: ThemeColors) =>
       paddingHorizontal: spacing.spaceXs,
     },
     flag: { fontSize: fontSize.iconXl },
-    dialCode: { ...typography.labelLg, color: colors.onSurface },
+    dialCode: { ...typography.label, color: colors.onSurface, fontVariant: ["tabular-nums"] },
     divider: {
       width: spacing.phoneDividerWidth,
       height: spacing.phoneDividerHeight,
@@ -283,8 +284,7 @@ const base_styles = (colors: ThemeColors) =>
       marginHorizontal: spacing.spaceXs,
     },
     phoneInput: {
-      ...typography.bodyLg,
-      fontSize: 15,
+      ...typography.body,
       color: colors.onSurface,
       flex: 1,
       minWidth: 0,
@@ -332,8 +332,8 @@ const base_styles = (colors: ThemeColors) =>
     },
     sheetTitle: { ...typography.headlineSm, color: colors.onSurface, flex: 1 },
     closeButton: {
-      width: 40,
-      height: 40,
+      width: 48,
+      height: 48,
       alignItems: "center",
       justifyContent: "center",
       marginLeft: spacing.spaceSm,
@@ -366,10 +366,11 @@ const base_styles = (colors: ThemeColors) =>
     rowFlag: { fontSize: fontSize.iconXl, width: 30 },
     countryName: { ...typography.bodyMd, color: colors.onSurface, flex: 1 },
     rowDialCode: {
-      ...typography.labelMd,
+      ...typography.label,
       color: colors.onSurfaceVariant,
       minWidth: 46,
       textAlign: "right",
+      fontVariant: ["tabular-nums"],
     },
     emptyText: {
       ...typography.bodyMd,

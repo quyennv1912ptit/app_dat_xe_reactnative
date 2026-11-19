@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { Keyboard } from "react-native";
+import { navigateHomeClean } from "./rideNavigation";
 import { customerApi } from "./customerApi";
 import { useSessionStore } from "./store";
 
@@ -23,11 +24,16 @@ export function useCustomerRideCancellation(
   const canCancel = Boolean(ride && cancellable.has(ride.status));
   const mutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason?: string }) => customerApi.cancelCustomerRide(id, reason),
-    onSuccess: (_, { id }) => {
+    onSuccess: async (_, { id }) => {
+      const activeKey = ["customer", "getActiveCustomerRide"];
+      await client.cancelQueries({ queryKey: activeKey, exact: true });
+      client.setQueryData<CustomerRideDetail | null>(activeKey, current =>
+        current?.id === id ? null : current,
+      );
       const store = useSessionStore.getState();
       if (store.activeRide?.id === id) store.setActiveRide(null);
       setSelectedRideId(null);
-      router.replace("/(tabs)/home");
+      navigateHomeClean(router);
       void client.invalidateQueries({ queryKey: ["customer"] });
     },
     onError: () => { void refresh(); },

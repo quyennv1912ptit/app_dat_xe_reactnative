@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { Image } from "expo-image";
 import {
-  Image,
   Linking,
   Modal,
   ScrollView,
@@ -18,6 +18,7 @@ import {
   Card,
   localizedAlert,
   MotionPressable as Pressable,
+  typography,
   ScreenWrapper,
   Typography as Text,
   useLanguage,
@@ -37,11 +38,13 @@ export function DriverProfileCard({
   contactEnabled,
   unreadCount,
   onMessage,
+  reviews,
 }: {
   driver: CustomerRideDriver;
   contactEnabled: boolean;
   unreadCount: number;
   onMessage: () => void;
+  reviews?: ReactNode;
 }) {
   useLanguage();
   const s = useThemedStyles(profileStyles);
@@ -95,42 +98,6 @@ export function DriverProfileCard({
         <Text style={s.meta}>{experienceText}</Text>
       </View>
       {!large ? (
-        <View style={s.contactActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={i18nT("Nhắn tin với tài xế")}
-            disabled={!contactEnabled}
-            hitSlop={8}
-            onPress={(event) => {
-              event.stopPropagation();
-              if (contactEnabled) onMessage();
-            }}
-          >
-            <MaterialIcons
-              name="chat"
-              size={21}
-              color={contactEnabled ? colors.primary : colors.outline}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={i18nT("Gọi điện cho tài xế")}
-            disabled={!contactEnabled || !phoneUrl}
-            hitSlop={8}
-            onPress={(event) => {
-              event.stopPropagation();
-              void call();
-            }}
-          >
-            <MaterialIcons
-              name="phone"
-              size={21}
-              color={contactEnabled && phoneUrl ? colors.primary : colors.outline}
-            />
-          </Pressable>
-        </View>
-      ) : null}
-      {!large ? (
         <MaterialIcons
           name="chevron-right"
           size={24}
@@ -150,6 +117,15 @@ export function DriverProfileCard({
         {identity()}
         <Text style={s.link}>{i18nT("Nhấn để xem hồ sơ và liên hệ")}</Text>
       </Card>
+      {contactEnabled ? (
+        <View style={s.quickActions}>
+          <Button variant="secondary" style={s.quickAction} icon="chat" iconPosition="leading"
+            label={unreadCount > 0 ? i18nT("Nhắn tin với tài xế · {0} tin chưa đọc", { "0": unreadCount }) : i18nT("Nhắn tin với tài xế")}
+            onPress={onMessage} />
+          {phoneUrl ? <Button variant="secondary" style={s.quickAction} icon="call" iconPosition="leading"
+            label="Gọi điện" loading={calling} onPress={() => void call()} /> : null}
+        </View>
+      ) : null}
       <Modal
         visible={visible}
         transparent
@@ -184,9 +160,6 @@ export function DriverProfileCard({
               </View>
               <ScrollView contentContainerStyle={s.details}>
                 {identity(true)}
-                <Text selectable style={s.meta}>
-                  {i18nT("Mã tài xế #{0}", { 0: driver.id })}
-                </Text>
                 <View style={s.detailRow}>
                   <MaterialIcons
                     name="verified-user"
@@ -249,6 +222,7 @@ export function DriverProfileCard({
                     {i18nT("Chưa có số điện thoại hợp lệ để gọi tài xế.")}
                   </Text>
                 ) : null}
+                {visible ? reviews : null}
               </ScrollView>
               <View style={s.actions}>
                 <Button
@@ -300,6 +274,8 @@ function DriverAvatar({
   return driver.avatarUrl?.trim() && !failed ? (
     <Image
       source={{ uri: driver.avatarUrl }}
+      cachePolicy="memory"
+      contentFit="cover"
       style={style}
       onError={() => setFailed(true)}
       accessibilityLabel={i18nT("Ảnh đại diện tài xế")}
@@ -318,7 +294,9 @@ function DriverAvatar({
 const profileStyles = (c: ThemeColors) =>
   StyleSheet.create({
     card: { padding: 16, gap: 16 },
-    eyebrow: { color: c.onSurfaceVariant, fontSize: 13, fontWeight: "600" },
+    quickActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    quickAction: { flexGrow: 1, flexBasis: 135, width: "auto" },
+    eyebrow: { ...typography.label, color: c.onSurfaceVariant },
     identity: { flexDirection: "row", alignItems: "center", gap: 16 },
     identityLarge: { alignItems: "flex-start" },
     copy: { flex: 1, minWidth: 0, gap: 8 },
@@ -329,18 +307,16 @@ const profileStyles = (c: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    initials: { color: c.onPrimaryFixed, fontSize: 22, fontWeight: "700" },
+    initials: { ...typography.sectionTitle, color: c.onPrimaryFixed },
     name: {
+      ...typography.sectionTitle,
       color: c.onSurface,
-      fontSize: 19,
-      fontWeight: "700",
       flexShrink: 1,
     },
     rating: { flexDirection: "row", alignItems: "center", gap: 8 },
-    body: { color: c.onSurface, fontSize: 16, lineHeight: 23, flexShrink: 1 },
-    meta: { color: c.onSurfaceVariant, fontSize: 14, lineHeight: 21 },
-    link: { color: c.primary, fontSize: 14, fontWeight: "600" },
-    contactActions: { flexDirection: "row", alignItems: "center", gap: 14 },
+    body: { ...typography.body, color: c.onSurface, flexShrink: 1 },
+    meta: { ...typography.bodySecondary, color: c.onSurfaceVariant },
+    link: { ...typography.label, color: c.primary },
     overlay: {
       flex: 1,
       justifyContent: "flex-end",
@@ -366,7 +342,7 @@ const profileStyles = (c: ThemeColors) =>
       paddingTop: 12,
       gap: 12,
     },
-    title: { flex: 1, color: c.onSurface, fontSize: 22, fontWeight: "500" },
+    title: { ...typography.screenTitle, flex: 1, color: c.onSurface },
     close: {
       minWidth: 48,
       minHeight: 48,
@@ -376,5 +352,5 @@ const profileStyles = (c: ThemeColors) =>
     details: { padding: 16, gap: 16 },
     detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     actions: { padding: 16, gap: 8 },
-    hint: { color: c.onSurfaceVariant, fontSize: 13, textAlign: "center" },
+    hint: { ...typography.bodySecondary, color: c.onSurfaceVariant, textAlign: "center" },
   });

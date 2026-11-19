@@ -44,11 +44,9 @@ export const styles = (colors: ThemeColors) =>
     dim: { color: colors.onSurfaceVariant },
     filters: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     filter: {
-      flexGrow: 1,
-      flexBasis: "22%",
       minWidth: 64,
       minHeight: 48,
-      paddingHorizontal: 8,
+      paddingHorizontal: 14,
       paddingVertical: 8,
       justifyContent: "center",
       alignItems: "center",

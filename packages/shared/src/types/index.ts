@@ -57,6 +57,8 @@ export type CustomerRideDriver = {
 };
 
 export type CustomerRideDetail = {
+  driverHasRatedCustomer?: boolean | null;
+  customerHasRatedDriver?: boolean | null;
   paymentMethod?: PaymentMethod | null;
   driverEarnings?: { netAmount: number; commissionAmount: number; creditedToCash: boolean; paid: boolean } | null;
   payment?: { amount: number; method: PaymentMethod; status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'; paidAt: string | null } | null;
@@ -75,6 +77,12 @@ export type CustomerRideDetail = {
   driver?: CustomerRideDriver | null;
   vehicleId: number;
   vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
+  transmission?: 'AUTO' | 'MANUAL' | null;
+  vehicleSnapshot?: {
+    brand?: string | null;
+    model?: string | null;
+    color?: string | null;
+  } | null;
   licensePlate?: string | null;
   type: 'INSTANT' | 'SCHEDULED';
   scheduledAt: string | null;
@@ -141,9 +149,14 @@ export type CustomerRidePage = {
 };
 
 export type CustomerRideSummary = {
+  vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
   id: number;
   pickupAddress: string | null;
   dropoffAddress: string | null;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
   type: 'INSTANT' | 'SCHEDULED';
   status: RideStatus;
   estimatedFare: number;
@@ -176,9 +189,9 @@ export type RideEstimateRequest = {
   dropoffLat: number;
   dropoffLng: number;
   scheduledAt?: string | null;
+  paymentMethod?: PaymentMethod;
   voucher_code?: string | null;
   voucher_id?: number | null;
-  paymentMethod?: PaymentMethod;
 };
 export type RideEstimate = {
   route?: SavedRideRoute | null;
@@ -218,6 +231,14 @@ export type CustomerNotification = {
   readAt: string | null;
 };
 
+export type VehicleSpecifications = {
+  engineType?: 'COMBUSTION' | 'ELECTRIC' | 'HYBRID' | null;
+  electricMotorKw?: number | null;
+  passengerSeats?: number | null;
+  designedMassKg?: number | null;
+  trailerMassKg?: number | null;
+};
+
 export type CustomerVehicleCreate = {
   plate_number: string;
   transmission_type: 'MANUAL' | 'AUTO';
@@ -226,6 +247,7 @@ export type CustomerVehicleCreate = {
   brand: string | null;
   model: string | null;
   color: string | null;
+  specifications?: VehicleSpecifications;
 };
 
 export type CustomerVehicle = {
@@ -238,6 +260,9 @@ export type CustomerVehicle = {
   model: string | null;
   color: string | null;
   images: Array<{ id: number; secure_url: string }>;
+  is_default?: boolean;
+  specifications?: VehicleSpecifications | null;
+  specification_source?: 'CUSTOMER_DECLARED';
 };
 
 export type CustomerVoucher = {

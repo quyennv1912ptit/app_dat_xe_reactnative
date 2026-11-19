@@ -9,13 +9,16 @@ import {
   HandoverHistory,
   Typography as Text,
   PaperTextInput as TextInput,
+  spacing,
+  typography,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
-import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
+import { Appbar } from "react-native-paper";
 
 import { RideStopCard } from "../components/RideStopCard";
+import { RideStatusBanner } from "../components/RideStatusBanner";
 import { HandoverSummary } from "../components/HandoverSummary";
 import { HandoverPhotoChecklist, requiredHandoverAngles } from "../components/HandoverPhotoChecklist";
 import { useVehicleInspection } from "../hooks/useVehicleInspection";
@@ -24,128 +27,201 @@ export default function VehicleInspectionScreen() {
   const themed_s = useThemedStyles(s);
   const h = useVehicleInspection();
   const colors = useThemeColors();
-  const reviewing = h.editable ? undefined : h.existing;
+  const model = h.presentation;
+  const reviewing = !h.editable ? h.existing : undefined;
   const fieldStyle = [styles.field, { backgroundColor: colors.rideInset }];
   const missing = requiredHandoverAngles.filter(([angle]) => !h.photos.some((photo) => photo.angle === angle));
-  const odometerValid = /^\d+$/.test(h.odometer.trim()) && Number.isSafeInteger(Number(h.odometer));
+  const odometerBelowPickup = h.pickupOdometer != null && /^\d+$/.test(h.odometer.trim()) && Number(h.odometer) < h.pickupOdometer;
+  const odometerValid = /^\d+$/.test(h.odometer.trim()) && Number.isSafeInteger(Number(h.odometer)) && !odometerBelowPickup;
   const fuelValid = !h.fuelLevel || (/^\d+$/.test(h.fuelLevel) && Number(h.fuelLevel) <= 100);
   const [reviewKey, setReviewKey] = useState<string | null>(null);
-  const nextRevision = h.existing ? (h.existing.revision ?? 1) + 1 : 1;
+  const nextRevision = model?.nextRevision ?? 1;
   const draftKey = `${h.ride?.id}:${h.phase}:${nextRevision}`;
-  const canReview = h.editable && !h.uploading && odometerValid && fuelValid && missing.length === 0;
+  const formComplete = !h.uploading && !h.pending.length && odometerValid && fuelValid && missing.length === 0;
+  const canReview = h.editable && h.canSubmitOnline && formComplete;
+
+  const progressHint = h.pending.length
+    ? "Còn ảnh chờ tải lên. Hãy bấm Tải lại ảnh."
+    : missing.length
+      ? `Còn thiếu ${missing.length} ảnh bắt buộc`
+      : !odometerValid || !fuelValid
+        ? (odometerBelowPickup ? "Số km trả xe phải lớn hơn hoặc bằng lúc nhận xe" : "Kiểm tra số km và mức nhiên liệu")
+        : !h.canSubmitOnline && model?.submitDisabledReason
+          ? model.submitDisabledReason
+          : `Sẵn sàng gửi phiên bản ${nextRevision}`;
+
   return (
     <DriverPage
-      title={h.phase === "dropoff" ? "Biên bản trả xe" : reviewing ? "Biên bản bàn giao" : "Biên bản nhận xe"}
+      title={model?.title ?? (h.phase === "dropoff" ? "Biên bản trả xe" : "Biên bản nhận xe")}
       appearance="ride"
       loading={h.loading}
-      error={h.error}
-      retry={h.ride ? undefined : h.refresh}
+      error={h.submit.error?.message || (!h.editable ? h.error : undefined)}
+      retry={!h.editable && h.error ? h.refresh : undefined}
+      headerAction={h.ride ? (
+        <Appbar.Action
+          icon="help-outline"
+          style={styles.headerAction}
+          accessibilityLabel="Trợ giúp về chuyến này"
+          onPress={() => h.router.push({ pathname: "/support", params: { rideId: String(h.ride!.id) } })}
+        />
+      ) : undefined}
       footer={h.editable ? (
         <>
           <Text style={themed_s.label} accessibilityLiveRegion="polite">
-            {missing.length ? `Còn thiếu ${missing.length} ảnh bắt buộc` : !odometerValid || !fuelValid ? "Kiểm tra số km và nhiên liệu" : `Sẵn sàng gửi phiên bản ${nextRevision}`}
+            {progressHint}
           </Text>
-          <Button label="Xem lại trước khi gửi" disabled={!canReview}
-            loading={h.submit.isPending} onPress={() => setReviewKey(draftKey)} />
+          <Button
+            label="Xem lại trước khi gửi"
+            disabled={!canReview}
+            loading={h.submit.isPending}
+            onPress={() => setReviewKey(draftKey)}
+          />
         </>
+      ) : model && (model.mode === "waiting_customer" || model.mode === "confirmed_view") ? (
+        <View style={styles.footerActions}>
+          {model.mode === "waiting_customer" ? (
+            <Button
+              variant="secondary"
+              label="Kiểm tra xác nhận của khách"
+              loading={h.isFetching}
+              onPress={() => void h.refresh()}
+            />
+          ) : null}
+          <Button
+            variant={model.mode === "confirmed_view" ? "primary" : "ghost"}
+            label={model.fallbackLabel}
+            onPress={() => h.router.dismissTo(model.fallbackRoute)}
+          />
+        </View>
       ) : undefined}
     >
-        {h.existing?.correctionReason ? (
-          <Card style={[styles.warning, { backgroundColor: colors.warningContainer }]}>
-            <View style={styles.warningHeading} accessibilityRole="alert" accessibilityLiveRegion="polite">
-              <MaterialIcons name="warning-amber" size={22} color={colors.onWarningContainer} />
-              <View style={styles.warningCopy}>
-                <Text style={[styles.heading, { color: colors.onWarningContainer }]}>Khách yêu cầu điều chỉnh</Text>
-                <Text style={[styles.complaint, { color: colors.onWarningContainer }]}>{h.existing.correctionReason}</Text>
-              </View>
+      {model ? (
+        <RideStatusBanner
+          banner={model.statusBanner}
+          action={
+            h.editable && !h.canSubmitOnline ? (
+              <Button
+                variant="secondary"
+                label="Đồng bộ lại"
+                loading={h.isFetching}
+                onPress={() => void h.refresh()}
+              />
+            ) : undefined
+          }
+        >
+          {h.editable && h.existing?.correctionImages?.length ? (
+            <View style={styles.correctionImages}>
+              {h.existing.correctionImages.map((image) => (
+                <DriverPhoto key={image.publicId} uri={image.fileUrl} label="Ảnh khách yêu cầu điều chỉnh" />
+              ))}
             </View>
-            {h.existing.correctionImages?.map((image) => (
-              <DriverPhoto key={image.publicId} uri={image.fileUrl} label="Ảnh khách yêu cầu điều chỉnh" />
-            ))}
-            <Text style={{ color: colors.onWarningContainer }}>
-              Kiểm tra lại cùng khách, cập nhật thông tin và chụp bộ ảnh mới. Phiên bản cũ được giữ để đối chiếu. Khách cần xác nhận lại trước khi tiếp tục chuyến.
-            </Text>
-          </Card>
-        ) : null}
-        {h.ride && !reviewing ? <RideStopCard ride={h.ride} phase={h.phase} /> : null}
-        {h.editable ? <Text style={themed_s.label}>Bản nháp · Phiên bản {nextRevision}</Text>
-          : h.existing ? <Text style={themed_s.label}>Đã gửi · Phiên bản {h.existing.revision ?? 1}</Text> : null}
-        {reviewing ? (
-          <HandoverSummary report={reviewing} status={h.ride?.status}>
-            {!reviewing.confirmedByCustomer ? (
-              <Button variant="secondary" label="Kiểm tra xác nhận của khách" onPress={() => void h.refresh()} />
+          ) : null}
+        </RideStatusBanner>
+      ) : null}
+
+      {h.ride ? <RideStopCard ride={h.ride} phase={h.phase} showDirections={false} /> : null}
+
+      {h.editable ? (
+        <Text style={themed_s.label}>Bản nháp · Phiên bản {nextRevision}</Text>
+      ) : h.existing ? (
+        <Text style={themed_s.label}>Đã gửi · Phiên bản {h.existing.revision ?? 1}</Text>
+      ) : null}
+
+      {reviewing ? (
+        <HandoverSummary report={reviewing} status={h.ride?.status} />
+      ) : h.editable ? (
+        <>
+          <Card style={[styles.form, { backgroundColor: colors.rideSurface }]}>
+            <Text accessibilityRole="header" style={styles.heading}>Tình trạng xe</Text>
+            <TextInput
+              mode="flat"
+              underlineColor={colors.transparent}
+              label="Số km đồng hồ"
+              draftValue={h.odometer}
+              onChangeText={h.setOdometer}
+              keyboardType="number-pad"
+              style={fieldStyle}
+              placeholder="Ví dụ 12500"
+              error={!odometerValid && h.odometer.trim().length > 0}
+            />
+            {h.pickupOdometer != null ? (
+              <Text style={themed_s.label}>Số ODO lúc nhận xe: {h.pickupOdometer} km</Text>
             ) : null}
-          </HandoverSummary>
-        ) : h.editable ? (
-          <>
-            <Card style={[styles.form, { backgroundColor: colors.rideSurface }]}>
-              <Text accessibilityRole="header" style={styles.heading}>Tình trạng xe</Text>
-              <TextInput
-                mode="outlined"
-                label="Số km đồng hồ"
-                draftValue={h.odometer}
-                onChangeText={h.setOdometer}
-                keyboardType="number-pad"
-                style={fieldStyle}
-                outlineColor={colors.outlineVariant}
-                placeholder="Ví dụ 12500"
-              />
-              <TextInput
-                mode="outlined"
-                label="Nhiên liệu (%) · Tùy chọn"
-                draftValue={h.fuelLevel}
-                onChangeText={h.setFuelLevel}
-                keyboardType="number-pad"
-                style={fieldStyle}
-                outlineColor={colors.outlineVariant}
-                placeholder="0–100"
-                error={!fuelValid}
-              />
-              <TextInput
-                mode="outlined"
-                label="Ghi chú biên bản"
-                draftValue={h.notes}
-                onChangeText={h.setNotes}
-                multiline
-                maxLength={2000}
-                style={fieldStyle}
-                outlineColor={colors.outlineVariant}
-                placeholder="Tình trạng xe khi bàn giao…"
-              />
-            </Card>
-            <HandoverPhotoChecklist photos={h.photos} uploading={h.uploading} saving={h.submit.isPending}
-              error={h.photoError} onCapture={(angle) => void h.capture(angle)} />
-            <DriverConfirmationDialog visible={reviewKey === draftKey} busy={h.submit.isPending}
-              title={`Xem lại phiên bản ${nextRevision}`}
-              description={`Biên bản ${h.phase === "pickup" ? "nhận xe" : "trả xe"} · ${requiredHandoverAngles.length - missing.length}/${requiredHandoverAngles.length} ảnh bắt buộc`}
-              confirmLabel="Gửi cho khách xác nhận" dismissLabel="Sửa tiếp"
-              destructive={false} disabled={!canReview} error={h.submit.error?.message}
-              onDismiss={() => setReviewKey(null)}
-              onConfirm={() => h.submit.mutate(undefined, { onSuccess: () => setReviewKey(null) })}>
-              <Text>Số km đồng hồ · {h.odometer} km</Text>
-              <Text>Nhiên liệu · {h.fuelLevel ? `${h.fuelLevel}%` : "Chưa ghi"}</Text>
-              {h.notes.trim() ? <Text numberOfLines={4}>{h.notes}</Text> : null}
-            </DriverConfirmationDialog>
-          </>
-        ) : !h.loading ? (
-          <Text style={themed_s.text}>
-            Chỉ lập biên bản sau khi đã báo tới điểm đón hoặc điểm trả.
-          </Text>
-        ) : null}
-        {h.ride && reviewing ? <RideStopCard ride={h.ride} phase={h.phase} /> : null}
-        {h.revisions.error ? <Button label="Thử tải lại phiên bản cũ" variant="secondary" onPress={() => void h.revisions.refetch()} /> : null}
-        <HandoverHistory revisions={h.revisions.data ?? []} />
-        <Button label="Cần bộ phận hỗ trợ" variant="ghost" onPress={() => h.router.push({ pathname: '/support', params: h.ride ? { rideId: String(h.ride.id) } : {} })} />
+            {odometerBelowPickup ? (
+              <Text accessibilityRole="alert" style={[themed_s.label, { color: colors.error }]}>
+                Số km trả xe phải lớn hơn hoặc bằng lúc nhận xe ({h.pickupOdometer} km).
+              </Text>
+            ) : null}
+            <TextInput
+              mode="flat"
+              underlineColor={colors.transparent}
+              label="Nhiên liệu (%) · Tùy chọn"
+              draftValue={h.fuelLevel}
+              onChangeText={h.setFuelLevel}
+              keyboardType="number-pad"
+              style={fieldStyle}
+              placeholder="0–100"
+              error={!fuelValid}
+            />
+            <TextInput
+              mode="flat"
+              underlineColor={colors.transparent}
+              label="Ghi chú biên bản"
+              draftValue={h.notes}
+              onChangeText={h.setNotes}
+              multiline
+              maxLength={2000}
+              style={fieldStyle}
+              placeholder="Tình trạng xe khi bàn giao…"
+            />
+          </Card>
+          <HandoverPhotoChecklist
+            photos={h.photos}
+            pending={h.pending}
+            uploading={h.uploading}
+            saving={h.submit.isPending}
+            error={h.photoError}
+            onCapture={(angle) => void h.capture(angle)}
+          />
+          <DriverConfirmationDialog
+            visible={reviewKey === draftKey}
+            busy={h.submit.isPending}
+            title={`Xem lại phiên bản ${nextRevision}`}
+            description={`Biên bản ${h.phase === "pickup" ? "nhận xe" : "trả xe"} · ${requiredHandoverAngles.length - missing.length}/${requiredHandoverAngles.length} ảnh bắt buộc`}
+            confirmLabel="Gửi cho khách xác nhận"
+            dismissLabel="Sửa tiếp"
+            destructive={false}
+            disabled={!canReview}
+            error={h.submit.error?.message || (!h.canSubmitOnline ? model?.submitDisabledReason : undefined)}
+            onDismiss={() => setReviewKey(null)}
+            onConfirm={() => h.send(() => setReviewKey(null))}
+          >
+            <Text>Số km đồng hồ · {h.odometer} km</Text>
+            <Text>Nhiên liệu · {h.fuelLevel ? `${h.fuelLevel}%` : "Chưa ghi"}</Text>
+            {h.notes.trim() ? <Text>{h.notes}</Text> : null}
+          </DriverConfirmationDialog>
+        </>
+      ) : !h.loading && (!model || model.mode === "unavailable") ? (
+        <Button
+          variant="secondary"
+          label={model?.fallbackLabel ?? "Về trang chủ"}
+          onPress={() => h.router.replace(model?.fallbackRoute ?? "/(tabs)/home")}
+        />
+      ) : null}
+
+      {h.revisions.error ? (
+        <Button label="Thử tải lại phiên bản cũ" variant="secondary" onPress={() => void h.revisions.refetch()} />
+      ) : null}
+      <HandoverHistory revisions={h.revisions.data ?? []} />
     </DriverPage>
   );
 }
 
 const styles = StyleSheet.create({
-  warning: { padding: 20, gap: 12 },
-  warningHeading: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  warningCopy: { flex: 1, gap: 4 },
-  complaint: { fontSize: 16, fontWeight: "600" },
-  heading: { fontSize: 18, fontWeight: "700" },
-  form: { padding: 20, gap: 12 },
+  headerAction: { width: 48, height: 48, borderRadius: 24, margin: 0 },
+  correctionImages: { gap: spacing.spaceSm, marginTop: spacing.spaceXs },
+  heading: { ...typography.cardTitle },
+  form: { padding: spacing.spaceLg, gap: spacing.px3 },
   field: { minHeight: 52 },
+  footerActions: { gap: spacing.spaceSm },
 });

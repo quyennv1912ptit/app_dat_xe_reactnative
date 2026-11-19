@@ -10,7 +10,7 @@ export const statusText: Record<string, string> = {
   VEHICLE_RETURNED: "Đang chờ xác nhận hoàn trả xe",
   COMPLETED: "Chuyến đi đã hoàn thành",
   FAILED_SYSTEM: "Không thể tìm tài xế do lỗi hệ thống",
-  NO_DRIVER_FOUND: "Chưa tìm được tài xế",
+  NO_DRIVER_FOUND: "Chưa có tài xế nhận lái loại phương tiện này",
   EXPIRED: "Yêu cầu chuyến đi đã hết hạn",
   CANCELLED: "Chuyến đi đã bị hủy",
 };

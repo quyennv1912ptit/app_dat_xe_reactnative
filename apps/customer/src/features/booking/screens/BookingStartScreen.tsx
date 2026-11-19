@@ -1,5 +1,6 @@
 import { ActivityIndicator } from "react-native-paper";
-import { useLanguage, useThemedStyles } from "@datxe/ui";
+import { translate as i18nT } from "@datxe/shared";
+import { useLanguage, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { StyleSheet, View } from "react-native";
 import { useBookingStart } from "../hooks/useBookingStart";
 export default function BookingStartScreen() {
@@ -7,10 +8,15 @@ export default function BookingStartScreen() {
 
   useLanguage();
 
+  const colors = useThemeColors();
+
   useBookingStart();
   return (
     <View style={extra.item1}>
-      <ActivityIndicator />
+      <ActivityIndicator
+        color={colors.primary}
+        accessibilityLabel={i18nT("Đang mở luồng đặt chuyến")}
+      />
     </View>
   );
 }

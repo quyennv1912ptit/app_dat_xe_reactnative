@@ -31,6 +31,7 @@ for (const mode of ['pending', 'denied', 'unsupported']) {
       '@/lib/realtime': { driverRealtime: {} }, '@/lib/store': { useSessionStore: store },
       '@/lib/driverHealth': { useDriverHealth: health },
       '@tanstack/react-query': { useQuery: () => ({ data: null }), useQueryClient: () => ({}) },
+      '@datxe/ui': { ensureForegroundLocationPermission: location => location.getForegroundPermissionsAsync() },
       'expo-location': {
         Accuracy: { High: 4 }, hasServicesEnabledAsync: async () => true,
         requestForegroundPermissionsAsync: async () => ({ granted: true, canAskAgain: true }),

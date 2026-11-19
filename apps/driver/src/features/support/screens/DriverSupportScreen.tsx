@@ -11,7 +11,7 @@ export default function DriverSupportScreen() {
   const { rideId } = useLocalSearchParams<{ rideId?: string }>();
   return (
     <DriverPage
-      title="Trợ giúp"
+      title="Trung tâm hỗ trợ"
       loading={support.loading}
       error={support.error}
       retry={support.retry}

@@ -1,9 +1,9 @@
 import { DriverPhoto } from "@/components/DriverPhoto";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { CustomerRideDetail } from "@datxe/shared";
-import { Card, Typography as Text, useThemeColors } from "@datxe/ui";
+import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { PHOTO_ANGLES, photoAngleLabel } from "../photoAngles";
 
@@ -11,13 +11,18 @@ type Report = CustomerRideDetail["handoverReports"][number];
 const angleOrder: readonly string[] = PHOTO_ANGLES.map(([angle]) => angle);
 
 export function HandoverSummary({
-  report, status, children,
+  report,
+  status,
+  collapsiblePhotos = false,
+  children,
 }: {
   report: Report;
   status?: CustomerRideDetail["status"];
+  collapsiblePhotos?: boolean;
   children?: ReactNode;
 }) {
   const colors = useThemeColors();
+  const [photosOpen, setPhotosOpen] = useState(!collapsiblePhotos);
   const photos = [...report.photos].sort((a, b) => {
     const rank = (angle: string) => {
       const index = angleOrder.indexOf(angle);
@@ -34,8 +39,9 @@ export function HandoverSummary({
         </Text>
         {status ? <StatusBadge kind="ride" value={status} contextLabel="Trạng thái chuyến" /> : null}
       </View>
-      <Text style={{ color: colors.onSurfaceVariant }}>
+      <Text style={{ color: report.confirmedByCustomer ? colors.successStrong : colors.onSurfaceVariant }}>
         {report.confirmedByCustomer ? "Khách đã xác nhận" : "Chờ khách xác nhận"}
+        {report.revision && report.revision > 1 ? ` · Phiên bản ${report.revision}` : ""}
       </Text>
       <View style={styles.stats}>
         {([
@@ -59,14 +65,28 @@ export function HandoverSummary({
       ) : null}
       {photos.length ? (
         <View style={styles.gallery}>
-          <Text accessibilityRole="header" style={styles.heading}>Ảnh bàn giao</Text>
-          <View style={styles.grid}>
-            {photos.map((photo) => (
-              <View key={photo.id} style={styles.cell}>
-                <DriverPhoto uri={photo.fileUrl} label={photoAngleLabel(photo.angle)} tile />
-              </View>
-            ))}
+          <View style={styles.galleryHeader}>
+            <Text accessibilityRole="header" style={styles.heading}>
+              Ảnh bàn giao ({photos.length})
+            </Text>
+            {collapsiblePhotos ? (
+              <Button
+                variant="secondary"
+                label={photosOpen ? "Thu gọn ảnh" : `Xem ${photos.length} ảnh`}
+                onPress={() => setPhotosOpen((current) => !current)}
+                style={styles.togglePhotos}
+              />
+            ) : null}
           </View>
+          {photosOpen ? (
+            <View style={styles.grid}>
+              {photos.map((photo) => (
+                <View key={photo.id} style={styles.cell}>
+                  <DriverPhoto uri={photo.fileUrl} label={photoAngleLabel(photo.angle)} tile />
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
       {children}
@@ -75,16 +95,18 @@ export function HandoverSummary({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 20, gap: 16 },
-  header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
-  heading: { fontSize: 18, fontWeight: "700" },
-  stats: { flexDirection: "row", gap: 8 },
-  stat: { flex: 1, padding: 12, borderRadius: 16, gap: 4 },
-  statValue: { flexDirection: "row", alignItems: "center", gap: 6 },
-  value: { flexShrink: 1, fontSize: 17, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  statLabel: { fontSize: 12 },
-  notes: { gap: 4 },
-  gallery: { gap: 12 },
-  grid: { flexDirection: "row", flexWrap: "wrap", columnGap: "4%", rowGap: 8 },
+  card: { padding: spacing.spaceLg, gap: spacing.spaceMd },
+  header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.spaceSm },
+  heading: { ...typography.cardTitle },
+  stats: { flexDirection: "row", gap: spacing.spaceSm },
+  stat: { flex: 1, padding: spacing.px3, borderRadius: spacing.spaceMd, gap: spacing.spaceXs },
+  statValue: { flexDirection: "row", alignItems: "center", gap: spacing.spaceSm - spacing.xxs },
+  value: { ...typography.cardTitle, flexShrink: 1, fontVariant: ["tabular-nums"] },
+  statLabel: { ...typography.caption },
+  notes: { gap: spacing.spaceXs },
+  gallery: { gap: spacing.px3 },
+  galleryHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: spacing.spaceSm },
+  togglePhotos: { width: "auto" },
+  grid: { flexDirection: "row", flexWrap: "wrap", columnGap: "4%", rowGap: spacing.spaceSm },
   cell: { width: "48%" },
 });

@@ -1,7 +1,24 @@
-import type { RideCoordinates } from '@datxe/shared';
-import { StyleSheet, Text, View } from 'react-native';
+import { env } from '@/config/env';
+import type { MapDirections, RideCoordinates } from '@datxe/shared';
+import { GoongMap, mapBounds, type MapViewportInsets } from '@datxe/ui/goong-map';
 
-export function DriverDirectionsMap({ destination }: { destination: RideCoordinates }) {
-  return <View style={styles.empty}><Text style={styles.title}>Bản đồ chỉ đường</Text><Text style={styles.text}>Điểm đón: {destination.lat.toFixed(5)}, {destination.lng.toFixed(5)}</Text><Text style={styles.text}>Bản đồ nội bộ chỉ khả dụng trên Android/iOS.</Text></View>;
+type Props = {
+  destination: RideCoordinates;
+  targetLabel?: string;
+  directions?: MapDirections | null;
+  viewport?: MapViewportInsets;
+  onRefresh?: () => void;
+};
+
+export function DriverDirectionsMap({ destination, directions, viewport }: Props) {
+  return (
+    <GoongMap
+      mapKey={env.goongMapKey}
+      viewport={viewport}
+      center={destination}
+      bounds={mapBounds([destination, ...(directions?.coordinates ?? [])])}
+      markers={[{ id: 'stop', coordinate: destination, kind: 'dropoff' }]}
+      route={directions?.coordinates}
+    />
+  );
 }
-const styles = StyleSheet.create({ empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, backgroundColor: '#F2F4F7' }, title: { fontSize: 18, fontWeight: '700' }, text: { color: '#667085', textAlign: 'center' } });

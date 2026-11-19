@@ -51,6 +51,17 @@ export class MapPinResolver {
     this.publish({ phase: 'moving', point: null, place: null, error: '' });
   }
 
+  /**
+   * Dùng địa điểm đã chọn ở màn tìm kiếm làm kết quả đầu tiên. Đặt `idlePoint`
+   * để camera-idle đầu tiên không gọi reverse-geocode và ghi đè địa chỉ vừa chọn.
+   */
+  seed(point: RideCoordinates, place: BookingPlace) {
+    this.cancel();
+    this.idlePoint = point;
+    this.lastResolved = { point, place };
+    this.ready(point, place);
+  }
+
   idle(point: RideCoordinates) {
     // Repeated camera-idle notifications must not restart a debounce or a completed lookup.
     if (this.idlePoint?.lat === point.lat && this.idlePoint.lng === point.lng) return;

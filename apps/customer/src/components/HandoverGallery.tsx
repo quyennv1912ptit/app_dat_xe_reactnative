@@ -2,7 +2,8 @@ import { translate as t, type CustomerRideDetail } from "@datxe/shared";
 import { ChatImageViewer, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { StyleSheet, View } from "react-native";
 import { TouchableRipple } from "react-native-paper";
 import { customerType } from "./CustomerRideUI";
 
@@ -27,7 +28,7 @@ export function HandoverGallery({ photos }: { photos: readonly Photo[] }) {
           <TouchableRipple key={photo.id} accessibilityRole="button" accessibilityLabel={t(angleLabel(photo.angle))}
             onPress={() => setPreview(photo)} style={[styles.tile, { backgroundColor: c.surfaceContainerHigh }]}>
             <View style={styles.frame}>
-              <Image source={{ uri: photo.fileUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image source={{ uri: photo.fileUrl }} cachePolicy="memory" style={StyleSheet.absoluteFill} contentFit="cover" />
               <View style={[styles.caption, { backgroundColor: c.scrim70 }]}>
                 <Text style={[customerType.meta, styles.label, { color: c.onScrim }]}>{t(angleLabel(photo.angle))}</Text>
                 <MaterialIcons name="fullscreen" color={c.onScrim} size={18} />

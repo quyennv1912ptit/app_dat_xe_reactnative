@@ -1,24 +1,33 @@
 import { CustomerTabBar } from "@/components/CustomerTabBar";
-import { CustomerNotice, customerType } from "@/components/CustomerRideUI";
+import { CustomerNotice } from "@/components/CustomerRideUI";
 import { HeaderIconButton } from "@/components/ScreenHeader";
 import { HomeMap } from "@/components/map/HomeMap";
 import { useWalletOverview } from "@/lib/useWallet";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { formatMoney, translate as t, walletBalance } from "@datxe/shared";
+import { walletBalance, translate as t } from "@datxe/shared";
 import {
-  Button, Card, MotionPressable as Pressable, ScreenWrapper, SettingsListItem,
-  Typography as Text, useLanguage, useThemeColors,
+  MotionPressable as Pressable,
+  ScreenWrapper,
+  Typography as Text,
+  useLanguage,
+  useThemeColors,
+  useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { ActivityIndicator } from "react-native-paper";
+import { HomeBookingCard } from "../components/HomeBookingCard";
+import { HomeGreeting } from "../components/HomeGreeting";
+import { HomeWalletCard } from "../components/HomeWalletCard";
 import { getGreeting, getRideStatusLabel } from "../components/HomeScreenParts";
+import { homeStyles } from "../components/homeStyles";
 import { useHome } from "../hooks/useHome";
 
 export default function HomeScreen() {
   useLanguage();
   const colors = useThemeColors();
+  const s = useThemedStyles(homeStyles);
   const [recenterToken, setRecenterToken] = useState(0);
   const h = useHome();
   const wallet = useWalletOverview();
@@ -33,8 +42,8 @@ export default function HomeScreen() {
       <MapSheetLayout
         insetBottom={false}
         initialSnap={0}
-        snapPoints={["40%", "85%"]}
-        contentStyle={styles.sheetContent}
+        snapPoints={["64%", "88%"]}
+        footer={null}
         topActions={
           <>
             <HeaderIconButton icon="gps-fixed" accessibilityLabel="Về vị trí hiện tại"
@@ -47,59 +56,86 @@ export default function HomeScreen() {
           <HomeMap coordinate={h.currentCoordinates} drivers={h.nearbyDrivers}
             viewport={viewport} recenterToken={recenterToken} />
         )}
-        footer={(
-          <>
-            {h.activeRide ? (
-              <Text style={[customerType.meta, styles.center, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+      >
+        <HomeGreeting
+          greeting={t(getGreeting(h.currentHour))}
+          name={h.greetingName}
+        />
+        <HomeWalletCard
+          balance={balance}
+          walletLoading={wallet.isLoading || wallet.isFetching}
+          walletError={wallet.isError}
+          onWallet={() => h.router.push('/wallet')}
+          onTopUp={() => h.router.push('/wallet/top-up')}
+        />
+
+        {h.activeRide ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${t('Chuyến đang diễn ra')}: ${t(getRideStatusLabel(h.activeRide.status))}`}
+            onPress={() => h.openBooking()}
+            style={s.activeRideCard}
+          >
+            <View style={s.activeRideCopy}>
+              <Text style={s.activeRideLabel}>{t('Chuyến đang diễn ra')}</Text>
+              <Text style={s.activeRideStatus}>
                 {t(getRideStatusLabel(h.activeRide.status))}
               </Text>
-            ) : null}
-            <Button icon={h.activeRide ? "arrow-forward" : "search"} iconPosition="leading"
-              label={h.activeRide ? "Theo dõi chuyến đang hoạt động" : "Bạn muốn đi đâu?"}
-              onPress={() => h.openBooking()} />
-          </>
-        )}
-      >
-        <Card style={styles.card}>
-          <Text accessibilityRole="header" style={customerType.heading}>
-            {t(getGreeting(h.currentHour))}, {h.greetingName}
-          </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={t("Cập nhật vị trí hiện tại")}
-            disabled={h.locationLoading} onPress={() => void h.refreshLocation(true)} style={styles.location}>
-            <MaterialIcons color={colors.primary} name="place" size={22} />
-            <Text numberOfLines={2} style={styles.address}>
-              {t(h.locationLoading ? "Đang xác định vị trí…" : h.currentLocation)}
-            </Text>
-            {h.locationLoading ? <ActivityIndicator color={colors.primary} size="small" /> : null}
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.onPrimaryContainer} />
           </Pressable>
-        </Card>
-        <Card style={styles.card}>
-          <SettingsListItem icon="account-balance-wallet" title="Ví ứng dụng"
-            description={balance === undefined ? wallet.isError ? 'Chưa tải được số dư · Chạm để kiểm tra' : 'Đang tải số dư…' : `${formatMoney(balance)}${wallet.isError ? ' · Chưa cập nhật được' : ''}`}
-            onPress={() => h.router.push('/wallet')} />
-          <Button variant="secondary" label="Nạp tiền" icon="add" onPress={() => h.router.push('/wallet/top-up')} />
-        </Card>
-        {!h.activeRide && h.nearbyStatus !== "location" ? (
-          <CustomerNotice onRetry={h.nearbyStatus === "error" ? () => void h.retryNearby() : undefined}>
-            {h.nearbyStatus === "error" ? t("Không tải được tài xế · Thử lại")
-              : h.nearbyStatus === "loading" ? t("Đang tìm tài xế gần bạn…")
-              : h.nearbyDrivers.length ? t("{0} tài xế gần bạn", { "0": h.nearbyDrivers.length })
-              : t("Chưa có tài xế rảnh trong 5 km")}
-          </CustomerNotice>
+        ) : (
+          <HomeBookingCard
+            pickupAddress={h.currentLocation}
+            pickupLoading={h.locationLoading}
+            onPickup={() => h.openBooking()}
+            onSearch={() => h.openBooking(undefined, "destination")}
+            onSchedule={() => h.openBooking(undefined, "schedule")}
+          />
+        )}
+
+        {!h.activeRide && h.recentDestinations.length ? (
+          <View style={s.recentSection}>
+            <Text style={s.recentHeading}>{t("Điểm đến gần đây")}</Text>
+            <View style={s.recentCard}>
+              {h.recentDestinations.map((item) => (
+                <Pressable
+                  key={item.address}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("Đặt chuyến đến")} ${item.address}`}
+                  onPress={() => h.openRecentDestination(item)}
+                  style={({ pressed }) => [s.recentRow, pressed && { opacity: 0.65 }]}
+                >
+                  <View style={s.recentIcon}>
+                    <MaterialIcons name={item.coordinate ? "place" : "history"} size={20} color={colors.primary} />
+                  </View>
+                  <View style={s.recentCopy}>
+                    <Text style={s.recentTitle}>{item.title}</Text>
+                    <Text style={s.recentAddress}>{item.address}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
         ) : null}
-        {h.loadError ? <CustomerNotice onRetry={() => void h.retryData()}>{t(h.loadError)}</CustomerNotice>
-          : h.loading && !h.profile ? <View style={styles.loading}><ActivityIndicator color={colors.primary} /></View> : null}
+
+        {!h.activeRide && h.nearbyDrivers.length ? (
+          <View style={s.nearbyRow}>
+            <MaterialIcons name="near-me" size={16} color={colors.successStrong} />
+            <Text style={s.nearbyText}>
+              {t("{0} tài xế gần bạn", { "0": h.nearbyDrivers.length })}
+            </Text>
+          </View>
+        ) : null}
+
+        {h.loadError ? (
+          <CustomerNotice onRetry={() => void h.retryData()}>{t(h.loadError)}</CustomerNotice>
+        ) : h.loading && !h.profile ? (
+          <View style={s.loading}><ActivityIndicator color={colors.primary} /></View>
+        ) : null}
       </MapSheetLayout>
       <CustomerTabBar active="home" unreadCount={h.unreadCount} />
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  sheetContent: { paddingTop: 24 },
-  card: { padding: 16, gap: 8 },
-  location: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8 },
-  address: { flex: 1, fontSize: 16, lineHeight: 22 },
-  center: { textAlign: "center" },
-  loading: { alignItems: "center", padding: 16 },
-});

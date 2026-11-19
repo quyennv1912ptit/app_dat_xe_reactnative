@@ -1,33 +1,63 @@
 import { DriverChatButton } from "@/components/DriverChatButton";
-import type { CustomerRideDetail } from "@datxe/shared";
-import { Button, Card, Typography as Text, useThemeColors } from "@datxe/ui";
+import { canDriverChat } from "@/lib/chatAvailability";
+import {
+  getLocale,
+  translate as i18nT,
+  type CustomerRideDetail,
+} from "@datxe/shared";
+import {
+  Button,
+  Card,
+  MotionPressable as Pressable,
+  ScreenWrapper,
+  Typography as Text,
+  useLanguage,
+  useThemeColors,
+  useThemedStyles,
+  type ThemeColors,
+} from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Avatar, Dialog, Portal } from "react-native-paper";
+import { useRef, useState } from "react";
+import { Image, Linking, Modal, ScrollView, StyleSheet, View } from "react-native";
 
 export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
+  useLanguage();
+  const s = useThemedStyles(customerStyles);
   const colors = useThemeColors();
+  const locale = getLocale();
   const [visible, setVisible] = useState(false);
   const [callError, setCallError] = useState("");
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const [calling, setCalling] = useState(false);
+  const callInFlight = useRef(false);
   const customer = ride.customer;
-  const name = customer?.fullName?.trim() || "Khách hàng";
-  const rating = customer?.averageRating;
-  const ratingText = rating == null
-    ? null
-    : `${rating.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/5`;
+  const name = customer?.fullName?.trim() || i18nT("Khách hàng");
   const phone = customer?.phoneNumber?.trim();
-  const dialNumber = phone?.replace(/[\s().-]/g, "") ?? "";
-  const canCall = /^\+?\d{3,15}$/.test(dialNumber);
+  const normalizedPhone = phone?.replace(/[\s().-]/g, "") ?? "";
+  const canCall = /^\+?\d{8,15}$/.test(normalizedPhone);
+  const canChat = canDriverChat(ride);
   const avatarUrl = customer?.avatarUrl;
-  const hasAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatar);
-  const avatarColors = { backgroundColor: colors.primaryContainer };
-
-  const avatar = (size: number) => hasAvatar && avatarUrl ? (
-    <Avatar.Image size={size} source={{ uri: avatarUrl }} onError={() => setFailedAvatar(avatarUrl)} />
-  ) : (
-    <Avatar.Icon size={size} icon="account" color={colors.onPrimaryContainer} style={avatarColors} />
+  const rating =
+    typeof customer?.averageRating === "number" &&
+    Number.isFinite(customer.averageRating) &&
+    customer.averageRating >= 1 &&
+    customer.averageRating <= 5
+      ? customer.averageRating
+      : null;
+  const ratingText =
+    rating === null
+      ? i18nT("Chưa có đánh giá")
+      : `${rating.toLocaleString(locale, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })} / 5`;
+  const avatar = (large = false) => (
+    <CustomerAvatar
+      avatarUrl={avatarUrl}
+      failedAvatar={failedAvatar}
+      large={large}
+      onError={setFailedAvatar}
+    />
   );
 
   const close = () => {
@@ -36,12 +66,19 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   };
 
   const call = async () => {
-    if (!canCall) return;
+    if (!canCall || callInFlight.current) return;
+    callInFlight.current = true;
+    setCalling(true);
     setCallError("");
     try {
-      await Linking.openURL(`tel:${dialNumber}`);
+      await Linking.openURL(`tel:${normalizedPhone}`);
     } catch {
-      setCallError("Chưa mở được ứng dụng điện thoại. Bạn có thể nhắn tin cho khách.");
+      setCallError(
+        i18nT("Chưa mở được ứng dụng điện thoại. Bạn có thể nhắn tin cho khách."),
+      );
+    } finally {
+      callInFlight.current = false;
+      setCalling(false);
     }
   };
 
@@ -49,75 +86,220 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
     <>
       <Card
         onPress={() => setVisible(true)}
-        accessibilityLabel={`Xem thông tin khách hàng, ${name}`}
-        style={styles.summary}
+        accessibilityLabel={i18nT("Xem thông tin khách hàng, {0}", {
+          0: name,
+        })}
+        style={s.card}
       >
-        {avatar(48)}
-        <View style={styles.identity}>
-          <Text style={{ color: colors.onSurfaceVariant }}>Khách hàng</Text>
-          <Text style={styles.name} numberOfLines={2}>{name}</Text>
-          {ratingText ? (
-            <View style={styles.ratingRow}>
-              <MaterialIcons name="star" size={16} color={colors.onSurfaceVariant} />
-              <Text style={{ color: colors.onSurfaceVariant }}>{ratingText}</Text>
+        <Text style={s.eyebrow}>{i18nT("Khách hàng của bạn")}</Text>
+        <View style={s.identity}>
+          {avatar()}
+          <View style={s.copy}>
+            <Text style={s.name} numberOfLines={2}>{name}</Text>
+            <View style={s.rating}>
+              <MaterialIcons name="star" size={18} color={colors.onSurface} />
+              <Text style={s.body}>{ratingText}</Text>
+            </View>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} />
+        </View>
+        <Text style={s.link}>
+          {i18nT("Nhấn để xem hồ sơ và liên hệ")}
+        </Text>
+      </Card>
+      {canChat || canCall ? (
+        <View style={s.quickActions}>
+          {canChat ? (
+            <View style={s.quickAction}>
+              <DriverChatButton ride={ride} />
             </View>
           ) : null}
+          {canCall ? (
+            <Button
+              label={i18nT("Gọi khách")}
+              variant="secondary"
+              icon="call"
+              iconPosition="leading"
+              loading={calling}
+              style={s.quickAction}
+              onPress={() => void call()}
+            />
+          ) : null}
         </View>
-        <View style={styles.contactActions}>
+      ) : null}
+      {!visible && callError ? (
+        <Text accessibilityRole="alert" style={{ color: colors.error }}>
+          {callError}
+        </Text>
+      ) : null}
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={close}
+      >
+        <View style={s.overlay}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Gọi điện cho ${name}`}
-            hitSlop={8}
-            disabled={!canCall}
-            onPress={event => { event.stopPropagation(); void call(); }}
-            style={styles.contactAction}
-          >
-            <MaterialIcons name="call" size={22} color={canCall ? colors.primary : colors.onSurfaceVariant} />
-          </Pressable>
-          <DriverChatButton ride={ride} compact />
+            accessibilityLabel={i18nT("Đóng hồ sơ khách hàng")}
+            style={StyleSheet.absoluteFill}
+            onPress={close}
+          />
+          <ScreenWrapper edges={["bottom"]} style={s.sheet}>
+            <View accessibilityViewIsModal style={s.modalContent}>
+              <View style={s.header}>
+                <Text accessibilityRole="header" style={s.title}>
+                  {i18nT("Hồ sơ khách hàng")}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={i18nT("Đóng hồ sơ khách hàng")}
+                  style={s.close}
+                  onPress={close}
+                >
+                  <MaterialIcons name="close" size={24} color={colors.onSurface} />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={s.details}>
+                <View style={[s.identity, s.identityLarge]}>
+                  {avatar(true)}
+                  <View style={s.copy}>
+                    <Text style={s.name}>{name}</Text>
+                    <View style={s.rating}>
+                      <MaterialIcons name="star" size={18} color={colors.onSurface} />
+                      <Text style={s.body}>{ratingText}</Text>
+                    </View>
+                  </View>
+                </View>
+                <Text selectable style={s.meta}>
+                  {i18nT("Mã khách hàng #{0}", { 0: ride.customerId })}
+                </Text>
+                <View style={s.detailRow}>
+                  <MaterialIcons name="phone" size={22} color={colors.onSurface} />
+                  <View style={s.copy}>
+                    <Text style={s.meta}>
+                      {i18nT("Số điện thoại khách hàng")}
+                    </Text>
+                    <Text selectable style={s.body}>
+                      {phone || i18nT("Chưa có số điện thoại")}
+                    </Text>
+                  </View>
+                </View>
+                <View style={s.detailRow}>
+                  <MaterialIcons name="mail-outline" size={22} color={colors.onSurface} />
+                  <View style={s.copy}>
+                    <Text style={s.meta}>{i18nT("Email")}</Text>
+                    <Text selectable style={s.body}>
+                      {customer?.email?.trim() || i18nT("Chưa có email")}
+                    </Text>
+                  </View>
+                </View>
+                {callError ? (
+                  <Text accessibilityRole="alert" style={{ color: colors.error }}>
+                    {callError}
+                  </Text>
+                ) : null}
+              </ScrollView>
+              <View style={s.actions}>
+                <Button
+                  label={i18nT("Gọi điện")}
+                  icon="call"
+                  loading={calling}
+                  disabled={!canCall}
+                  onPress={() => void call()}
+                />
+                <DriverChatButton ride={ride} onOpen={close} />
+              </View>
+            </View>
+          </ScreenWrapper>
         </View>
-        <MaterialIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} />
-      </Card>
-      <Portal>
-        <Dialog visible={visible} onDismiss={close} style={{ backgroundColor: colors.surfaceContainerHigh, borderRadius: 28 }}>
-          <Dialog.Title>Thông tin khách hàng</Dialog.Title>
-          <Dialog.ScrollArea style={styles.scrollArea}>
-            <ScrollView contentContainerStyle={styles.details}>
-              {avatar(64)}
-              <Text style={styles.name}>{name}</Text>
-              <View style={styles.contact}>
-                <Text style={{ color: colors.onSurfaceVariant }}>Số điện thoại</Text>
-                <Text selectable>{phone || "Chưa có số điện thoại"}</Text>
-              </View>
-              <View style={styles.contact}>
-                <Text style={{ color: colors.onSurfaceVariant }}>Email</Text>
-                <Text selectable>{customer?.email?.trim() || "Chưa có email"}</Text>
-              </View>
-              {customer?.averageRating != null ? (
-                <Text>Đánh giá · {customer.averageRating.toLocaleString("vi-VN")} / 5</Text>
-              ) : null}
-              <Button label="Gọi điện" icon="call" iconPosition="leading" disabled={!canCall} onPress={() => void call()} />
-              <DriverChatButton ride={ride} onOpen={close} />
-              {callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
-            </ScrollView>
-          </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button label="Đóng" variant="ghost" onPress={close} />
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      </Modal>
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  summary: { flexDirection: "row", alignItems: "center", gap: 8 },
-  identity: { flex: 1, gap: 4 },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  contactActions: { flexDirection: "row", alignItems: "center", gap: 4 },
-  contactAction: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  name: { fontSize: 16, fontWeight: "600" },
-  scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0 },
-  details: { paddingHorizontal: 24, paddingVertical: 8, gap: 12 },
-  contact: { gap: 4 },
-});
+function CustomerAvatar({
+  avatarUrl,
+  failedAvatar,
+  large,
+  onError,
+}: {
+  avatarUrl?: string | null;
+  failedAvatar: string | null;
+  large: boolean;
+  onError: (url: string) => void;
+}) {
+  const s = useThemedStyles(customerStyles);
+  const colors = useThemeColors();
+  const style = [s.avatar, large && s.avatarLarge];
+  return avatarUrl?.trim() && avatarUrl !== failedAvatar ? (
+    <Image
+      source={{ uri: avatarUrl }}
+      style={style}
+      onError={() => onError(avatarUrl)}
+      accessibilityLabel={i18nT("Ảnh đại diện khách hàng")}
+    />
+  ) : (
+    <View style={[...style, s.avatarFallback]}>
+      <MaterialIcons name="person" size={30} color={colors.onPrimaryContainer} />
+    </View>
+  );
+}
+
+const customerStyles = (c: ThemeColors) =>
+  StyleSheet.create({
+    card: { padding: 16, gap: 16 },
+    quickActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    quickAction: { flexGrow: 1, flexBasis: 135, width: "auto", minWidth: 0 },
+    eyebrow: { color: c.onSurfaceVariant, fontSize: 13, fontWeight: "600" },
+    identity: { flexDirection: "row", alignItems: "center", gap: 16 },
+    identityLarge: { alignItems: "flex-start" },
+    copy: { flex: 1, minWidth: 0, gap: 8 },
+    avatar: { width: 64, height: 64, borderRadius: 999 },
+    avatarLarge: { width: 80, height: 80, borderRadius: 999 },
+    avatarFallback: {
+      backgroundColor: c.primaryContainer,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    name: { color: c.onSurface, fontSize: 19, fontWeight: "700", flexShrink: 1 },
+    rating: { flexDirection: "row", alignItems: "center", gap: 8 },
+    body: { color: c.onSurface, fontSize: 16, lineHeight: 23, flexShrink: 1 },
+    meta: { color: c.onSurfaceVariant, fontSize: 14, lineHeight: 21 },
+    link: { color: c.primary, fontSize: 14, fontWeight: "600" },
+    overlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: c.inverseSurface40,
+      paddingTop: 32,
+    },
+    sheet: {
+      flex: 0,
+      maxHeight: "92%",
+      width: "100%",
+      maxWidth: 520,
+      alignSelf: "center",
+      backgroundColor: c.surfaceContainerLowest,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      overflow: "hidden",
+    },
+    modalContent: { flexShrink: 1 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      gap: 12,
+    },
+    title: { flex: 1, color: c.onSurface, fontSize: 22, fontWeight: "500" },
+    close: {
+      minWidth: 48,
+      minHeight: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    details: { padding: 16, gap: 16 },
+    detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    actions: { padding: 16, gap: 8 },
+  });

@@ -57,6 +57,24 @@ export function pushPresentation(event: PushEnvelope, now = Date.now()) {
     return { title: typeof payload.title === 'string' ? payload.title : 'Kết quả yêu cầu rút tiền',
       body: typeof payload.body === 'string' ? payload.body : 'Mở ứng dụng để xem kết quả rút tiền.', channelId: PUSH_CHANNEL };
   }
+  if (event.type === 'VOUCHER_GRANTED' || event.type === 'VOUCHER_CAMPAIGN' || event.type === 'RATING_RECEIVED') {
+    const payload = record(event.payload);
+    const fallbackTitle =
+      event.type === 'VOUCHER_GRANTED'
+        ? 'Bạn vừa nhận được ưu đãi mới'
+        : event.type === 'VOUCHER_CAMPAIGN'
+          ? 'Chương trình ưu đãi mới'
+          : 'Bạn nhận được đánh giá mới';
+    const fallbackBody =
+      event.type === 'RATING_RECEIVED'
+        ? 'Mở ứng dụng để xem đánh giá chuyến đi.'
+        : 'Mở Ưu đãi của tôi để xem chi tiết.';
+    return {
+      title: typeof payload.title === 'string' && payload.title.trim() ? payload.title : fallbackTitle,
+      body: typeof payload.body === 'string' && payload.body.trim() ? payload.body : fallbackBody,
+      channelId: PUSH_CHANNEL,
+    };
+  }
   if (event.type === 'CHAT_READ') return null;
   if (event.type === 'RIDE_OFFER' && offerDeadline(event) <= now) return null;
   if (event.type === 'RIDE_ASSIGNED') {
@@ -127,6 +145,9 @@ export async function resolvePushDestination(event: PushEnvelope, role: PushRole
   if (event.type === 'WITHDRAWAL_REVIEWED' && role === 'DRIVER') {
     const id = positiveId(record(event.payload).withdrawalId);
     return { pathname: '/profile/withdraw', ...(id ? { params: { requestId: String(id) } } : {}) };
+  }
+  if ((event.type === 'VOUCHER_GRANTED' || event.type === 'VOUCHER_CAMPAIGN') && role === 'CUSTOMER') {
+    return { pathname: '/vouchers' };
   }
   const id = positiveId(record(event.payload).rideId ?? record(event.payload).ride_id);
   if (event.type === 'RIDE_OFFER' && role === 'DRIVER' && id) {

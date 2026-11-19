@@ -1,48 +1,98 @@
 import { DriverDirectionsMap } from '@/components/DriverDirectionsMap';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { DriverPage } from '@/components/DriverPage';
+import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from '@datxe/ui';
+import { MapSheetLayout } from '@datxe/ui/goong-map';
+import { MaterialIcons } from '@expo/vector-icons';
+import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
 import { useRideDirections } from '../hooks/useRideDirections';
+
+const distance = (meters: number) => meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`;
 
 export default function RideDirectionsScreen() {
   const h = useRideDirections();
-  const isDropoff = h.stop === 'dropoff';
-  const targetLabel = isDropoff ? 'điểm trả' : 'điểm đón';
-  const title = isDropoff ? 'Chỉ đường đến điểm trả' : 'Chỉ đường đến điểm đón';
-  const goBack = () => (h.router.canGoBack() ? h.router.back() : h.router.replace('/ride/in-progress'));
-
-  if (!h.destination) {
+  const colors = useThemeColors();
+  const title = h.stop === 'pickup' ? 'Chỉ đường đến điểm đón' : 'Chỉ đường đến điểm trả';
+  if (!h.destination && h.error) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.error}>{h.error || 'Chuyến chưa có tọa độ điểm đến.'}</Text>
-        <Pressable onPress={goBack}><Text style={styles.link}>Quay lại</Text></Pressable>
-      </SafeAreaView>
+      <DriverPage title={title}>
+        <Card style={styles.card}>
+          <Text accessibilityRole="alert" style={typography.body}>{h.error}</Text>
+          {h.canRetry ? <Button label="Thử lại" variant="secondary" onPress={h.refresh} /> : null}
+          <Button label={h.fallback.label} onPress={() => h.router.replace(h.fallback.route)} />
+        </Card>
+      </DriverPage>
     );
   }
-
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={12} accessibilityLabel="Quay lại"><Text style={styles.back}>‹</Text></Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>{title}</Text>
-          <Text numberOfLines={1} style={styles.address}>{h.address || title}</Text>
+    <MapSheetLayout
+      title={title}
+      initialSnap={0}
+      onBack={() => h.router.canGoBack() ? h.router.back() : h.router.replace('/ride/in-progress')}
+      renderMap={viewport => h.destination ? (
+        <DriverDirectionsMap
+          destination={h.destination}
+          targetLabel={h.stop === 'dropoff' ? 'điểm trả' : 'điểm đón'}
+          directions={h.directions}
+          viewport={viewport}
+          onRefresh={h.refresh}
+        />
+      ) : (
+        <View style={[styles.loadingMap, { backgroundColor: colors.background }]}>
+          <ActivityIndicator accessibilityLabel="Đang tải chỉ đường" color={colors.primary} />
         </View>
-      </View>
-      <View style={styles.map}>
-        <DriverDirectionsMap destination={h.destination} targetLabel={targetLabel} directions={h.directions} onRefresh={h.refresh} />
-      </View>
-    </SafeAreaView>
+      )}
+      footer={(
+        <>
+          {h.directions ? (
+            <Text style={[styles.metric, { color: colors.onSurface }]}>
+              {distance(h.directions.distance)} · {Math.max(1, Math.ceil(h.directions.duration / 60))} phút
+            </Text>
+          ) : null}
+          <Button
+            variant="secondary"
+            label="Cập nhật tuyến đường"
+            icon="my-location"
+            iconPosition="leading"
+            onPress={h.refresh}
+            loading={h.loading}
+          />
+        </>
+      )}
+    >
+      <Card style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>{h.address || title}</Text>
+        <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
+          Chỉ xem bản đồ và thao tác khi dừng xe an toàn.
+        </Text>
+        {h.error ? (
+          <Text accessibilityRole="alert" style={[typography.bodySecondary, { color: colors.error }]}>{h.error}</Text>
+        ) : h.loading && !h.directions ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : null}
+      </Card>
+      {h.directions?.steps?.length ? (
+        <Card style={styles.card}>
+          <Text accessibilityRole="header" style={styles.title}>Các bước chỉ đường</Text>
+          {h.directions.steps.map((step, index) => (
+            <View key={index} style={styles.step}>
+              <MaterialIcons name="navigation" size={18} color={colors.primary} importantForAccessibility="no" />
+              <Text style={styles.instruction}>{index + 1}. {step.instruction}</Text>
+              <Text style={[styles.stepDistance, { color: colors.onSurfaceVariant }]}>{distance(step.distanceMeters)}</Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+    </MapSheetLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F2F4F7' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 10, backgroundColor: '#FFFFFF', gap: 12 },
-  back: { fontSize: 32, lineHeight: 32, color: '#101828' },
-  headerCopy: { flex: 1 },
-  title: { fontSize: 18, fontWeight: '700', color: '#101828' },
-  address: { marginTop: 2, color: '#667085', fontSize: 12 },
-  map: { flex: 1, overflow: 'hidden' },
-  error: { margin: 24, color: '#B42318' },
-  link: { marginHorizontal: 24, color: '#B42318', fontWeight: '600' },
+  card: { padding: spacing.spaceMd, gap: spacing.px3 },
+  loadingMap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  title: { ...typography.cardTitle },
+  metric: { ...typography.screenTitle, fontVariant: ['tabular-nums'], textAlign: 'center' },
+  step: { flexDirection: 'row', alignItems: 'center', gap: spacing.px3, paddingVertical: spacing.spaceSm },
+  instruction: { ...typography.body, flex: 1 },
+  stepDistance: { ...typography.label, fontVariant: ['tabular-nums'] },
 });

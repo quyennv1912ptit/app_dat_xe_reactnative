@@ -101,6 +101,6 @@ const base_styles = (colors: ThemeColors) =>
     buttonPressed: {
       backgroundColor: colors.primaryTint,
     },
-    label: { ...typography.bodyMdMedium, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] },
-    labelEnabled: { color: colors.primary, fontWeight: "600" },
+    label: { ...typography.label, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] },
+    labelEnabled: { color: colors.primary },
   });

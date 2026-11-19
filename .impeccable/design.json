@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T07:40:30+07:00",
+  "title": "Design System: PtitGo Design System",
+  "extensions": {
+    "colorMeta": {
+      "customer-primary": {
+        "role": "primary",
+        "displayName": "Coral Crimson",
+        "canonical": "#B3263D",
+        "tonalRamp": ["#400012", "#650021", "#8E1830", "#B3263D", "#E06D7E", "#FFB2BF", "#FFD9DF", "#FFF0F2"]
+      },
+      "driver-primary": {
+        "role": "primary",
+        "displayName": "Deep Emerald",
+        "canonical": "#007F46",
+        "tonalRamp": ["#002112", "#003820", "#00552E", "#007F46", "#3CA875", "#7ED9AA", "#C5F0D8", "#EFFAF4"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Graphite Slate",
+        "canonical": "#61616B",
+        "tonalRamp": ["#111111", "#303038", "#494950", "#61616B", "#888888", "#C6C5CF", "#E0E0E0", "#F3F4F6"]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Muted Plum",
+        "canonical": "#67507D",
+        "tonalRamp": ["#251431", "#3A2947", "#513F60", "#67507D", "#9B82B2", "#D4BCEB", "#EEDCFF", "#F8F1FF"]
+      },
+      "canvas-light": {
+        "role": "neutral",
+        "displayName": "Cool Stone Canvas",
+        "canonical": "#F3F4F6",
+        "tonalRamp": ["#1B1B1F", "#494950", "#6B7280", "#9CA3AF", "#E0E2E8", "#ECEEF2", "#F3F4F6", "#FFFFFF"]
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Obsidian Dark Canvas",
+        "canonical": "#121212",
+        "tonalRamp": ["#0B0B0B", "#121212", "#1E1E1E", "#242424", "#29292D", "#333337", "#494950", "#C6C5CF"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero onboarding headlines and primary earnings/balance summaries." },
+      "headline": { "displayName": "Headline", "purpose": "Section anchors, confirmation titles, and modal headers." },
+      "title": { "displayName": "Title", "purpose": "Card headers, vehicle selection titles, and driver profile headers." },
+      "body": { "displayName": "Body", "purpose": "Primary descriptions, Vietnamese street addresses, chat bubbles, and verification steps." },
+      "label": { "displayName": "Label", "purpose": "Full-pill CTA labels, navigation tabs, and form field titles." },
+      "caption": { "displayName": "Caption", "purpose": "Timestamps and secondary metadata with >= 13px floor for operational clarity." }
+    },
+    "shadows": [
+      {
+        "name": "none-default",
+        "value": "none",
+        "purpose": "All standard cards, inputs, and buttons stay flat and borderless via tonal surface steps (enforced by tests/material-design.test.cjs)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "press-scale-in",
+        "value": "90ms cubic-bezier(0.33, 1, 0.68, 1)",
+        "purpose": "Tactile 0.98 press feedback in MotionPressable; collapses cleanly when useReducedMotion() is true."
+      },
+      {
+        "name": "press-scale-out",
+        "value": "160ms cubic-bezier(0.33, 1, 0.68, 1)",
+        "purpose": "Smooth release recovery back to 1.0 scale."
+      }
+    ],
+    "breakpoints": [
+      { "name": "compact-phone", "value": "360px" },
+      { "name": "tablet", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Customer)",
+      "kind": "button",
+      "refersTo": "button-primary-customer",
+      "description": "48dp full-pill primary CTA for customer booking and confirmation flows.",
+      "html": "<button class=\"ds-btn-customer\">Đặt chuyến lái hộ</button>",
+      "css": ".ds-btn-customer { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 24px; border: none; border-radius: 999px; background: #B3263D; color: #FFFFFF; font-family: Roboto, Arial, sans-serif; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 160ms ease, transform 90ms ease; } .ds-btn-customer:hover { background: #8E1830; } .ds-btn-customer:active { transform: scale(0.98); } .ds-btn-customer:focus-visible { outline: 2px solid #400012; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button (Driver)",
+      "kind": "button",
+      "refersTo": "button-primary-driver",
+      "description": "48dp full-pill primary CTA for driver readiness, verification, and ride progression.",
+      "html": "<button class=\"ds-btn-driver\">Bật nhận chuyến</button>",
+      "css": ".ds-btn-driver { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 24px; border: none; border-radius: 999px; background: #007F46; color: #FFFFFF; font-family: Roboto, Arial, sans-serif; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 160ms ease, transform 90ms ease; } .ds-btn-driver:hover { background: #006638; } .ds-btn-driver:active { transform: scale(0.98); } .ds-btn-driver:focus-visible { outline: 2px solid #002112; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Tonal secondary full-pill action paired with Soft Ash Container.",
+      "html": "<button class=\"ds-btn-secondary\">Chụp lại</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 24px; border: none; border-radius: 999px; background: #E0E0E0; color: #111111; font-family: Roboto, Arial, sans-serif; font-size: 16px; font-weight: 500; cursor: pointer; transition: opacity 160ms ease, transform 90ms ease; } .ds-btn-secondary:hover { opacity: 0.9; } .ds-btn-secondary:active { transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid #61616B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Tonal Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Borderless 24dp tonal card relying on surface separation against Cool Stone Canvas.",
+      "html": "<div class=\"ds-card\"><h3>Xác nhận lộ trình</h3><p>Đặt tài xế lái xe của bạn an toàn về nhà.</p></div>",
+      "css": ".ds-card { background: #FFFFFF; color: #1B1B1F; border-radius: 24px; padding: 16px; font-family: Roboto, Arial, sans-serif; border: none; } .ds-card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 500; } .ds-card p { margin: 0; font-size: 15px; line-height: 22px; color: #61616B; }"
+    },
+    {
+      "name": "Outlined Input",
+      "kind": "input",
+      "refersTo": "input-outlined",
+      "description": "56dp MD3 outlined text field with 24dp rounding and IME-safe spacing.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Nhập địa chỉ đón\" />",
+      "css": ".ds-input { width: 100%; min-height: 56px; padding: 12px 16px; border-radius: 24px; border: 1px solid #E0E2E8; background: #FFFFFF; color: #1B1B1F; font-family: Roboto, Arial, sans-serif; font-size: 16px; outline: none; } .ds-input:focus { border-color: #B3263D; }"
+    },
+    {
+      "name": "Tonal Navigation Bar",
+      "kind": "nav",
+      "refersTo": "navigation-bar",
+      "description": "Compact bottom bar with 64x32dp tonal active pill indicator and readable labels.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item is-active\"><span class=\"ds-nav-pill\">●</span><span>Trang chủ</span></button><button class=\"ds-nav-item\"><span class=\"ds-nav-pill\">○</span><span>Hồ sơ</span></button></nav>",
+      "css": ".ds-nav { display: flex; min-height: 80px; padding: 8px; background: #FFFFFF; gap: 4px; font-family: Roboto, Arial, sans-serif; } .ds-nav-item { flex: 1; min-height: 48px; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #61616B; font-size: 13px; font-weight: 500; border-radius: 999px; cursor: pointer; } .ds-nav-item.is-active { color: #1B1B1F; } .ds-nav-pill { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 32px; border-radius: 16px; } .ds-nav-item.is-active .ds-nav-pill { background: #FFD9DF; color: #400012; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Confident Co-Pilot",
+    "overview": "The PtitGo design system unifies PtitGo (apps/customer) and PtitGo Tài Xế (apps/driver) around calm, sunlit clarity and decisive, one-handed control. Every interface behaves like a dependable co-pilot at dusk or midday: neutral cool-stone canvases stay quiet, high-contrast ink carries addresses and VND fares effortlessly, and brand color is reserved strictly to signal the active role—Coral Crimson for customer trip requests and Deep Emerald for driver readiness and verification.\n\nRather than relying on drop shadows or heavy boxes to separate information, PtitGo builds clear visual hierarchy exclusively through flat tonal surface steps, generous touch geometry, and strict Material Design 3 + Apple HIG platform respect.",
+    "keyCharacteristics": [
+      "Dual-Brand, Single System: Shared primitives, spacing, shapes, and semantic role names via @datxe/ui, swapping only the active brand token family (customer vs driver) across light and dark appearances.",
+      "Borderless Tonal Layering: Cards and action containers sit flat (mode=\"contained\", zero drop shadows, zero decorative borders), separated solely by contrast between #F3F4F6 canvas and #FFFFFF surfaces in light mode (#121212 and #1E1E1E in dark mode).",
+      "Outdoor-Ready Legibility & Touch Ergonomics: Material type roles scaled up +2 in createMaterialTheme, minimum 48dp primary touch buttons, tabular-nums on fares and timers, and honest semantic state containers."
+    ],
+    "rules": [
+      {
+        "name": "The Single-Brand Accent Rule",
+        "body": "Customer screens never import Driver emerald primary tokens for main CTAs, and Driver screens never expose Customer crimson—both apps consume the same semantic colors.primary token resolved by ThemeProvider brand.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token-Only Contrast Rule",
+        "body": "Raw hex literals and rgba(...) strings are forbidden in app screens and non-theme components (tests/theme.test.cjs); all foreground/background pairs must come from useThemeColors() so Light and Dark modes stay contrast-safe.",
+        "section": "colors"
+      },
+      {
+        "name": "The Wrap-Before-Shrink Rule",
+        "body": "Long Vietnamese street addresses, alley numbers (ngõ/ngách), driver names, and user emails must wrap gracefully (flexShrink: 1, minWidth: 0) rather than shrinking font sizes or truncating critical identification data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Never add drop shadows or mode=\"elevated\" cards to create visual separation; reach for tonal surface stepping (cardSurface over background, or surfaceContainerHigh insets inside cards) instead.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Borderless Container Rule",
+        "body": "Regular cards, buttons, badges, and list items never carry decorative strokes (borderWidth: 0 via borderlessFrame). Hairline outlines are permitted only in tests/material-design.test.cjs's functionalOutlines allowlist.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do consume all colors, spacing, typography, and radii through useThemeColors(), useThemedStyles(), and @datxe/ui primitives (Button, Card, Typography, Input, ThemedTextInput, ScreenWrapper).",
+      "Do preserve flat tonal hierarchy (cardSurface over background) and zero-border containers (borderlessFrame) across both Light and Dark themes.",
+      "Do enforce >= 48×48 dp (Android) / >= 44×44 pt (iOS) interactive touch targets, full safe-area insets (ScreenWrapper / useSafeAreaInsets), and dynamic font wrapping for long Vietnamese addresses, names, and emails.",
+      "Do use fontVariant: ['tabular-nums'] for VND prices, wallet balances, distances, and driver offer countdowns.",
+      "Do test and maintain every state (loading, empty, error, success, disabled) and respect useReducedMotion()."
+    ],
+    "donts": [
+      "Don't introduce raw hex/rgb()/rgba() literals inside apps/*/src/** or non-theme UI files (tests/theme.test.cjs enforces this).",
+      "Don't add shadowColor, shadowOpacity, elevation, boxShadow, or Card mode=\"elevated\" outside the single approved Customer Home search exception (homeStyles.ts).",
+      "Don't add decorative borderWidth to buttons, badges, or cards outside functionalOutlines in tests/material-design.test.cjs.",
+      "Don't use white text/icons on rideDropoff (#F2B705) yellow badges (1.8:1 failure—use dark onRideDropoff #1B1B1F), or warningContainer as dark-mode text color.",
+      "Don't shrink critical addresses, prices, or emails with adjustsFontSizeToFit or numberOfLines={1} where full decision context is needed."
+    ]
+  }
+}

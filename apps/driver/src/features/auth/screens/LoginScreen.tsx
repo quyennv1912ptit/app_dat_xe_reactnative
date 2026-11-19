@@ -7,7 +7,7 @@ import {
   useThemedStyles,
 } from "@datxe/ui";
 import { useRouter } from "expo-router";
-import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Image, KeyboardAvoidingView, ScrollView, View } from "react-native";
 
 import { SocialButton, styles } from "../components/LoginScreenParts";
 import { useLogin } from "../hooks/useLogin";
@@ -26,7 +26,7 @@ export default function DriverLoginScreen() {
   return (
     <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={themed_styles.flex}
       >
         <ScrollView

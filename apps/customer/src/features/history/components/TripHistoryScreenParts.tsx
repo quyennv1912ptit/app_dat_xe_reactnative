@@ -1,4 +1,4 @@
-import { getLocale, translate as i18nT } from "@datxe/shared";
+import { formatMoney, getLocale } from "@datxe/shared";
 import type { ThemeColors } from "@datxe/ui";
 import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
@@ -22,7 +22,7 @@ export const labelForStatus: Record<string, string> = {
 };
 
 export const money = (value: number) =>
-  i18nT("{0} đ", { "0": new Intl.NumberFormat(getLocale()).format(value) });
+  formatMoney(value, { locale: getLocale(), nonBreaking: true });
 
 export const styles = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -41,8 +41,8 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.cardSurface,
       gap: 2,
     },
-    summaryCount: { ...typography.headlineLg, fontVariant: ["tabular-nums"], color: colors.onSurface },
-    summaryText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+    summaryCount: { ...typography.display, fontVariant: ["tabular-nums"], color: colors.onSurface },
+    summaryText: { ...typography.body, color: colors.onSurfaceVariant },
     filters: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     filter: {
       flexGrow: 1,
@@ -61,7 +61,7 @@ export const styles = (colors: ThemeColors) =>
       backgroundColor: colors.primaryContainer,
     },
     filterText: {
-      ...typography.labelMd,
+      ...typography.label,
       color: colors.onSurfaceVariant,
       textAlign: "center",
     },
@@ -84,31 +84,29 @@ export const styles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      flexGrow: 1,
-      flexBasis: 140,
+      flexShrink: 1,
       minWidth: 0,
     },
     rideTitle: {
-      ...typography.labelMd,
+      ...typography.cardTitle,
       color: colors.onSurfaceMuted,
       flexShrink: 1,
     },
     status: {
-      ...typography.labelMd,
+      ...typography.badge,
       color: colors.onSurfaceVariant,
       flexShrink: 1,
     },
     statusCancelled: { color: colors.error },
-    meta: { ...typography.labelMd, fontSize: 13, lineHeight: 19, color: colors.onSurfaceMuted },
+    meta: { ...typography.caption, color: colors.onSurfaceMuted },
     addressRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
     address: {
-      ...typography.bodyMd,
-      fontSize: 16, lineHeight: 23,
+      ...typography.body,
       color: colors.onSurface,
       flex: 1,
       minWidth: 0,
     },
-    pin: { ...typography.bodyMd, color: colors.onSurfaceMuted, minWidth: 36 },
+    pin: { ...typography.label, color: colors.onSurfaceMuted, minWidth: 36 },
     rideFooter: {
       flexDirection: "row",
       alignItems: "center",
@@ -117,8 +115,8 @@ export const styles = (colors: ThemeColors) =>
       paddingTop: 12,
     },
     fareCopy: { flex: 1, minWidth: 0, gap: 2 },
-    fare: { ...typography.titleLg, fontSize: 28, lineHeight: 35, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.onSurface },
+    fare: { ...typography.moneyDisplay, color: colors.onSurface },
     more: { minHeight: 48, justifyContent: "center", alignItems: "center" },
-    moreText: { ...typography.labelLg, color: colors.primary },
-    error: { ...typography.bodyMd, color: colors.error },
+    moreText: { ...typography.button, color: colors.primary },
+    error: { ...typography.bodySecondary, color: colors.error },
   });

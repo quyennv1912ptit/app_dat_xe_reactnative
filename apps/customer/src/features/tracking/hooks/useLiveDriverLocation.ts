@@ -2,8 +2,8 @@ import { env } from '@/config/env';
 import { createStompClient, locationSignalLost, stompBrokerUrl, validLocationUpdate, type DriverLocationUpdate } from '@datxe/shared';
 import { useEffect, useState } from 'react';
 
-export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh: () => unknown, driverAssigned: boolean) {
-  const [sample, setSample] = useState<DriverLocationUpdate | null>(null);
+export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh: () => unknown, driverId: number | null | undefined) {
+  const [fix, setSample] = useState<{ driverId: typeof driverId; rideId: number; update: DriverLocationUpdate } | null>(null);
   const [received, setReceived] = useState<number | null>(null);
   const [started, setStarted] = useState(Date.now);
   const [now, setNow] = useState(Date.now);
@@ -17,7 +17,7 @@ export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh:
       try {
         const update: unknown = JSON.parse(message.body);
         if (!validLocationUpdate(update) || Date.parse(update.timestamp) <= latestTimestamp) return;
-        latestTimestamp = Date.parse(update.timestamp); setSample(update); setReceived(Date.now()); setNow(Date.now());
+        latestTimestamp = Date.parse(update.timestamp); setSample({ driverId, rideId, update }); setReceived(Date.now()); setNow(Date.now());
       } catch { /* malformed/stale frames never replace a valid location */ }
     });
     const notifications = socket.subscribe('/user/queue/trip', message => { try { const event = JSON.parse(message.body); if (event.payload?.rideId === rideId) refresh(); } catch {} });
@@ -25,8 +25,9 @@ export function useLiveDriverLocation(rideId: number, enabled: boolean, refresh:
     socket.connect();
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearTimeout(reset); clearInterval(timer); unsubscribe(); notifications(); connection(); void socket.disconnect(); };
-  }, [rideId, enabled, refresh, driverAssigned]);
+  }, [rideId, enabled, refresh, driverId]);
   // Transport receipt cannot make an older GPS fix fresh again.
+  const sample = fix?.driverId === driverId && fix?.rideId === rideId ? fix?.update : null;
   const sampledAt = sample ? Date.parse(sample.timestamp) : null;
-  return { sample, connected, signalLost: enabled && (!connected || locationSignalLost(sampledAt === null ? received : Math.min(sampledAt, received ?? sampledAt), started, now, env.locationStaleMs)) };
+  return { sample, connected, now, signalLost: enabled && (!connected || locationSignalLost(sampledAt === null ? received : Math.min(sampledAt, received ?? sampledAt), started, now, env.locationStaleMs)) };
 }

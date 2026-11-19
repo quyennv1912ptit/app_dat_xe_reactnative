@@ -2,7 +2,6 @@ import { translate as i18nT } from "@datxe/shared";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -25,6 +24,7 @@ import {
   type AuthRole,
 } from "@datxe/shared";
 import { Button } from "../components/Button";
+import { Card } from "../components/Card";
 import { spacing, typography } from "../theme/colors";
 import { AuthBackButton } from "./AuthBackButton";
 import { OtpCodeInput } from "./OtpCodeInput";
@@ -114,12 +114,28 @@ export function OtpVerificationScreen({
     }
   };
 
-  if (!phone) return null;
+  if (!phone) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <AuthBackButton onPress={onLogin} />
+          <View style={styles.topBarSpacer} />
+        </View>
+        <View style={styles.content}>
+          <Card style={{ gap: spacing.spaceMd }}>
+            <Text accessibilityRole="header" style={styles.heading}>{i18nT("Thiếu số điện thoại")}</Text>
+            <Text style={styles.description}>{i18nT("Không tìm thấy số điện thoại để xác thực OTP. Vui lòng quay lại màn đăng nhập.")}</Text>
+            <Button label={i18nT("Về màn đăng nhập")} onPress={onLogin} />
+          </Card>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={styles.flex}
       >
         <View style={styles.topBar}>
@@ -265,14 +281,12 @@ const base_styles = (colors: ThemeColors) =>
       color: colors.onSurface,
     },
     description: {
-      ...typography.bodyMd,
+      ...typography.bodySecondary,
       color: colors.onSurfaceVariant,
       marginTop: spacing.spaceSm,
-      lineHeight: 21,
     },
     phone: {
-      ...typography.bodyMd,
-      fontWeight: "700",
+      ...typography.label,
       color: colors.onSurface,
     },
     codeBlock: {

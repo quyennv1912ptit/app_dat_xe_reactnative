@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import type { CustomerRideDetail } from '@datxe/shared';
-import { getDriverRide, confirmCashReceived } from '../api';
+import { getDriverRide, confirmCashReceived, getMyDriverRideRating } from '../api';
 
 export function useComplete() {
   const { rideId } = useLocalSearchParams<{ rideId?: string }>();
@@ -12,12 +12,20 @@ export function useComplete() {
   const id = Number(rideId);
   const valid = Number.isSafeInteger(id) && id > 0;
   const key = ['driver', 'ride', id];
+  const cashLock = useRef(false);
   const query = useQuery({ queryKey: key, queryFn: () => getDriverRide(id), enabled: valid, refetchOnWindowFocus: 'always', refetchInterval: q => q.state.data?.payment?.status === 'PENDING' ? 5000 : false });
+  const myRatingQuery = useQuery({
+    queryKey: ['driver', 'ride', id, 'my-rating'],
+    queryFn: () => getMyDriverRideRating(id),
+    enabled: valid && query.data?.status === 'COMPLETED',
+    retry: false,
+  });
   const refetch = query.refetch;
-  useRefreshOnFocus(useCallback(() => valid ? refetch() : undefined, [valid, refetch]));
+  const refetchRating = myRatingQuery.refetch;
+  useRefreshOnFocus(useCallback(() => valid ? Promise.all([refetch(), refetchRating()]) : undefined, [valid, refetch, refetchRating]));
   const cash = useMutation({
     mutationFn: () => {
-      if (!valid || query.data?.status !== 'COMPLETED' || query.data.payment?.method !== 'CASH' || query.data.payment.status !== 'PENDING')
+      if (!valid || query.data?.status !== 'COMPLETED' || query.data.payment?.method !== 'CASH' || query.data.payment.status !== 'PENDING' || !(query.data.payment.amount > 0))
         throw new Error('Chuyến không còn chờ thu tiền mặt.');
       return confirmCashReceived(id);
     },
@@ -30,6 +38,12 @@ export function useComplete() {
         client.invalidateQueries({ queryKey: ['driver'] }),
       ]);
     },
+    onSettled: () => { cashLock.current = false; },
   });
-  return { query, cash, router, valid };
+  const confirmCash = useCallback((onDone?: () => void) => {
+    if (cashLock.current || cash.isPending) return;
+    cashLock.current = true;
+    cash.mutate(undefined, { onSuccess: onDone });
+  }, [cash]);
+  return { query, myRating: myRatingQuery.data ?? null, cash, confirmCash, router, valid };
 }

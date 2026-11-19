@@ -1,4 +1,4 @@
 import { customerApi } from '@/lib/customerApi';
 export const getCustomerVouchers = customerApi.getCustomerVouchers;
-export const getVoucherCampaigns = customerApi.getVoucherCampaigns;
-export const claimVoucherCampaign = customerApi.claimVoucherCampaign;
+export const getCustomerVoucherCampaigns = customerApi.getCustomerVoucherCampaigns;
+export const claimCustomerVoucherCampaign = customerApi.claimCustomerVoucherCampaign;

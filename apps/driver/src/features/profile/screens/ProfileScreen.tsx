@@ -1,22 +1,26 @@
 import { DriverConfirmationDialog } from "@/components/DriverConfirmationDialog";
 import { logError } from "@/lib/logger";
 import { DriverPage } from "@/components/DriverPage";
+import { MyDriverReviews } from "@/components/MyDriverReviews";
 import { StatusBadge } from "@/components/StatusBadge";
 import { rideStyles as s } from "@/components/rideStyles";
 import { useSessionStore } from "@/lib/store";
-import { formatMoney, signOutFirebase } from "@datxe/shared";
+import { formatMoney, getAvatarInitials, signOutFirebase } from "@datxe/shared";
 import {
   Card,
   GroupedList,
   SettingsListItem,
   Typography as Text,
+  spacing,
+  typography,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import { Avatar, Divider, IconButton } from "react-native-paper";
+import { Divider, IconButton } from "react-native-paper";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteDriverAccount } from "../api";
@@ -30,6 +34,7 @@ export default function DriverProfileScreen() {
   const client = useQueryClient();
   const colors = useThemeColors();
   const [confirmation, setConfirmation] = useState<{ type: "logout" | "delete"; userId: number } | null>(null);
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const accountAction = useMutation({
     mutationFn: async ({ type, userId }: NonNullable<typeof confirmation>) => {
       if (useSessionStore.getState().user?.id !== userId) throw new Error("Phiên đăng nhập đã thay đổi.");
@@ -51,7 +56,7 @@ export default function DriverProfileScreen() {
     accountAction.reset();
     setConfirmation({ type, userId: user.id });
   };
-  const initials = user?.fullName?.trim().split(/\s+/).slice(-2).map((word) => word[0]).join("").toUpperCase() || "TX";
+  const initials = getAvatarInitials(user?.fullName, "TX");
   const deleting = confirmation?.type === "delete";
   return (
     <DriverPage
@@ -63,10 +68,19 @@ export default function DriverProfileScreen() {
     >
       <Card style={themed_s.card}>
         <View style={layout.identity}>
-          {p.data?.avatar_url ? (
-            <Avatar.Image size={48} source={{ uri: p.data.avatar_url }} />
+          {p.data?.avatar_url && failedAvatar !== p.data.avatar_url ? (
+            <Image
+              source={{ uri: p.data.avatar_url }}
+              style={layout.avatarImage}
+              contentFit="cover"
+              cachePolicy="memory"
+              accessibilityIgnoresInvertColors
+              onError={() => setFailedAvatar(p.data?.avatar_url ?? null)}
+            />
           ) : (
-            <Avatar.Text size={48} label={initials} color={colors.onPrimaryContainer} style={{ backgroundColor: colors.primaryContainer }} />
+            <View accessible={false} style={[layout.avatarCircle, { backgroundColor: colors.primaryContainer }]}>
+              <Text style={[layout.avatarInitials, { color: colors.onPrimaryContainer }]}>{initials}</Text>
+            </View>
           )}
           <Text style={[themed_s.title, layout.name]}>{user?.fullName ?? "Tài xế"}</Text>
           <IconButton
@@ -79,18 +93,15 @@ export default function DriverProfileScreen() {
         </View>
         <View style={layout.contactRow}>
           <MaterialIcons name="call" size={18} color={colors.onSurfaceVariant} importantForAccessibility="no" />
-          <Text style={[themed_s.text, layout.contact]}>{user?.phoneNumber ?? "Chưa có số điện thoại"}</Text>
+          <Text selectable style={[themed_s.text, layout.contact]}>{user?.phoneNumber ?? "Chưa có số điện thoại"}</Text>
         </View>
         {user?.email ? (
           <View style={layout.contactRow}>
             <MaterialIcons name="mail-outline" size={18} color={colors.onSurfaceVariant} importantForAccessibility="no" />
             <Text
+              selectable
               style={[themed_s.text, layout.contact]}
               accessibilityLabel={`Email: ${user.email}`}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
-              ellipsizeMode="tail"
             >
               {user.email}
             </Text>
@@ -98,17 +109,20 @@ export default function DriverProfileScreen() {
         ) : null}
         {p.data || v.data ? <Divider style={{ backgroundColor: colors.outlineVariant }} /> : null}
         {p.data ? (
-          <>
-            <Text style={themed_s.text}>
-              Hạng GPLX · {p.data.license_class ?? "Chưa cập nhật"}
-            </Text>
-            <Text style={themed_s.text}>
-              Kinh nghiệm:{" "}
-              {p.data.years_of_experience === null
-                ? "Chưa cập nhật"
-                : p.data.years_of_experience + " năm"}
-            </Text>
-          </>
+          <View style={layout.statsRow}>
+            <View style={[layout.statTile, { backgroundColor: colors.surfaceContainerHigh }]}>
+              <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>Hạng GPLX</Text>
+              <Text style={[typography.cardTitle, { color: colors.onSurface }]}>
+                {p.data.license_class ?? "Chưa cập nhật"}
+              </Text>
+            </View>
+            <View style={[layout.statTile, { backgroundColor: colors.surfaceContainerHigh }]}>
+              <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>Kinh nghiệm</Text>
+              <Text style={[typography.cardTitle, { color: colors.onSurface, fontVariant: ["tabular-nums"] }]}>
+                {p.data.years_of_experience === null ? "Chưa cập nhật" : `${p.data.years_of_experience} năm`}
+              </Text>
+            </View>
+          </View>
         ) : null}
         {v.data ? (
           <StatusBadge
@@ -118,25 +132,18 @@ export default function DriverProfileScreen() {
           />
         ) : null}
       </Card>
+      <MyDriverReviews />
       <GroupedList title="Hồ sơ & hỗ trợ">
+        <SettingsListItem title="Xác minh tài xế" icon="person" onPress={() => router.push("/profile/verification")} />
+        <SettingsListItem title="Loại xe nhận lái hộ" icon="tune" onPress={() => router.push("/profile/capabilities")} />
         <SettingsListItem title="Cài đặt" icon="settings" onPress={() => router.push("/settings")} />
-        <SettingsListItem
-          title="Cập nhật giấy phép lái xe"
-          icon="badge"
-          onPress={() => router.push("/(auth)/license-upload")}
-        />
-        <SettingsListItem
-          title="Cập nhật căn cước và ảnh chân dung"
-          icon="account-box"
-          onPress={() => router.push("/(auth)/verify-id")}
-        />
         <SettingsListItem
           title="Xem kết quả xét duyệt"
           icon="verified-user"
           onPress={() => router.push("/(auth)/approval-status")}
         />
         <SettingsListItem
-          title="Trợ giúp · Gửi yêu cầu hỗ trợ"
+          title="Trung tâm hỗ trợ"
           icon="help-outline"
           onPress={() => router.push("/support")}
         />
@@ -169,9 +176,14 @@ export default function DriverProfileScreen() {
 }
 
 const layout = StyleSheet.create({
-  identity: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  name: { flex: 1, alignSelf: "center", fontWeight: "700" },
+  identity: { flexDirection: "row", alignItems: "flex-start", gap: spacing.spaceSm },
+  avatarCircle: { minWidth: 52, minHeight: 52, paddingHorizontal: 10, paddingVertical: 10, aspectRatio: 1, borderRadius: 999, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  avatarImage: { width: 52, height: 52, borderRadius: 999, flexShrink: 0 },
+  avatarInitials: { ...typography.cardTitle },
+  name: { ...typography.cardTitle, flex: 1, alignSelf: "center" },
   edit: { margin: 0, width: 48, height: 48 },
-  contactRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  contact: { flex: 1, fontSize: 14 },
+  contactRow: { flexDirection: "row", alignItems: "center", gap: spacing.spaceSm },
+  contact: { ...typography.label, flex: 1 },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.spaceSm },
+  statTile: { flex: 1, minWidth: 130, padding: spacing.px3, borderRadius: spacing.spaceMd, gap: spacing.xxs },
 });

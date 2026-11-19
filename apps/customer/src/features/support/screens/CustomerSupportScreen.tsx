@@ -6,7 +6,7 @@ import { translate as t, type CustomerRideDetail } from "@datxe/shared";
 import { Button, Card, ScreenWrapper, SupportCenter, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet } from "react-native";
+import { KeyboardAvoidingView, Linking, ScrollView, StyleSheet } from "react-native";
 import { useCustomerSupport } from "../hooks/useCustomerSupport";
 import { rideStatusLabel, chatStatuses } from "@/lib/customerRidePresentation";
 
@@ -23,7 +23,7 @@ function CustomerHelp() {
   return (
     <ScreenWrapper>
       <ScreenHeader title={t("Trợ giúp")} onBack={() => router.back()} />
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <SupportCenter
             {...support}
@@ -81,8 +81,19 @@ function ActiveRideSafety({ ride }: { ride: CustomerRideDetail }) {
     <Card style={styles.card}>
       <Text accessibilityRole="header" style={customerType.heading}>{t(rideStatusLabel[ride.status] ?? "Đang cập nhật trạng thái")}</Text>
       <RideEndpoints pickup={ride.pickupAddress} dropoff={ride.dropoffAddress} />
-      <Button variant="secondary" label="Theo dõi chuyến"
-        onPress={() => router.push({ pathname: "/ride/tracking", params: { rideId: String(ride.id) } })} />
+      <Button
+        variant="secondary"
+        label="Theo dõi chuyến"
+        onPress={() =>
+          router.push({
+            pathname:
+              ride.status === "PENDING" || ride.status === "SEARCHING"
+                ? "/ride/find-driver"
+                : "/ride/tracking",
+            params: { rideId: String(ride.id) },
+          })
+        }
+      />
       {ride.driverId && chatStatuses.includes(ride.status) ? (
         <Button variant="secondary" label="Nhắn tin với tài xế" onPress={() => router.push({ pathname: "/chat", params: { rideId: String(ride.id) } })} />
       ) : null}

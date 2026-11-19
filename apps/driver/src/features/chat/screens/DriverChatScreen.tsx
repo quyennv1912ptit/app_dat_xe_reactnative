@@ -7,6 +7,13 @@ import { useSessionStore } from "@/lib/store";
 import { canDriverChat } from "@/lib/chatAvailability";
 import { useDriverChat } from "../hooks/useDriverChat";
 
+const DRIVER_QUICK_REPLIES = [
+  "Tôi đang trên đường đến điểm đón.",
+  "Tôi đã đến điểm đón rồi ạ.",
+  "Anh/chị vui lòng ra xe giúp tôi nhé.",
+  "Tôi đang chờ ở gần điểm đón.",
+] as const;
+
 export default function DriverChatScreen() {
   const { rideId: rawId } = useLocalSearchParams<{ rideId?: string | string[] }>();
   const rideId = Number(Array.isArray(rawId) ? rawId[0] : rawId);
@@ -66,6 +73,7 @@ function RideChat({ rideId, userId }: { rideId: number; userId: number }) {
       notice={h.ride ? t("Cuộc trò chuyện đã đóng theo trạng thái chuyến. Bạn vẫn có thể xem tin nhắn cũ.") : undefined}
       emptyTitle={t(open ? "Bắt đầu trò chuyện với khách hàng." : "Chưa có tin nhắn trong chuyến này.")}
       error={h.error || h.pickerError}
+      quickReplies={DRIVER_QUICK_REPLIES}
       hasMore={h.hasMore}
       loadingOlder={h.loadingOlder}
       onBack={() => router.canGoBack() ? router.back() : router.replace("/(tabs)/home")}
