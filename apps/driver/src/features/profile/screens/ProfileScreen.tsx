@@ -134,14 +134,22 @@ export default function DriverProfileScreen() {
       </Card>
       <MyDriverReviews />
       <GroupedList title="Hồ sơ & hỗ trợ">
-        <SettingsListItem title="Xác minh tài xế" icon="person" onPress={() => router.push("/profile/verification")} />
+        <SettingsListItem
+          title="Xác minh tài xế"
+          icon="person"
+          description={
+            v.data?.verification_status === "APPROVED"
+              ? "Đã xác minh · Xem hoặc cập nhật giấy tờ"
+              : v.data?.verification_status === "REJECTED"
+                ? "Chưa đạt · Mở để cập nhật và gửi lại"
+                : v.data?.verification_status === "PENDING"
+                  ? "Xem tiến độ hoặc hoàn tất hồ sơ"
+                  : "Chụp CCCD, GPLX và ảnh chân dung"
+          }
+          onPress={() => router.push("/profile/verification")}
+        />
         <SettingsListItem title="Loại xe nhận lái hộ" icon="tune" onPress={() => router.push("/profile/capabilities")} />
         <SettingsListItem title="Cài đặt" icon="settings" onPress={() => router.push("/settings")} />
-        <SettingsListItem
-          title="Xem kết quả xét duyệt"
-          icon="verified-user"
-          onPress={() => router.push("/(auth)/approval-status")}
-        />
         <SettingsListItem
           title="Trung tâm hỗ trợ"
           icon="help-outline"

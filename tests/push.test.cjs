@@ -85,7 +85,7 @@ test('chat, review, cancelled and searching notifications use known routes', asy
   const api = { ride: async id => ({ id, status: 'CANCELLED' }) };
   assert.equal((await contracts.resolvePushDestination({ type: 'CHAT_MESSAGE', payload: { rideId: 3 } }, 'DRIVER', api)).pathname, '/chat');
   assert.equal((await contracts.resolvePushDestination({ type: 'RIDE_CANCELLED', payload: { rideId: 3 } }, 'CUSTOMER', api)).pathname, '/ride/[id]');
-  assert.equal((await contracts.resolvePushDestination({ type: 'DRIVER_DOCUMENT_REVIEWED' }, 'DRIVER', api)).pathname, '/(auth)/approval-status');
+  assert.equal((await contracts.resolvePushDestination({ type: 'DRIVER_VERIFICATION_UPDATED' }, 'DRIVER', api)).pathname, '/profile/verification');
   assert.equal((await contracts.resolvePushDestination({ type: 'RIDE_UPDATED', payload: { rideId: -1 } }, 'DRIVER', api)).pathname, '/(tabs)/notifications');
   assert.equal((await contracts.resolvePushDestination({ type: 'RIDE_UPDATED', payload: { rideId: 3 } }, 'CUSTOMER', { ride: async id => ({ id, status: 'SEARCHING' }) })).pathname, '/ride/find-driver');
 });

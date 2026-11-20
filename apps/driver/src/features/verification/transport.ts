@@ -21,6 +21,7 @@ const messages: Record<string, string> = {
   RATE_LIMITED: 'Bạn đã tải nhiều ảnh trong thời gian ngắn. Hãy đợi rồi thử lại.',
   WARNING_ACK_REQUIRED: 'Hãy xem và xác nhận cảnh báo của bản hồ sơ hiện tại.',
   FIELD_MISSING: 'Kiểm tra các ảnh bắt buộc và xác nhận thông tin trước khi nộp.',
+  EXTRACTION_REQUIRED: 'Cần kiểm tra tự động tất cả ảnh giấy tờ trước khi gửi hồ sơ.',
   IDENTITY_LOCKED: 'Thông tin định danh đã xác minh không thể tự ý thay đổi.',
   IDENTITY_MISMATCH: 'Giấy tờ không khớp với danh tính đã xác minh của tài khoản.',
   DUPLICATE_DOCUMENT: 'Số giấy tờ này đã được xác minh cho một tài khoản khác.',

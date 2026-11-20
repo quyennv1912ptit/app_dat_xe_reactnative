@@ -1,13 +1,11 @@
 import { request } from './api';
-import type { CustomerRideDetail,CustomerRidePage,CustomerNotification,DriverProfile,DriverVerification,DriverDocument,DriverSkill,DriverWallet } from '@datxe/shared';
+import type { CustomerRideDetail,CustomerRidePage,CustomerNotification,DriverProfile,DriverVerification,DriverWallet } from '@datxe/shared';
 export type DriverCreditStatus = { creditBalance: number; minimumCredit: number; shortfall: number; canReceive: boolean; blocked: boolean; mockTopUpEnabled: boolean };
 export type DriverRideFilterParams = { status?: string; q?: string; createdFrom?: string; createdTo?: string };
 export const driverApi={
  creditStatus:()=>request<DriverCreditStatus>('/driver/wallet/credit-status'),
  profile:()=>request<DriverProfile>('/driver/profile'),
  verification:()=>request<DriverVerification>('/driver/verification'),
- documents:()=>request<DriverDocument[]>('/driver/documents'),
- skills:()=>request<DriverSkill[]>('/driver/skills'),
  wallet:()=>request<DriverWallet>('/driver/wallet'),
  rides:(page=0,statusOrFilters?:string|DriverRideFilterParams)=>{
   const filters:DriverRideFilterParams=typeof statusOrFilters==='string'?{status:statusOrFilters}:(statusOrFilters??{});

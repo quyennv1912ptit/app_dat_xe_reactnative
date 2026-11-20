@@ -37,10 +37,8 @@ test('review, availability and payment use their own meanings and never guess an
   assert.equal(labels.statusLabel('availability', 'OFFLINE').label, 'Tạm ngừng nhận chuyến');
   assert.equal(labels.statusLabel('availability', 'BUSY').label, 'Đang thực hiện chuyến');
   assert.equal(labels.statusLabel('payment', 'PENDING').label, 'Chờ thanh toán');
-  assert.equal(labels.statusLabel('documentReview', 'PENDING').label, 'Chờ xét duyệt');
-  assert.equal(labels.statusLabel('documentReview', 'REJECTED').label, 'Không được duyệt');
   assert.equal(labels.statusLabel('approval', 'REJECTED').label, 'Cần bổ sung hồ sơ');
-  for (const kind of ['ride', 'availability', 'approval', 'documentReview', 'payment']) {
+  for (const kind of ['ride', 'availability', 'approval', 'payment']) {
     for (const unknown of ['FUTURE_SERVER_CODE', '__proto__', 'constructor']) {
       const status = labels.statusLabel(kind, unknown);
       assert.equal(status.label, 'Chưa xác định trạng thái');
@@ -51,15 +49,12 @@ test('review, availability and payment use their own meanings and never guess an
 });
 
 test('document, vehicle, gearbox, notification and wallet codes have readable labels and safe fallbacks', () => {
-  assert.equal(labels.documentTypeLabel('CCCD_BACK'), 'Mặt sau căn cước công dân');
-  assert.equal(labels.documentTypeLabel('DRIVER_LICENSE'), 'Mặt trước giấy phép lái xe');
   assert.equal(labels.vehicleTypeLabel('MOTORCYCLE'), 'Xe máy');
   assert.equal(labels.transmissionLabel('MANUAL'), 'Số sàn');
-  assert.equal(labels.notificationTypeLabel('DRIVER_DOCUMENT_REVIEWED'), 'Kết quả kiểm tra giấy tờ');
   assert.equal(labels.notificationTypeLabel('RATING_RECEIVED'), 'Đánh giá mới');
   assert.equal(labels.walletTransactionLabel('TRIP_EARNING'), 'Thu nhập chuyến đi');
   assert.equal(labels.walletTransactionLabel('COMMISSION_FEE'), 'Phí dịch vụ');
-  for (const name of ['documentTypeLabel', 'vehicleTypeLabel', 'transmissionLabel', 'notificationTypeLabel', 'walletTransactionLabel']) {
+  for (const name of ['vehicleTypeLabel', 'transmissionLabel', 'notificationTypeLabel', 'walletTransactionLabel']) {
     assert.equal(typeof labels[name](undefined), 'string');
     assert.notEqual(labels[name]('UNKNOWN_CODE'), 'UNKNOWN_CODE');
     assert.equal(typeof labels[name]('__proto__'), 'string');

@@ -2,7 +2,27 @@ import { getAuth } from '@react-native-firebase/auth';
 import { fetch } from 'expo/fetch';
 import { env } from '@/config/env';
 import { authenticatedTransport, VerificationError, verificationOrigin } from './transport';
-import type { Extraction, SlotKey } from './workflow';
+import type {
+  Extraction,
+  QrCardVariant,
+  QrCrossValidationStatus,
+  QrDocumentSide,
+  QrDocumentType,
+  QrExtractionResult,
+  QrSource,
+  QrStatus,
+  SlotKey,
+} from './workflow';
+
+export type {
+  QrCardVariant,
+  QrCrossValidationStatus,
+  QrDocumentSide,
+  QrDocumentType,
+  QrExtractionResult,
+  QrSource,
+  QrStatus,
+};
 
 export type VerificationWarning = {
   code: string;
@@ -64,15 +84,17 @@ export interface Application {
   document?: {
     confirmed?: Record<string, unknown>;
     captures: Partial<Record<SlotKey, { id: string; mime: string }>>;
+    proposals?: Partial<Record<SlotKey, { captureId?: string; result?: Extraction }>>;
     confirmationCurrent?: boolean;
+    qrLiveScan?: QrExtractionResult | null;
+    gplxQrLiveScan?: QrExtractionResult | null;
   };
   history?: VerificationHistoryEntry[];
 }
 
 const backendOrigin = env.apiUrl.replace(/\/api\/?$/, '');
 export const verificationUrl =
-  verificationOrigin(backendOrigin, __DEV__) ??
-  verificationOrigin(env.driverVerificationUrl, __DEV__);
+  verificationOrigin(backendOrigin, __DEV__);
 
 export function verificationClient(expectedUid: string) {
   if (!verificationUrl) throw new VerificationError('SERVER');
@@ -94,6 +116,7 @@ export function verificationClient(expectedUid: string) {
 }
 
 export type ProposalResponse = Application & { proposal: Extraction };
+export type QrScanResponse = Application & { qr: QrExtractionResult };
 export const jsonBody = (value: unknown): RequestInit => ({
   headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value),
 });

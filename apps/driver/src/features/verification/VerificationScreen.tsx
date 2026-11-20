@@ -1,24 +1,52 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, StyleSheet, Switch, View } from 'react-native';
+import { AppState, Linking, StyleSheet, View } from 'react-native';
 import * as Picker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
-import { ActivityIndicator, Appbar, ProgressBar } from 'react-native-paper';
+import { ActivityIndicator, Appbar } from 'react-native-paper';
 import { DriverPage } from '@/components/DriverPage';
-import { DriverPhoto } from '@/components/DriverPhoto';
 import {
-  Button, Card, GroupedList, SettingsListItem, Typography as Text, ThemedTextInput as TextInput, borderRadius, spacing, typography,
+  Button, Card, Typography as Text, spacing,
   useThemeColors, useThemedStyles, type ThemeColors,
 } from '@datxe/ui';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useSessionStore } from '@/lib/store';
-import { jsonBody, verificationClient, verificationUrl, type Application, type ProposalResponse, type VerificationWarning } from './api';
+import { jsonBody, verificationClient, verificationUrl, type Application, type ProposalResponse, type QrScanResponse, type VerificationWarning } from './api';
 import { VerificationError } from './transport';
 import { GuidedCaptureScreen, type CapturedPhoto, type ServerInspectionResult } from './GuidedCaptureScreen';
-import { removeCacheFile } from './captureFiles';
+import QrScannerScreen, { type QrScanSubmissionResult } from './QrScannerScreen';
+import { cacheFileSize, removeCacheFile } from './captureFiles';
+import { DOCUMENT_JPEG_QUALITY, optimizeCapturedImage } from './imageOptimization';
 import {
-  autofillChoices, collectChoices, compareNames, confirmedDetails, fields, sameExtractionGeneration, slots, warningReviewForRevision,
-  type Choice, type Extraction, type FieldKey, type Fields, type SlotKey,
+  EXTRACT_TIMEOUT_MS,
+  FACE_QUALITY_TIMEOUT_MS,
+  METADATA_TIMEOUT_MS,
+  QR_SCAN_TIMEOUT_MS,
+  SUBMIT_TIMEOUT_MS,
+  TASK_STATUS_COMPLETED,
+  TASK_STATUS_EXTRACTING,
+  TASK_STATUS_UPLOADING,
+  UPLOAD_TIMEOUT_MS,
+  hydratableObservationsFromApplication,
+  resolveQrAttachmentBinding,
+} from './reliabilityHelpers';
+import {
+  appPath, captureInstructions, editable, faceSlots, fieldAllowed,
+  isIdentityLockedField, isSmall, scoped, slotAllowed,
+  visibleObservationWarnings,
+  type FlowStage, type PhotoAsset, type SlotMap,
+} from './verificationLabels';
+import { VerificationStepHeader } from './components/VerificationStepHeader';
+import { VerificationFooter } from './components/VerificationFooter';
+import { EditingStatusBanner, PendingReviewView, VerifiedBaselineView } from './components/VerificationStatusView';
+import { VerificationPrepareStep } from './components/VerificationPrepareStep';
+import { VerificationCaptureStep } from './components/VerificationCaptureStep';
+import { VerificationExtractionStep } from './components/VerificationExtractionStep';
+import { VerificationFieldsStep } from './components/VerificationFieldsStep';
+import { VerificationSummaryStep } from './components/VerificationSummaryStep';
+import {
+  autofillChoices, collectChoices, compareNames, confirmedDetails, fields, qrScanDecision,
+  sameExtractionGeneration, slots, warningReviewForRevision,
+  type Choice, type Extraction, type FieldKey, type Fields, type QrDocumentSide, type QrDocumentType, type QrExtractionResult, type SlotKey,
 } from './workflow';
 
 type DraftFaceQuality = {
@@ -26,97 +54,8 @@ type DraftFaceQuality = {
   status: 'QUALITY_CHECKED' | 'NOT_EVALUATED';
   verificationWarnings: VerificationWarning[];
 };
-type FlowStage = 'PREPARE' | 'CAPTURE' | 'OCR' | 'CONFIRM_FIELDS' | 'SUMMARY';
-const faceSlots = ['cccd_front', 'gplx_front', 'selfie'] as const;
-const cccdFieldKeys: readonly FieldKey[] = ['cccd_name', 'cccd_id', 'cccd_dob', 'cccd_gender', 'cccd_expiry_date'];
-const gplxFieldKeys: readonly FieldKey[] = ['gplx_name', 'gplx_number', 'gplx_dob', 'gplx_classes', 'expiry_date'];
-const optionalFields = new Set<FieldKey>(['cccd_gender', 'cccd_expiry_date']);
 
-type Photo = Picker.ImagePickerAsset & { mimeType: string };
-type SlotMap<T> = Partial<Record<SlotKey, T>>;
 type Pending = { id: string; revision: number; key: string; faceConsentVersion?: string; warningAcknowledgementRevision?: number };
-
-const statusLabels: Record<string, string> = {
-  DRAFT: 'Bản nháp',
-  SUBMITTED: 'Đã nộp · Chờ xét duyệt',
-  UNDER_REVIEW: 'Đang xét duyệt',
-  NEEDS_MORE_INFO: 'Cần bổ sung hồ sơ',
-  APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Không được duyệt',
-  REVOKED: 'Đã thu hồi xác minh',
-};
-const stageLabels: Record<FlowStage, string> = {
-  PREPARE: 'Bước 1/5 · Chuẩn bị giấy tờ',
-  CAPTURE: 'Bước 2/5 · Chụp ảnh giấy tờ',
-  OCR: 'Bước 3/5 · Đọc thông tin tự động',
-  CONFIRM_FIELDS: 'Bước 4/5 · Xác nhận thông tin',
-  SUMMARY: 'Bước 5/5 · Kiểm tra & nộp hồ sơ',
-};
-const captureInstructions: Record<SlotKey, string> = {
-  cccd_front: 'Xoay dọc mặt trước CCCD vừa khít khung, đủ 4 góc, chữ và ảnh rõ nét, tránh lóa sáng.',
-  cccd_back: 'Xoay dọc mặt sau CCCD ngay ngắn trong khung, thấy rõ mã chip, dấu mộc và dòng MRZ.',
-  gplx_front: 'Xoay dọc mặt trước GPLX vừa khít khung, thấy rõ số bằng, họ tên, hạng và thời hạn.',
-  gplx_back: 'Có thể xoay dọc chụp mặt sau GPLX để đối chiếu hạng xe, hoặc bấm Tiếp tục để bỏ qua.',
-  selfie: 'Giữ máy ngang tầm mắt, nhìn thẳng, đủ sáng, không đeo kính râm hay khẩu trang.',
-};
-const editable = (app: Application | null) =>
-  !app || app.status === 'DRAFT' || app.status === 'NEEDS_MORE_INFO';
-const appPath = (id: string) => 'applications/' + encodeURIComponent(id);
-const scoped = (app: Application | null) => (app?.status === 'NEEDS_MORE_INFO' ? app.requestedChanges : null);
-const slotAllowed = (app: Application | null, key: SlotKey) =>
-  scoped(app)?.captures.includes(key) ?? true;
-const fieldAllowed = (app: Application | null, key: FieldKey) =>
-  scoped(app)?.fields.includes(key) ?? true;
-const isSmall = (photo: Photo) => Math.min(photo.width, photo.height) < 480;
-const warningLabels: Record<string, string> = {
-  ORIENTATION_UNCERTAIN: 'Chưa xác định chắc chiều thẻ.',
-  RAW_FRAME_FALLBACK: 'Không nắn được thẻ. Hãy kiểm tra lại ảnh.',
-  DOCUMENT_SLOT_MISMATCH: 'Ảnh có thể sai loại hoặc sai mặt.',
-  LOW_RESOLUTION: 'Chữ có thể quá nhỏ.',
-  LOW_KEYPOINT_CONFIDENCE: 'Hãy kiểm tra đủ các góc thẻ.',
-  OCR_UNAVAILABLE: 'Không thể đọc chữ ở lượt này.',
-  DETECTOR_NO_BOX: 'Không tìm thấy vùng thẻ trong ảnh.',
-  DETECTOR_CARD_NOT_FOUND: 'Không xác định được vùng thẻ.',
-  KEYPOINT_INVALID_GEOMETRY: 'Đã thấy vùng thẻ nhưng góc hoặc hình học chưa đạt.',
-  KEYPOINT_CONFIDENCE_REJECTED: 'Chưa xác định đủ tin cậy các góc thẻ.',
-  CARD_RECTIFICATION_REJECTED: 'Vùng thẻ không đủ điều kiện nắn ảnh.',
-  CARD_WARP_FAILED: 'Không thể nắn ảnh thẻ.',
-  CARD_GEOMETRY_REJECTED: 'Thẻ có thể quá nhỏ hoặc nằm sát mép.',
-  CARD_QUALITY_REJECTED: 'Ảnh thẻ không đạt kiểm tra chất lượng.',
-};
-
-const historyActionLabels: Record<string, string> = {
-  CREATE: 'Tạo hồ sơ',
-  LEGACY_BACKFILL: 'Đồng bộ hồ sơ đã xác minh',
-  START_REVERIFICATION: 'Bắt đầu cập nhật giấy tờ',
-  CANCEL_REVERIFICATION: 'Hủy cập nhật giấy tờ',
-  ADD_CAPTURE: 'Thêm ảnh giấy tờ',
-  REPLACE_CAPTURE: 'Thay ảnh giấy tờ',
-  EXTRACT: 'Đọc thông tin tự động',
-  CONFIRM_FIELDS: 'Xác nhận thông tin',
-  SUBMIT: 'Nộp hồ sơ',
-  RESUBMIT: 'Nộp bổ sung',
-  IDENTITY_HOLD_APPLIED: 'Tạm giữ để kiểm tra danh tính',
-  UNDER_REVIEW: 'Bắt đầu xét duyệt',
-  APPROVED: 'Phê duyệt hồ sơ',
-  REJECTED: 'Từ chối bản nộp',
-  NEEDS_MORE_INFO: 'Yêu cầu bổ sung',
-  REVOKED: 'Thu hồi xác minh',
-  ADMIN_IDENTITY_OVERRIDE: 'Điều chỉnh ngoại lệ danh tính',
-};
-const restrictionLabels: Record<string, string> = {
-  IDENTITY_UNDER_REVIEW: 'Hồ sơ có thay đổi cần đối chiếu danh tính. Quyền nhận chuyến tạm khóa cho đến khi admin kiểm tra xong.',
-  CCCD_EXPIRED: 'CCCD đã hết hạn. Hãy cập nhật CCCD mới để tiếp tục nhận chuyến.',
-  GPLX_EXPIRED: 'GPLX đã hết hạn. Hãy cập nhật GPLX mới để mở lại quyền nhận chuyến.',
-  VERIFICATION_NOT_APPROVED: 'Hồ sơ đang chờ xét duyệt.',
-};
-
-function todayVnIso() {
-  const now = new Date(Date.now() + 7 * 60 * 60 * 1000);
-  return now.toISOString().slice(0, 10);
-}
-
-const removeCache = removeCacheFile;
 
 function operationKey() {
   return globalThis.crypto?.randomUUID?.() ?? (
@@ -124,6 +63,7 @@ function operationKey() {
   );
 }
 
+/** Root Driver eKYC screen coordinating guided capture, QR extraction, review, and re-verification. */
 export default function VerificationScreen() {
   const uid = useSessionStore(state => state.user?.firebaseUid);
   return uid && verificationUrl ? <Workflow key={uid} uid={uid} /> : (
@@ -140,8 +80,8 @@ function Workflow({ uid }: { uid: string }) {
   const styles = useThemedStyles(makeStyles);
   const [app, setApp] = useState<Application | null>(null);
   const current = useRef<Application | null>(null);
-  const [photos, setPhotos] = useState<SlotMap<Photo>>({});
-  const livePhotos = useRef<SlotMap<Photo>>({});
+  const [photos, setPhotos] = useState<SlotMap<PhotoAsset>>({});
+  const livePhotos = useRef<SlotMap<PhotoAsset>>({});
   const uploaded = useRef<SlotMap<string>>({});
   const [uploadedPhotos, setUploadedPhotos] = useState<SlotMap<string>>({});
   const trackUploads = useCallback((next: SlotMap<string>) => {
@@ -152,9 +92,31 @@ function Workflow({ uid }: { uid: string }) {
   const [previews, setPreviews] = useState<SlotMap<{ uri: string; id: string }>>({});
   const livePreviews = useRef<typeof previews>({});
   const [observations, setObservations] = useState<SlotMap<Extraction>>({});
+  const [liveQr, setLiveQr] = useState<QrExtractionResult>();
+  const liveQrRef = useRef<QrExtractionResult | undefined>(undefined);
+  const setLiveQrState = useCallback((next?: QrExtractionResult) => {
+    liveQrRef.current = next;
+    setLiveQr(next);
+  }, []);
+  const [gplxLiveQr, setGplxLiveQr] = useState<QrExtractionResult>();
+  const gplxLiveQrRef = useRef<QrExtractionResult | undefined>(undefined);
+  const setGplxLiveQrState = useCallback((next?: QrExtractionResult) => {
+    gplxLiveQrRef.current = next;
+    setGplxLiveQr(next);
+  }, []);
+  const [extractFailed, setExtractFailed] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrScannerDocType, setQrScannerDocType] = useState<QrDocumentType>('CCCD');
+  const [qrReturnTarget, setQrReturnTarget] = useState<'CAPTURE_NEXT' | 'OCR' | 'CONFIRM_FIELDS'>('CONFIRM_FIELDS');
+  const [backQrPromptDoc, setBackQrPromptDoc] = useState<QrDocumentType | null>(null);
+  const [qrSkipped, setQrSkipped] = useState(false);
+  const [gplxQrSkipped, setGplxQrSkipped] = useState(false);
+  const [cccdRevalidationNeeded, setCccdRevalidationNeeded] = useState(false);
+  const [gplxRevalidationNeeded, setGplxRevalidationNeeded] = useState(false);
   const [values, setValues] = useState<Fields>({});
   const [noExpiry, setNoExpiry] = useState(false);
   const [origins, setOrigins] = useState<Partial<Record<FieldKey, Choice>>>({});
+  const [manualFields, setManualFields] = useState<Partial<Record<FieldKey, boolean>>>({});
   const currentValues = useRef({ values: {} as Fields, noExpiry: false, origins: {} as typeof origins });
   const touched = useRef(new Set<FieldKey>());
   const [consent, setConsent] = useState(false);
@@ -182,6 +144,7 @@ function Workflow({ uid }: { uid: string }) {
   const alive = useRef(false);
   const operation = useRef<AbortController | null>(null);
   const ocr = useRef<AbortController | null>(null);
+  const qrScanRequest = useRef<AbortController | null>(null);
   const pickerActive = useRef(false);
   const generation = useRef(0);
   const pendingRef = useRef<Pending | null>(null);
@@ -190,7 +153,9 @@ function Workflow({ uid }: { uid: string }) {
 
   const slot = slots[step];
   const photo = slot && photos[slot[0]];
-  const choices = collectChoices(observations);
+  const choices = collectChoices(observations, liveQr, gplxLiveQr);
+  const qrDecision = qrScanDecision(observations, { documentType: 'CCCD', liveQr, extractFailed });
+  const gplxQrDecision = qrScanDecision(observations, { documentType: 'GPLX', liveQr: gplxLiveQr, extractFailed });
   const targets = scoped(app);
   const targetLabels = [
     ...slots.filter(([key]) => targets?.captures.includes(key)).map(([, label]) => label),
@@ -210,8 +175,6 @@ function Workflow({ uid }: { uid: string }) {
   const currentWarningReview = warningReviewForRevision(app?.revision, warningReview);
   const canEdit = editable(app) && !pending;
   const locked = Boolean(busy) || picking || Boolean(pending);
-
-  const fieldLabelMap = useMemo(() => Object.fromEntries(fields) as Record<FieldKey, string>, []);
 
   const updateForm = useCallback((form: typeof currentValues.current) => {
     currentValues.current = form;
@@ -234,31 +197,74 @@ function Workflow({ uid }: { uid: string }) {
   const cancelReading = useCallback((abort = true) => {
     setDraftFace(undefined);
     generation.current++;
-    if (abort) ocr.current?.abort();
+    if (abort) {
+      ocr.current?.abort();
+      qrScanRequest.current?.abort();
+      qrScanRequest.current = null;
+    }
     setObservations({});
+    setLiveQrState(undefined);
+    setGplxLiveQrState(undefined);
+    setExtractFailed(false);
+    setQrSkipped(false);
+    setGplxQrSkipped(false);
+    setBackQrPromptDoc(null);
+    setQrScannerOpen(false);
     serverExtracted.current = {};
     inspectedCapture.current = {};
     setReadingNote('');
     const form = currentValues.current;
-    const next = { ...form, origins: {}, values: { ...form.values } };
+    const next = { ...form, origins: { ...form.origins }, values: { ...form.values } };
     for (const [key] of fields) {
+      if (isIdentityLockedField(key, current.current)) continue;
+      const approved = current.current?.approvedDocument?.confirmed?.[key];
+      if (approved !== undefined && !fieldAllowed(current.current, key)) {
+        next.values[key] = Array.isArray(approved) ? approved.join(', ') : typeof approved === 'string' ? approved : '';
+        if (key === 'expiry_date') next.noExpiry = current.current?.approvedDocument?.confirmed?.no_expiry === true;
+        delete next.origins[key];
+        continue;
+      }
       if (form.origins[key] && !touched.current.has(key)) {
         delete next.values[key];
         if (key === 'expiry_date') next.noExpiry = false;
       }
+      if (form.origins[key]) delete next.origins[key];
     }
     updateForm(next);
-  }, [updateForm]);
+  }, [setGplxLiveQrState, setLiveQrState, updateForm]);
 
   const reload = useCallback(async (signal: AbortSignal) => {
-    const rows = await api.json<Application[]>('applications', { signal });
+    const rows = await api.json<Application[]>('applications', { signal, timeoutMs: METADATA_TIMEOUT_MS });
     if (!rows[0]) return null;
-    const detail = await api.json<Application>(appPath(rows[0].id), { signal });
+    const detail = await api.json<Application>(appPath(rows[0].id), { signal, timeoutMs: METADATA_TIMEOUT_MS });
     if (!alive.current || signal.aborted) return null;
-    if (current.current && detail.revision !== current.current.revision) {
+    const previous = current.current;
+    if (previous && detail.revision !== previous.revision) {
       cancelReading(ocr.current?.signal !== signal);
       trackUploads({});
       setConfirm(false);
+    }
+    const restoredProposals = hydratableObservationsFromApplication(detail, livePhotos.current);
+    if (Object.keys(restoredProposals).length > 0) {
+      setObservations(prev => ({ ...restoredProposals, ...prev }));
+    }
+    if ((!previous || detail.revision !== previous.revision)
+      && !livePhotos.current.cccd_front && !livePhotos.current.cccd_back) {
+      const savedLiveQr = detail.document?.qrLiveScan;
+      setLiveQrState(
+        savedLiveQr && (savedLiveQr.status === 'DECODED_VALID' || savedLiveQr.status === 'CONFLICT')
+          ? savedLiveQr
+          : undefined,
+      );
+    }
+    if ((!previous || detail.revision !== previous.revision)
+      && !livePhotos.current.gplx_front && !livePhotos.current.gplx_back) {
+      const savedGplxQr = detail.document?.gplxQrLiveScan;
+      setGplxLiveQrState(
+        savedGplxQr && (savedGplxQr.status === 'DECODED_VALID' || savedGplxQr.status === 'CONFLICT')
+          ? savedGplxQr
+          : undefined,
+      );
     }
     const confirmed = detail.document?.confirmed;
     if (confirmed) {
@@ -273,7 +279,7 @@ function Workflow({ uid }: { uid: string }) {
       updateForm(next);
     }
     return accept(detail);
-  }, [accept, api, cancelReading, setConfirm, trackUploads, updateForm]);
+  }, [accept, api, cancelReading, setConfirm, setGplxLiveQrState, setLiveQrState, trackUploads, updateForm]);
 
   const run = useCallback(async (label: string, action: (signal: AbortSignal) => Promise<unknown>) => {
     if (operation.current) return;
@@ -281,8 +287,9 @@ function Workflow({ uid }: { uid: string }) {
     operation.current = controller;
     setBusy(label);
     setMessage('');
-    try { await action(controller.signal); }
-    catch (error) {
+    try {
+      await action(controller.signal);
+    } catch (error) {
       if (alive.current && !controller.signal.aborted) {
         setMessage(error instanceof Error ? error.message : 'Thao tác chưa hoàn tất.');
       }
@@ -313,10 +320,12 @@ function Workflow({ uid }: { uid: string }) {
         backgrounded = true;
         operation.current?.abort();
         ocr.current?.abort();
+        qrScanRequest.current?.abort();
+        qrScanRequest.current = null;
         generation.current++;
       } else if (state === 'active' && backgrounded) {
         backgrounded = false;
-        if (!pickerActive.current && !operation.current && !ocr.current) {
+        if (!pickerActive.current && !operation.current && !ocr.current && !qrScanRequest.current) {
           void run('Đang kiểm tra trạng thái…', reload);
         } else if (!pickerActive.current) {
           setMessage('Làm mới trạng thái để kiểm tra tác vụ trước khi tiếp tục.');
@@ -328,16 +337,18 @@ function Workflow({ uid }: { uid: string }) {
       operation.current?.abort();
       operation.current = null;
       ocr.current?.abort();
+      qrScanRequest.current?.abort();
+      qrScanRequest.current = null;
       listener.remove();
       notice.abort();
-      Object.values(ownedPhotos.current).forEach(p => removeCache(p.uri));
-      Object.values(ownedPreviews.current).forEach(p => removeCache(p.uri));
+      Object.values(ownedPhotos.current).forEach(p => removeCacheFile(p.uri));
+      Object.values(ownedPreviews.current).forEach(p => removeCacheFile(p.uri));
     };
   }, [api, reload, run]);
 
-  // Validates one photo (from the guided camera or the gallery) and stores it as the slot's pending upload.
+  /** Validates one photo (from guided camera or gallery) and clears stale extractions for its document. */
   function acceptAsset(key: SlotKey, asset: Picker.ImagePickerAsset) {
-    if (!alive.current) { removeCache(asset.uri); return; }
+    if (!alive.current) { removeCacheFile(asset.uri); return; }
     const file = new File(asset.uri);
     const size = asset.fileSize ?? file.size;
     const mime = asset.mimeType || file.type;
@@ -345,11 +356,11 @@ function Workflow({ uid }: { uid: string }) {
       || !Number.isFinite(asset.height) || Math.min(asset.width, asset.height) < 2
       || Math.max(asset.width, asset.height) > 16384 || asset.width * asset.height > 40_000_000
       || !/^image\/(jpeg|png|webp)$/.test(mime)) {
-      removeCache(asset.uri);
+      removeCacheFile(asset.uri);
       throw new Error('Chọn hoặc chụp lại ảnh JPEG, PNG hoặc WebP hợp lệ, tối đa 8 MB và 40 MP.');
     }
-    if (livePhotos.current[key]?.uri !== asset.uri) removeCache(livePhotos.current[key]?.uri ?? '');
-    removeCache(livePreviews.current[key]?.uri ?? '');
+    if (livePhotos.current[key]?.uri !== asset.uri) removeCacheFile(livePhotos.current[key]?.uri ?? '');
+    removeCacheFile(livePreviews.current[key]?.uri ?? '');
     delete livePreviews.current[key];
     setPreviews({ ...livePreviews.current });
     trackUploads({ ...uploaded.current, [key]: undefined });
@@ -357,6 +368,25 @@ function Workflow({ uid }: { uid: string }) {
     setPhotos(livePhotos.current);
     setAck(old => ({ ...old, [key]: false }));
     setConfirm(false);
+    if (key === 'cccd_front' || key === 'cccd_back') {
+      setCccdRevalidationNeeded(true);
+      if (current.current?.document) {
+        current.current = {
+          ...current.current,
+          document: { ...current.current.document, qrLiveScan: null },
+        };
+        setApp(current.current);
+      }
+    } else if (key === 'gplx_front' || key === 'gplx_back') {
+      setGplxRevalidationNeeded(true);
+      if (current.current?.document) {
+        current.current = {
+          ...current.current,
+          document: { ...current.current.document, gplxQrLiveScan: null },
+        };
+        setApp(current.current);
+      }
+    }
     cancelReading();
   }
 
@@ -367,18 +397,18 @@ function Workflow({ uid }: { uid: string }) {
     setGuidedSlot(key);
   }
 
-  function onGuidedCaptured(key: SlotKey, photo: CapturedPhoto) {
+  function onGuidedCaptured(key: SlotKey, captured: CapturedPhoto) {
     setGuidedSlot(null);
     try {
-      const inspected = inspectedCapture.current[key]?.uri === photo.uri ? inspectedCapture.current[key] : undefined;
+      const inspected = inspectedCapture.current[key]?.uri === captured.uri ? inspectedCapture.current[key] : undefined;
       acceptAsset(key, {
-        uri: photo.uri, width: photo.width, height: photo.height,
-        fileSize: photo.fileSize ?? undefined, mimeType: photo.mimeType,
+        uri: captured.uri, width: captured.width, height: captured.height,
+        fileSize: captured.fileSize ?? undefined, mimeType: captured.mimeType,
       });
       if (inspected) {
-        trackUploads({ ...uploaded.current, [key]: photo.uri });
+        trackUploads({ ...uploaded.current, [key]: captured.uri });
         if (inspected.proposal) {
-          serverExtracted.current[key] = { uri: photo.uri, proposal: inspected.proposal };
+          serverExtracted.current[key] = { uri: captured.uri, proposal: inspected.proposal };
         }
         inspectedCapture.current = { ...inspectedCapture.current, [key]: undefined };
       }
@@ -389,23 +419,34 @@ function Workflow({ uid }: { uid: string }) {
 
   async function inspectCapturedWithServer(
     key: SlotKey,
-    photo: CapturedPhoto,
+    captured: CapturedPhoto,
     signal: AbortSignal,
   ): Promise<ServerInspectionResult> {
     let base = await loadOrCreate(signal);
     if (!slotAllowed(base, key)) {
       return { warnings: [], verified: false, note: 'Ảnh này không nằm trong mục cần bổ sung.' };
     }
-    if (inspectedCapture.current[key]?.uri !== photo.uri) {
+    if (inspectedCapture.current[key]?.uri !== captured.uri) {
       const uploadedApp = await api.json<Application>(appPath(base.id) + '/captures/' + key + '?revision=' + base.revision, {
-        method: 'PUT', body: new File(photo.uri), headers: { 'Content-Type': photo.mimeType }, signal,
+        method: 'PUT', body: new File(captured.uri), headers: { 'Content-Type': captured.mimeType }, signal, timeoutMs: UPLOAD_TIMEOUT_MS,
       });
       ensureActive(signal);
       base = accept({
         ...uploadedApp,
-        document: { ...base.document, captures: { ...base.document?.captures, [key]: { id: '', mime: photo.mimeType } } },
+        document: {
+          ...base.document,
+          captures: {
+            ...base.document?.captures,
+            [key]: uploadedApp.document?.captures?.[key] ?? { id: '', mime: captured.mimeType },
+          },
+          proposals: uploadedApp.document?.proposals ?? (
+            base.document?.proposals ? { ...base.document.proposals, [key]: undefined } : undefined
+          ),
+          qrLiveScan: (key === 'cccd_front' || key === 'cccd_back') ? null : base.document?.qrLiveScan,
+          gplxQrLiveScan: (key === 'gplx_front' || key === 'gplx_back') ? null : base.document?.gplxQrLiveScan,
+        },
       });
-      inspectedCapture.current = { ...inspectedCapture.current, [key]: { uri: photo.uri } };
+      inspectedCapture.current = { ...inspectedCapture.current, [key]: { uri: captured.uri } };
     }
 
     const collectSlotWarnings = (list?: VerificationWarning[]) =>
@@ -430,32 +471,30 @@ function Workflow({ uid }: { uid: string }) {
 
     try {
       const response = await api.json<ProposalResponse>(appPath(base.id) + '/extract/' + key, {
-        method: 'POST', ...jsonBody({ revision: base.revision }), signal, timeoutMs: 39000,
+        method: 'POST', ...jsonBody({ revision: base.revision }), signal, timeoutMs: EXTRACT_TIMEOUT_MS,
       });
       ensureActive(signal);
       accept(response);
-      inspectedCapture.current = { ...inspectedCapture.current, [key]: { uri: photo.uri, proposal: response.proposal } };
+      inspectedCapture.current = { ...inspectedCapture.current, [key]: { uri: captured.uri, proposal: response.proposal } };
       const combined = new Map<string, { code: string; message: string; severe?: boolean }>();
       for (const item of collectSlotWarnings(response.verificationWarnings)) combined.set(item.code, item);
-      for (const rawCode of response.proposal.warnings) {
-        if (!combined.has(rawCode) && warningLabels[rawCode]) {
-          combined.set(rawCode, { code: rawCode, message: warningLabels[rawCode] });
-        }
+      for (const msg of visibleObservationWarnings(response.proposal.warnings)) {
+        if (!combined.has(msg)) combined.set(msg, { code: msg, message: msg });
       }
       const list = [...combined.values()];
       return {
         warnings: list,
         verified: true,
         note: list.length
-          ? 'Máy chủ/AI phát hiện vấn đề chất lượng trên ảnh.'
-          : 'Đã đối chiếu qua máy chủ/AI (độ mờ, lóa, khung thẻ).',
+          ? 'Máy chủ phát hiện vấn đề chất lượng trên ảnh.'
+          : 'Ảnh đạt kiểm tra độ rõ và góc thẻ từ máy chủ.',
       };
     } catch (error) {
       if (error instanceof VerificationError && ['ENGINE_TIMEOUT', 'ENGINE_BUSY'].includes(error.code)) {
         return {
           warnings: collectSlotWarnings(base.verificationWarnings),
           verified: false,
-          note: 'Engine đọc ảnh đang bận hoặc quá thời gian. Bạn vẫn có thể dùng ảnh để nhập tay ở bước sau.',
+          note: 'Máy chủ đọc ảnh đang bận. Bạn vẫn có thể dùng ảnh để nhập tay ở bước sau.',
         };
       }
       throw error;
@@ -469,9 +508,30 @@ function Workflow({ uid }: { uid: string }) {
     setSettingsAction(false);
     setMessage('');
     try {
-      const result = await Picker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, exif: false });
+      const result = await Picker.launchImageLibraryAsync({
+        mediaTypes: ['images'], quality: DOCUMENT_JPEG_QUALITY, exif: false,
+      });
       if (result.canceled || !result.assets[0]) return;
-      acceptAsset(key, result.assets[0]);
+      const picked = result.assets[0];
+      const normalized = await optimizeCapturedImage(
+        {
+          uri: picked.uri,
+          width: picked.width,
+          height: picked.height,
+          mimeType: picked.mimeType ?? undefined,
+          fileSize: picked.fileSize ?? cacheFileSize(picked.uri),
+        },
+        { kind: 'document', statSize: cacheFileSize, cleanup: removeCacheFile },
+      );
+      if (!alive.current) { removeCacheFile(normalized.uri); return; }
+      acceptAsset(key, {
+        ...picked,
+        uri: normalized.uri,
+        width: normalized.width,
+        height: normalized.height,
+        mimeType: normalized.mimeType,
+        fileSize: normalized.fileSize ?? undefined,
+      });
     } catch (error) {
       if (alive.current) setMessage(error instanceof Error ? error.message : 'Không mở được ảnh.');
     } finally {
@@ -487,7 +547,7 @@ function Workflow({ uid }: { uid: string }) {
   async function loadOrCreate(signal: AbortSignal) {
     const found = await reload(signal);
     ensureActive(signal);
-    const result = found ?? await api.json<Application>('applications', { method: 'POST', signal });
+    const result = found ?? await api.json<Application>('applications', { method: 'POST', signal, timeoutMs: METADATA_TIMEOUT_MS });
     ensureActive(signal);
     if (!editable(result)) throw new VerificationError('INVALID_TRANSITION');
     return accept(result);
@@ -519,11 +579,12 @@ function Workflow({ uid }: { uid: string }) {
     ensureActive(signal);
     cancelReading(true);
     touched.current.clear();
-    Object.values(livePhotos.current).forEach(p => removeCache(p.uri));
+    setManualFields({});
+    Object.values(livePhotos.current).forEach(p => removeCacheFile(p.uri));
     livePhotos.current = {};
     setPhotos({});
     trackUploads({});
-    Object.values(livePreviews.current).forEach(p => removeCache(p.uri));
+    Object.values(livePreviews.current).forEach(p => removeCacheFile(p.uri));
     livePreviews.current = {};
     setPreviews({});
     setAck({});
@@ -547,11 +608,12 @@ function Workflow({ uid }: { uid: string }) {
     ensureActive(signal);
     cancelReading(true);
     touched.current.clear();
-    Object.values(livePhotos.current).forEach(p => removeCache(p.uri));
+    setManualFields({});
+    Object.values(livePhotos.current).forEach(p => removeCacheFile(p.uri));
     livePhotos.current = {};
     setPhotos({});
     trackUploads({});
-    Object.values(livePreviews.current).forEach(p => removeCache(p.uri));
+    Object.values(livePreviews.current).forEach(p => removeCacheFile(p.uri));
     livePreviews.current = {};
     setPreviews({});
     setConfirm(false);
@@ -561,27 +623,30 @@ function Workflow({ uid }: { uid: string }) {
     setMessage('Đã hủy cập nhật và khôi phục trạng thái hồ sơ đã xác minh.');
   }
 
-  function isIdentityLockedField(key: FieldKey, targetApp: Application | null) {
-    if (!targetApp?.identityLocked) return false;
-    if (key === 'cccd_id' && targetApp.lockedIdentity?.maskedCccdId) return true;
-    if (key === 'cccd_name' && targetApp.lockedIdentity?.fullName) return true;
-    if (key === 'cccd_dob' && targetApp.lockedIdentity?.dob) return true;
-    return false;
-  }
-
   async function upload(key: SlotKey, base: Application, signal: AbortSignal) {
     const selectedPhoto = livePhotos.current[key];
     if (!selectedPhoto || !slotAllowed(base, key) || uploaded.current[key] === selectedPhoto.uri) return base;
     if (isSmall(selectedPhoto) && !ack[key]) throw new Error('Hãy xem lại và xác nhận ảnh nhỏ trước khi tải lên.');
     const result = await api.json<Application>(appPath(base.id) + '/captures/' + key + '?revision=' + base.revision, {
-      method: 'PUT', body: new File(selectedPhoto.uri), headers: { 'Content-Type': selectedPhoto.mimeType }, signal,
+      method: 'PUT', body: new File(selectedPhoto.uri), headers: { 'Content-Type': selectedPhoto.mimeType }, signal, timeoutMs: UPLOAD_TIMEOUT_MS,
     });
     ensureActive(signal);
     if (livePhotos.current[key]?.uri !== selectedPhoto.uri) throw new VerificationError('CANCELLED');
     trackUploads({ ...uploaded.current, [key]: selectedPhoto.uri });
     return accept({
       ...result,
-      document: { ...base.document, captures: { ...base.document?.captures, [key]: { id: '', mime: selectedPhoto.mimeType } } },
+      document: {
+        ...base.document,
+        captures: {
+          ...base.document?.captures,
+          [key]: result.document?.captures?.[key] ?? { id: '', mime: selectedPhoto.mimeType },
+        },
+        proposals: result.document?.proposals ?? (
+          base.document?.proposals ? { ...base.document.proposals, [key]: undefined } : undefined
+        ),
+        qrLiveScan: (key === 'cccd_front' || key === 'cccd_back') ? null : base.document?.qrLiveScan,
+        gplxQrLiveScan: (key === 'gplx_front' || key === 'gplx_back') ? null : base.document?.gplxQrLiveScan,
+      },
     });
   }
 
@@ -592,7 +657,7 @@ function Workflow({ uid }: { uid: string }) {
     for (const key of faceSlots) base = await upload(key, base, signal);
     const result = await api.json<DraftFaceQuality>(appPath(base.id) + '/face-quality', {
       method: 'POST', ...jsonBody({ revision: base.revision, faceConsentVersion: faceNotice }),
-      signal, timeoutMs: 35_000,
+      signal, timeoutMs: FACE_QUALITY_TIMEOUT_MS,
     });
     ensureActive(signal);
     if (current.current?.id !== base.id || current.current.revision !== result.revision) return;
@@ -602,7 +667,15 @@ function Workflow({ uid }: { uid: string }) {
   function applyChoice(key: FieldKey, choice: Choice, user: boolean) {
     const form = currentValues.current;
     if (!fieldAllowed(current.current, key) || isIdentityLockedField(key, current.current)) return;
-    if (user) touched.current.add(key);
+    if (user) {
+      touched.current.add(key);
+      setManualFields(prev => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
     updateForm({
       values: { ...form.values, [key]: choice.value },
       noExpiry: key === 'expiry_date' ? choice.noExpiry === true : form.noExpiry,
@@ -615,76 +688,332 @@ function Workflow({ uid }: { uid: string }) {
     if (!fieldAllowed(current.current, key) || isIdentityLockedField(key, current.current)) return;
     const form = currentValues.current;
     touched.current.add(key);
+    setManualFields(prev => (prev[key] ? prev : { ...prev, [key]: true }));
     updateForm({
-      values: { ...form.values, [key]: value }, noExpiry: unlimited ?? form.noExpiry,
+      values: { ...form.values, [key]: value },
+      noExpiry: unlimited ?? form.noExpiry,
       origins: { ...form.origins, [key]: undefined },
     });
     setConfirm(false);
   }
 
-  async function readAutomatically() {
-    if (ocr.current || operation.current || !consent || !canEdit) return;
+  async function runSlotExtraction(targetSlots: readonly SlotKey[], opts?: { autoAdvance?: boolean }) {
+    if (ocr.current || operation.current || qrScanRequest.current || !consent || !canEdit) return null;
     const controller = new AbortController();
     const signal = controller.signal;
     ocr.current = controller;
     setReading(true);
-    setReadingNote('Đang tải ảnh và đọc thông tin từ giấy tờ…');
-    const results: SlotMap<Extraction> = {};
+    setExtractFailed(false);
+    setQrSkipped(false);
+    setGplxQrSkipped(false);
+    setBackQrPromptDoc(null);
+    setReadingNote(TASK_STATUS_UPLOADING);
+    const results: SlotMap<Extraction> = { ...observations };
     let failures = 0;
     let version: number | undefined;
     try {
       let base = await loadOrCreate(signal);
       version = generation.current;
-      for (const [key] of slots) {
+      for (const key of targetSlots) {
         if (key === 'selfie' || !slotAllowed(base, key) || (!livePhotos.current[key] && !base.document?.captures[key])) continue;
         const cached = serverExtracted.current[key];
         if (cached && livePhotos.current[key]?.uri === cached.uri) {
           results[key] = cached.proposal;
           continue;
         }
+        const needsUpload = Boolean(livePhotos.current[key] && uploaded.current[key] !== livePhotos.current[key]?.uri);
+        if (needsUpload) {
+          setReadingNote(TASK_STATUS_UPLOADING);
+        }
         base = await upload(key, base, signal);
+        const savedProposal = hydratableObservationsFromApplication(
+          base,
+          needsUpload ? { ...livePhotos.current, [key]: undefined } : livePhotos.current,
+        )[key];
+        if (savedProposal) {
+          results[key] = savedProposal;
+          if (livePhotos.current[key]?.uri) {
+            serverExtracted.current[key] = { uri: livePhotos.current[key]!.uri, proposal: savedProposal };
+          }
+          continue;
+        }
         const expected = { generation: version, id: base.id, revision: base.revision };
         try {
+          setReadingNote(TASK_STATUS_EXTRACTING);
           const response = await api.json<ProposalResponse>(appPath(base.id) + '/extract/' + key, {
-            method: 'POST', ...jsonBody({ revision: base.revision }), signal, timeoutMs: 39000,
+            method: 'POST', ...jsonBody({ revision: base.revision }), signal, timeoutMs: EXTRACT_TIMEOUT_MS,
           });
           ensureActive(signal);
-          if (!current.current || !sameExtractionGeneration(expected, { ...current.current, generation: generation.current })) return;
+          if (!current.current || !sameExtractionGeneration(expected, { ...current.current, generation: generation.current })) return null;
           results[key] = response.proposal;
           if (livePhotos.current[key]?.uri) {
             serverExtracted.current[key] = { uri: livePhotos.current[key]!.uri, proposal: response.proposal };
           }
           base = accept(response);
         } catch (error) {
-          if (error instanceof VerificationError && ['ENGINE_TIMEOUT', 'ENGINE_BUSY'].includes(error.code)) {
+          if (error instanceof VerificationError && ['ENGINE_TIMEOUT', 'ENGINE_BUSY', 'TIMEOUT', 'NETWORK'].includes(error.code)) {
+            if (error.code === 'TIMEOUT' || error.code === 'ENGINE_TIMEOUT') {
+              try {
+                const synced = await reload(signal);
+                const recovered = hydratableObservationsFromApplication(
+                  synced,
+                  { ...livePhotos.current, [key]: undefined },
+                )[key];
+                if (synced && recovered) {
+                  base = synced;
+                  results[key] = recovered;
+                  if (livePhotos.current[key]?.uri) {
+                    serverExtracted.current[key] = { uri: livePhotos.current[key]!.uri, proposal: recovered };
+                  }
+                  continue;
+                }
+              } catch { /* Preserve local capture and report recoverable timeout below. */ }
+            }
             failures++;
           } else { throw error; }
         }
       }
       ensureActive(signal);
-      if (version !== generation.current) return;
+      if (version !== generation.current) return null;
       setObservations(results);
+      if (failures > 0) setExtractFailed(true);
+      if (results.cccd_front || results.cccd_back) setCccdRevalidationNeeded(false);
+      if (results.gplx_front || results.gplx_back) setGplxRevalidationNeeded(false);
       const form = currentValues.current;
-      const proposals = collectChoices(results);
+      const activeLiveQr = liveQrRef.current;
+      const activeGplxLiveQr = gplxLiveQrRef.current;
+      const proposals = collectChoices(results, activeLiveQr, activeGplxLiveQr);
       const fill = autofillChoices(form.values, form.noExpiry, touched.current, proposals);
       for (const [key] of fields) if (fill[key]) applyChoice(key, fill[key], false);
+      const cccdDecision = qrScanDecision(results, { documentType: 'CCCD', liveQr: activeLiveQr, extractFailed: failures > 0 });
+      const gplxDecision = qrScanDecision(results, { documentType: 'GPLX', liveQr: activeGplxLiveQr, extractFailed: failures > 0 });
+      const decision = targetSlots.every(s => s.startsWith('gplx')) ? gplxDecision : cccdDecision;
+      const docLabel = targetSlots.every(s => s.startsWith('gplx')) ? 'GPLX' : 'CCCD';
       const any = Object.keys(proposals).length > 0;
       const hasWarn = Object.values(results).some(r => r.warnings.length);
-      setReadingNote(failures
-        ? 'Một số lượt đọc quá thời gian hoặc máy chủ đang bận. Bạn có thể bấm Tiếp tục để nhập tay.'
-        : any
-          ? (hasWarn ? 'Đã điền sẵn đề xuất. Một số mục cần bạn đối chiếu kỹ hơn.' : 'Đã đọc xong thông tin. Hãy bấm Tiếp tục để đối chiếu và xác nhận.')
-          : 'Chưa đọc được thông tin từ ảnh. Bạn vẫn có thể bấm Tiếp tục để nhập tay.');
+      if (failures) {
+        setReadingNote('Kết nối chậm hoặc máy chủ đang khởi động. Ảnh đã chọn vẫn được giữ lại — bạn có thể thử lại, quét QR hoặc nhập tay.');
+      } else if (decision.mode === 'SKIP_DECODED') {
+        setReadingNote(hasWarn
+          ? `${TASK_STATUS_COMPLETED} Đã giải mã mã QR trên ảnh ${docLabel} và điền đề xuất; hãy đối chiếu lại.`
+          : `${TASK_STATUS_COMPLETED} Đã giải mã mã QR trên ảnh ${docLabel}. Không cần quét thêm mã QR.`);
+      } else if (decision.mode === 'RECOMMEND_LIVE_SCAN') {
+        setReadingNote(`Phát hiện mã QR trên ${docLabel} nhưng ảnh khó đọc. Hãy quét mã QR trực tiếp hoặc bỏ qua để nhập tay.`);
+      } else if (decision.mode === 'ALLOW_LIVE_SCAN') {
+        setReadingNote(`Chưa đọc được mã QR từ ảnh ${docLabel}. Bạn có thể quét QR trực tiếp hoặc bỏ qua nếu thẻ cũ không có QR.`);
+      } else {
+        setReadingNote(any
+          ? (hasWarn ? `${TASK_STATUS_COMPLETED} Đã điền sẵn đề xuất. Một số mục cần đối chiếu kỹ hơn.` : `${TASK_STATUS_COMPLETED} Hãy kiểm tra và xác nhận.`)
+          : 'Chưa đọc được thông tin từ ảnh. Bạn có thể tự nhập thông tin ở bước tiếp theo.');
+      }
+      if (opts?.autoAdvance && failures === 0
+        && cccdDecision.mode !== 'RECOMMEND_LIVE_SCAN'
+        && gplxDecision.mode !== 'RECOMMEND_LIVE_SCAN') {
+        setStage('CONFIRM_FIELDS');
+      }
+      return decision;
     } catch (error) {
       if (alive.current && !signal.aborted) {
+        setExtractFailed(true);
         if (version === generation.current) setObservations(results);
-        setReadingNote((error instanceof Error ? error.message : 'Chưa đọc được.') + ' Bạn vẫn có thể nhập tay ở bước sau.');
+        setReadingNote((error instanceof Error ? error.message : 'Chưa đọc được.') + ' Bạn vẫn có thể quét QR trực tiếp hoặc nhập tay.');
+        const docType: QrDocumentType = targetSlots.every(s => s.startsWith('gplx')) ? 'GPLX' : 'CCCD';
+        return qrScanDecision(results, {
+          documentType: docType,
+          liveQr: docType === 'GPLX' ? gplxLiveQrRef.current : liveQrRef.current,
+          extractFailed: true,
+        });
       }
+      return null;
     } finally {
       ocr.current = null;
       if (alive.current) {
         setReading(false);
         if (signal.aborted) setReadingNote('Lượt đọc đã dừng. Bạn có thể đọc lại hoặc nhập tay.');
+      }
+    }
+  }
+
+  function completeCaptureFlow() {
+    if (targets?.captures.every(key => key === 'selfie')) {
+      setStage('CONFIRM_FIELDS');
+      return;
+    }
+    const alreadyReady = !cccdRevalidationNeeded
+      && !gplxRevalidationNeeded
+      && Object.keys(observations).length > 0;
+    if (alreadyReady) {
+      setStage('CONFIRM_FIELDS');
+      return;
+    }
+    setStage('OCR');
+    void runSlotExtraction(slots.map(([key]) => key), { autoAdvance: true });
+  }
+
+  async function readAutomatically() {
+    await runSlotExtraction(slots.map(([key]) => key));
+  }
+
+  function openLiveQrScanner(docType: QrDocumentType, target: 'CAPTURE_NEXT' | 'OCR' | 'CONFIRM_FIELDS') {
+    setQrScannerDocType(docType);
+    setQrReturnTarget(target);
+    if (docType === 'GPLX') setGplxQrSkipped(false);
+    else setQrSkipped(false);
+    setBackQrPromptDoc(null);
+    setQrScannerOpen(true);
+  }
+
+  async function continueAfterDocumentBack(docType: QrDocumentType) {
+    const nextStep = step + 1;
+    const isGplx = docType === 'GPLX';
+    const pair: readonly [SlotKey, SlotKey] = isGplx
+      ? ['gplx_front', 'gplx_back']
+      : ['cccd_front', 'cccd_back'];
+    const currentDecision = isGplx ? gplxQrDecision : qrDecision;
+    const skipped = isGplx ? gplxQrSkipped : qrSkipped;
+    const hasPair = Boolean(
+      (photos[pair[0]] || app?.document?.captures[pair[0]])
+      && (photos[pair[1]] || app?.document?.captures[pair[1]]),
+    );
+    const goNext = () => {
+      if (nextStep < slots.length) setStep(nextStep);
+      else completeCaptureFlow();
+    };
+    if (!hasPair || currentDecision.mode === 'SKIP_DECODED' || currentDecision.mode === 'LIVE_SCANNED' || skipped) {
+      goNext();
+      return;
+    }
+    const decision = await runSlotExtraction(pair);
+    if (!alive.current || !decision) {
+      goNext();
+      return;
+    }
+    if (decision.mode === 'SKIP_DECODED' || decision.mode === 'LIVE_SCANNED' || decision.mode === 'NO_QR_CARD') {
+      goNext();
+      return;
+    }
+    if (decision.mode === 'RECOMMEND_LIVE_SCAN') {
+      openLiveQrScanner(docType, 'CAPTURE_NEXT');
+      return;
+    }
+    setBackQrPromptDoc(docType);
+  }
+
+  async function submitQrLivePayload(
+    rawPayload: string,
+    side: QrDocumentSide,
+    signal: AbortSignal,
+  ): Promise<QrScanSubmissionResult> {
+    if (qrScanRequest.current) {
+      return { ok: false, message: 'Đang xử lý lượt quét trước. Hãy đợi hoàn tất.' };
+    }
+    const docType = qrScannerDocType;
+    const localController = new AbortController();
+    const forwardAbort = () => localController.abort();
+    signal.addEventListener('abort', forwardAbort);
+    qrScanRequest.current = localController;
+    const startedGeneration = generation.current;
+
+    const localUris: SlotMap<string> = {};
+    (Object.keys(livePhotos.current) as SlotKey[]).forEach(k => {
+      if (livePhotos.current[k]?.uri) localUris[k] = livePhotos.current[k]!.uri;
+    });
+
+    const postQrScan = async (baseApp: Application) => {
+      const { attachmentId } = resolveQrAttachmentBinding({
+        docType,
+        side,
+        application: baseApp,
+        uploadedUris: uploaded.current,
+        localUris,
+      });
+      return api.json<QrScanResponse>(appPath(baseApp.id) + '/qr-scan', {
+        method: 'POST',
+        ...jsonBody({
+          revision: baseApp.revision,
+          rawPayload,
+          documentSide: side,
+          documentType: docType,
+          ...(attachmentId ? { attachmentId } : {}),
+        }),
+        signal: localController.signal,
+        timeoutMs: QR_SCAN_TIMEOUT_MS,
+      });
+    };
+
+    try {
+      let base = current.current && editable(current.current)
+        ? current.current
+        : await loadOrCreate(localController.signal);
+      if (startedGeneration !== generation.current) {
+        return { ok: false, message: 'Ảnh hoặc hồ sơ đã thay đổi, lượt quét cũ đã được bỏ qua.' };
+      }
+      let expected = { generation: generation.current, id: base.id, revision: base.revision };
+      let response: QrScanResponse;
+      try {
+        response = await postQrScan(base);
+      } catch (error) {
+        if (error instanceof VerificationError && error.code === 'REVISION_CONFLICT') {
+          const synced = await reload(localController.signal);
+          if (!synced || !editable(synced) || startedGeneration !== generation.current) {
+            return { ok: false, message: 'Ảnh hoặc hồ sơ vừa thay đổi. Hãy đóng máy quét và thử lại.' };
+          }
+          base = synced;
+          expected = { generation: generation.current, id: base.id, revision: base.revision };
+          response = await postQrScan(base);
+        } else {
+          throw error;
+        }
+      }
+      if (!alive.current || localController.signal.aborted) {
+        return { ok: false, message: 'Đã hủy lượt quét QR.' };
+      }
+      if (!current.current || !sameExtractionGeneration(expected, { ...current.current, generation: generation.current })) {
+        return { ok: false, message: 'Hồ sơ hoặc ảnh đã thay đổi, kết quả quét cũ đã được bỏ qua.' };
+      }
+      if (response.qr.status === 'INVALID_FORMAT' || response.qr.status === 'UNSUPPORTED_FORMAT') {
+        return {
+          ok: false,
+          status: response.qr.status,
+          message: response.qr.status === 'UNSUPPORTED_FORMAT'
+            ? (docType === 'GPLX'
+                ? 'Mã QR là liên kết tra cứu hoặc định dạng chưa hỗ trợ đọc trực tiếp thông tin trên thẻ.'
+                : 'Định dạng mã QR chưa được hỗ trợ.')
+            : `Mã QR vừa quét không đúng định dạng ${docType}.`,
+        };
+      }
+      accept(response);
+      if (docType === 'GPLX') {
+        setGplxLiveQrState(response.qr);
+        setGplxRevalidationNeeded(false);
+        setGplxQrSkipped(false);
+      } else {
+        setLiveQrState(response.qr);
+        setCccdRevalidationNeeded(false);
+        setQrSkipped(false);
+      }
+      const nextCccdLive = docType === 'CCCD' ? response.qr : liveQrRef.current;
+      const nextGplxLive = docType === 'GPLX' ? response.qr : gplxLiveQrRef.current;
+      const form = currentValues.current;
+      const proposals = collectChoices(observations, nextCccdLive, nextGplxLive);
+      const fill = autofillChoices(form.values, form.noExpiry, touched.current, proposals);
+      for (const [key] of fields) if (fill[key]) applyChoice(key, fill[key], false);
+      return { ok: true, qr: response.qr };
+    } catch (error) {
+      if (localController.signal.aborted) {
+        return { ok: false, message: 'Đã hủy lượt quét QR.' };
+      }
+      if (error instanceof VerificationError && error.code === 'REVISION_CONFLICT') {
+        return { ok: false, message: 'Ảnh hoặc hồ sơ vừa thay đổi. Hãy đóng máy quét và thử lại.' };
+      }
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : 'Chưa gửi được mã QR. Bạn có thể Quét lại hoặc Bỏ qua.',
+      };
+    } finally {
+      signal.removeEventListener('abort', forwardAbort);
+      if (qrScanRequest.current === localController) {
+        qrScanRequest.current = null;
       }
     }
   }
@@ -702,10 +1031,10 @@ function Workflow({ uid }: { uid: string }) {
       await file.write(result.bytes);
       ensureActive(signal);
     } catch (error) {
-      removeCache(file.uri);
+      removeCacheFile(file.uri);
       throw error;
     }
-    removeCache(livePreviews.current[key]?.uri ?? '');
+    removeCacheFile(livePreviews.current[key]?.uri ?? '');
     livePreviews.current = { ...livePreviews.current, [key]: { uri: file.uri, id: capture.id } };
     setPreviews(livePreviews.current);
   }
@@ -723,13 +1052,13 @@ function Workflow({ uid }: { uid: string }) {
           throw new VerificationError('REVISION_CONFLICT');
         }
         for (const [key] of slots) {
-          if (key !== 'gplx_back' && !livePhotos.current[key] && !base.document?.captures[key]) {
+          if (!livePhotos.current[key] && !base.document?.captures[key]) {
             throw new Error('Còn thiếu ảnh bắt buộc.');
           }
         }
         for (const [key] of slots) base = await upload(key, base, signal);
         saved = await api.json<Application>(appPath(base.id) + '/confirmation', {
-          method: 'PUT', ...jsonBody({ details, revision: base.revision }), signal,
+          method: 'PUT', ...jsonBody({ details, revision: base.revision }), signal, timeoutMs: METADATA_TIMEOUT_MS,
         });
         ensureActive(signal);
         accept(saved);
@@ -754,10 +1083,10 @@ function Workflow({ uid }: { uid: string }) {
     let saved: Application;
     try {
       saved = await api.json<Application>(appPath(request.id) + '/submit', {
-        ...body, headers: { ...body.headers, 'Idempotency-Key': request.key }, method: 'POST', signal,
+        ...body, headers: { ...body.headers, 'Idempotency-Key': request.key }, method: 'POST', signal, timeoutMs: SUBMIT_TIMEOUT_MS,
       });
     } catch (error) {
-      if (error instanceof VerificationError && ['REVISION_CONFLICT', 'INVALID_TRANSITION', 'FIELD_MISSING', 'WARNING_ACK_REQUIRED'].includes(error.code)) {
+      if (error instanceof VerificationError && ['REVISION_CONFLICT', 'INVALID_TRANSITION', 'FIELD_MISSING', 'EXTRACTION_REQUIRED', 'WARNING_ACK_REQUIRED'].includes(error.code)) {
         pendingRef.current = null;
         setPending(null);
         setConfirm(false);
@@ -774,38 +1103,15 @@ function Workflow({ uid }: { uid: string }) {
     setPending(null);
     setConfirm(false);
     setFaceConsent(false);
-    Object.values(livePhotos.current).forEach(p => removeCache(p.uri));
+    Object.values(livePhotos.current).forEach(p => removeCacheFile(p.uri));
     livePhotos.current = {};
     trackUploads({});
     setPhotos({});
-    Object.values(livePreviews.current).forEach(p => removeCache(p.uri));
+    Object.values(livePreviews.current).forEach(p => removeCacheFile(p.uri));
     livePreviews.current = {};
     setPreviews({});
-    setMessage('Máy chủ đã nhận hồ sơ.');
+    setMessage('Hồ sơ đã được gửi lên máy chủ.');
     try { await reload(signal); } catch { /* A confirmed submission remains successful. */ }
-  }
-
-  function renderWarnings(items: VerificationWarning[]) {
-    if (!items.length) return null;
-    return items.map(warning => {
-      const severe = warning.severity === 'CRITICAL' || warning.severity === 'BLOCKING';
-      const boxBg = severe ? colors.errorContainer : colors.warningContainer;
-      const boxFg = severe ? colors.onErrorContainer : colors.onWarningContainer;
-      return (
-        <View key={[warning.code, warning.slot, warning.fieldKey].join(':')}
-          style={[styles.alertBox, { backgroundColor: boxBg }]} accessibilityRole="alert">
-          <MaterialIcons name={severe ? 'error-outline' : 'warning-amber'} size={20} color={boxFg} importantForAccessibility="no" />
-          <Text style={[styles.alertText, { color: boxFg }]}>
-            {warning.humanReadableMessage} {warning.recommendedAction}
-          </Text>
-        </View>
-      );
-    });
-  }
-
-  function photoWarnings(key: SlotKey) {
-    return renderWarnings(warnings.filter(warning =>
-      warning.slot === key && !warning.fieldKey && (!photos[key] || uploadedPhotos[key] === photos[key]?.uri)));
   }
 
   function resolvedPhotoUri(key: SlotKey) {
@@ -814,153 +1120,55 @@ function Workflow({ uid }: { uid: string }) {
     return photos[key]?.uri ?? existing;
   }
 
-  function renderPhoto(key: SlotKey, label: string, large = false) {
-    const saved = app?.document?.captures[key];
-    const uri = resolvedPhotoUri(key);
-    if (uri) return <DriverPhoto uri={uri} label={label} portrait sensitive />;
-    return (
-      <View style={[styles.frame, large && styles.frameLarge, key === 'selfie' && styles.selfie]}>
-        <Text style={styles.mutedText}>{saved ? 'Ảnh đã lưu trên máy chủ' : 'Chưa có ảnh'}</Text>
-        {saved?.id ? <Button variant="secondary" label="Mở ảnh đã lưu" disabled={Boolean(busy)}
-          onPress={() => void run('Đang mở ảnh…', signal => preview(key, signal))} /> : null}
-      </View>
-    );
-  }
-
-  function renderCompareImages(keys: readonly SlotKey[]) {
-    const available = slots.filter(([k]) => keys.includes(k) && (photos[k] || app?.document?.captures[k]));
-    if (!available.length) return <Text style={styles.mutedText}>Chưa có ảnh nào ở mục này để đối chiếu.</Text>;
-    return (
-      <View style={styles.compareStack}>
-        {available.map(([k, label]) => (
-          <View key={k} style={styles.field}>
-            <Text style={styles.fieldLabel}>{label}</Text>
-            {renderPhoto(k, label)}
-          </View>
-        ))}
-      </View>
-    );
-  }
-
   function jumpToFirstEditableSlot() {
     setStep(firstEditableStep);
     setStage('CAPTURE');
   }
 
-  function renderFieldInput(key: FieldKey) {
-    const label = fieldLabelMap[key];
-    const identityLockedField = isIdentityLockedField(key, app);
-    const fieldEditable = !locked && fieldAllowed(app, key) && !identityLockedField;
-    const fieldWarnings = warnings.filter(warning => warning.fieldKey === key);
-    const fieldChoices = identityLockedField ? [] : (choices[key] ?? []);
-    const hasConflict = fieldChoices.length > 1 || fieldChoices.some(choice => choice.conflict);
-    const missingRequired = !optionalFields.has(key)
-      && !(key === 'expiry_date' && noExpiry)
-      && !(values[key] ?? '').trim();
-    const highlightBg = fieldWarnings.some(w => w.severity === 'CRITICAL' || w.severity === 'BLOCKING')
-      ? colors.errorContainer
-      : (hasConflict || missingRequired || fieldWarnings.length > 0)
-        ? colors.warningContainer
-        : identityLockedField
-          ? colors.surfaceContainer
-          : colors.surfaceContainerHigh;
-
-    return (
-      <View key={key} style={[styles.fieldCard, { backgroundColor: highlightBg }]}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        {renderWarnings(fieldWarnings)}
-        {key === 'cccd_gender' ? (
-          <View style={styles.chipRow}>
-            <Button variant={values[key] === 'MALE' ? 'primary' : 'secondary'} label="Nam"
-              disabled={!fieldEditable} onPress={() => manual(key, 'MALE')} />
-            <Button variant={values[key] === 'FEMALE' ? 'primary' : 'secondary'} label="Nữ"
-              disabled={!fieldEditable} onPress={() => manual(key, 'FEMALE')} />
-            {values[key] ? <Button variant="ghost" label="Bỏ chọn"
-              disabled={!fieldEditable} onPress={() => manual(key, '')} /> : null}
-          </View>
-        ) : (
-          <TextInput
-            accessibilityLabel={label}
-            style={[styles.input, { backgroundColor: identityLockedField ? colors.surfaceContainerHigh : colors.cardSurface }]}
-            value={values[key] ?? ''}
-            keyboardType={key === 'cccd_id' ? 'number-pad' : 'default'}
-            placeholder={key === 'expiry_date' && noExpiry ? 'Không thời hạn' : undefined}
-            editable={fieldEditable && !(key === 'expiry_date' && noExpiry)}
-            onChangeText={value => manual(key, value)}
-          />
-        )}
-        {identityLockedField ? (
-          <Text style={styles.mutedText}>Đã khóa theo danh tính đã xác minh (không thể tự ý thay đổi).</Text>
-        ) : null}
-        {missingRequired ? <Text style={[styles.hintText, { color: colors.onWarningContainer }]}>Trường bắt buộc — vui lòng kiểm tra hoặc nhập tay.</Text> : null}
-        {origins[key] ? <Text style={styles.mutedText}>Nguồn đề xuất · {origins[key]?.sources.join(' / ')}</Text> : null}
-        {hasConflict ? <Text style={[styles.hintText, { color: colors.onWarningContainer }]}>Có nhiều đề xuất hoặc mâu thuẫn QR/OCR. Hãy chọn đáp án đúng hoặc sửa tay.</Text> : null}
-        {fieldChoices.map(choice => (
-          <Button
-            key={choice.noExpiry ? 'unlimited' : choice.value}
-            variant="secondary"
-            label={'Chọn: ' + choice.sources.join(' / ') + ' · ' + (choice.noExpiry ? 'Không thời hạn' : choice.value)}
-            disabled={!fieldEditable}
-            onPress={() => applyChoice(key, choice, true)}
-          />
-        ))}
-        {key === 'expiry_date' ? (
-          <View style={styles.row}>
-            <Switch accessibilityLabel="GPLX không thời hạn" value={noExpiry}
-              disabled={!fieldEditable}
-              onValueChange={value => manual('expiry_date', value ? '' : values.expiry_date ?? '', value)} />
-            <Text style={styles.flex}>
-              {noExpiry ? 'GPLX không thời hạn' : values.expiry_date ? 'Có ngày hết hạn' : 'Chưa có hạn GPLX'}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
-
   const nameMismatch = !currentWarningReview && values.cccd_name && values.gplx_name
     ? compareNames(values.cccd_name, values.gplx_name) : null;
-  const dobMismatch = !currentWarningReview && values.cccd_dob && values.gplx_dob
-    && values.cccd_dob.trim() !== values.gplx_dob.trim();
+  const dobMismatch = Boolean(!currentWarningReview && values.cccd_dob && values.gplx_dob
+    && values.cccd_dob.trim() !== values.gplx_dob.trim());
   const ocrLockedCccdConflict = Boolean(
     app?.identityLocked &&
     values.cccd_id &&
-    observations.cccd_front?.candidates?.some(
-      item => item.fieldKey === 'id_number' && item.validationStatus === 'valid' &&
-        typeof item.candidateValue === 'string' && item.candidateValue.trim() !== values.cccd_id?.trim(),
+    (
+      observations.cccd_front?.candidates?.some(
+        item => item.fieldKey === 'id_number' && item.validationStatus === 'valid' &&
+          typeof item.candidateValue === 'string' && item.candidateValue.trim() !== values.cccd_id?.trim(),
+      )
+      || observations.cccd_back?.candidates?.some(
+        item => item.fieldKey === 'id_number' && item.validationStatus === 'valid' &&
+          typeof item.candidateValue === 'string' && item.candidateValue.trim() !== values.cccd_id?.trim(),
+      )
+      || (typeof liveQr?.fields?.id_number === 'string' && liveQr.fields.id_number.trim() !== values.cccd_id?.trim())
     ),
   );
 
-  const readyCaptureCount = slots.filter(([k]) => k !== 'gplx_back' && (photos[k] || app?.document?.captures[k])).length;
+  const readyCaptureCount = slots.filter(([k]) => Boolean(photos[k] || app?.document?.captures[k])).length;
   const hasVerifiedBaseline = Boolean(app && (app.status === 'APPROVED' || app.approvedRevision != null));
-  const verifiedConfirmed = app?.approvedDocument?.confirmed ?? app?.document?.confirmed;
-  const verifiedRawCccdId = typeof verifiedConfirmed?.cccd_id === 'string' ? verifiedConfirmed.cccd_id.trim() : '';
-  const verifiedMaskedCccd = app?.lockedIdentity?.maskedCccdId
-    ?? (verifiedRawCccdId.length >= 4 ? '*'.repeat(verifiedRawCccdId.length - 4) + verifiedRawCccdId.slice(-4) : 'Đã xác minh');
-  const verifiedFullName = app?.lockedIdentity?.fullName
-    ?? (typeof verifiedConfirmed?.cccd_name === 'string' ? verifiedConfirmed.cccd_name : '');
-  const verifiedCccdExpiry = typeof verifiedConfirmed?.cccd_expiry_date === 'string' ? verifiedConfirmed.cccd_expiry_date : '';
-  const todayIso = todayVnIso();
-  const verifiedCccdExpired = Boolean(verifiedCccdExpiry && verifiedCccdExpiry < todayIso);
-  const verifiedGplxClasses = Array.isArray(verifiedConfirmed?.gplx_classes)
-    ? verifiedConfirmed.gplx_classes.join(', ')
-    : (typeof verifiedConfirmed?.gplx_classes === 'string' ? verifiedConfirmed.gplx_classes : '—');
-  const verifiedGplxExpiry = typeof verifiedConfirmed?.expiry_date === 'string' ? verifiedConfirmed.expiry_date : '';
-  const verifiedGplxNoExpiry = verifiedConfirmed?.no_expiry === true;
-  const verifiedGplxExpired = Boolean(!verifiedGplxNoExpiry && verifiedGplxExpiry && verifiedGplxExpiry < todayIso);
-  const verifiedGplxValidity = verifiedGplxNoExpiry
-    ? 'Không thời hạn'
-    : verifiedGplxExpired
-      ? 'Đã hết hạn (' + verifiedGplxExpiry + ')'
-      : verifiedGplxExpiry
-        ? 'Còn thời hạn (đến ' + verifiedGplxExpiry + ')'
-        : 'Chưa rõ thời hạn';
+  const currentHasPhoto = Boolean(slot && (photos[slot[0]] || app?.document?.captures[slot[0]]));
+  const currentSlotAllowed = Boolean(slot && slotAllowed(app, slot[0]));
+  const currentSlotWarnings = slot
+    ? warnings.filter(warning =>
+        warning.slot === slot[0] && !warning.fieldKey && (!photos[slot[0]] || uploadedPhotos[slot[0]] === photos[slot[0]]?.uri))
+    : [];
+
+  const smallBlocked = Boolean(slot && photo && isSmall(photo) && !ack[slot[0]]);
 
   return (
     <DriverPage
       form
       title="Xác minh tài xế"
       backFallback="/(tabs)/profile"
+      scrollResetKey={`${stage}:${step}:${app?.status ?? 'new'}:${canEdit ? 'edit' : 'view'}`}
+      headerContent={canEdit ? (
+        <VerificationStepHeader
+          stage={stage}
+          step={step}
+          hasPhoto={key => Boolean(photos[key] || app?.document?.captures[key])}
+        />
+      ) : undefined}
       headerAction={(
         <Appbar.Action
           icon="refresh"
@@ -970,225 +1178,75 @@ function Workflow({ uid }: { uid: string }) {
           onPress={() => { ocr.current?.abort(); void run('Đang làm mới…', reload); }}
         />
       )}
+      footer={(pending || canEdit) ? (
+        <VerificationFooter
+          pending={Boolean(pending)}
+          canEdit={canEdit}
+          stage={stage}
+          step={step}
+          slotKey={slot?.[0]}
+          busy={busy}
+          locked={locked}
+          reading={reading}
+          consent={consent}
+          needsCapture={needsCapture}
+          currentSlotAllowed={currentSlotAllowed}
+          currentHasPhoto={currentHasPhoto}
+          smallBlocked={smallBlocked}
+          hasObservations={Object.keys(observations).length > 0}
+          extractFailed={extractFailed}
+          confirm={confirm}
+          currentWarningReview={currentWarningReview}
+          warnings={warnings}
+          appStatus={app?.status}
+          onRetryPendingSubmit={() => void run('Đang kiểm tra lần nộp…', submit)}
+          onStartCapture={jumpToFirstEditableSlot}
+          onJumpConfirmFields={() => setStage('CONFIRM_FIELDS')}
+          onOpenCamera={() => { if (slot) openGuidedCapture(slot[0]); }}
+          onContinueBack={docType => { void continueAfterDocumentBack(docType); }}
+          onNextCaptureStep={() => setStep(step + 1)}
+          onCompleteCapture={completeCaptureFlow}
+          onBackFromCapture={() => {
+            setBackQrPromptDoc(null);
+            if (step === 0) setStage('PREPARE');
+            else setStep(step - 1);
+          }}
+          onAbortExtractionToManual={() => {
+            ocr.current?.abort();
+            setStage('CONFIRM_FIELDS');
+          }}
+          onBackToCaptureFromOcr={() => { setStep(slots.length - 1); setStage('CAPTURE'); }}
+          onGoSummary={() => setStage('SUMMARY')}
+          onBackFromFields={() => setStage(extractFailed ? 'OCR' : 'CAPTURE')}
+          onSubmit={() => void run('Đang nộp hồ sơ…', submit)}
+        />
+      ) : undefined}
     >
       <View style={styles.page}>
         {app && !(hasVerifiedBaseline && !canEdit && !pending) ? (
-          <Card style={styles.statusCard}>
-            <Text style={styles.statusHeadline}>
-              {app.status === 'DRAFT' && app.approvedRevision != null
-                ? 'Đang cập nhật giấy tờ mới'
-                : (statusLabels[app.status] ?? app.status)}
-            </Text>
-            {app.reason ? (
-              app.status === 'REJECTED' ? (
-                <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]} accessibilityRole="alert">
-                  <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
-                  <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>
-                    Lý do từ chối: {app.reason}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.bodyText}>{app.reason}</Text>
-              )
-            ) : null}
-            {app.identityLocked ? (
-              <View style={[styles.infoBanner, { backgroundColor: colors.surfaceContainerHigh }]}>
-                <MaterialIcons name="lock-outline" size={20} color={colors.primary} importantForAccessibility="no" />
-                <Text style={styles.flex}>
-                  Thông tin định danh đã xác minh (số định danh, họ tên, ngày sinh) được khóa cố định. Bạn có thể chụp lại CCCD gia hạn, cập nhật GPLX hoặc selfie mới.
-                </Text>
-              </View>
-            ) : null}
-            {targetLabels.length ? (
-              <View style={[styles.alertBox, { backgroundColor: colors.warningContainer }]}>
-                <MaterialIcons name="edit-note" size={20} color={colors.onWarningContainer} importantForAccessibility="no" />
-                <Text style={[styles.alertText, { color: colors.onWarningContainer }]}>Cần bổ sung · {targetLabels.join(', ')}</Text>
-              </View>
-            ) : null}
-            {app.status === 'NEEDS_MORE_INFO' ? (
-              <Button label={needsCapture ? 'Đi tới ảnh cần bổ sung' : 'Đi tới sửa thông tin'}
-                onPress={() => {
-                  setConsent(true);
-                  if (needsCapture) jumpToFirstEditableSlot();
-                  else setStage('CONFIRM_FIELDS');
-                }} />
-            ) : null}
-            {app.status === 'REJECTED' && !pending ? (
-              <>
-                <Text style={styles.mutedText}>
-                  Bạn có thể cập nhật lại ảnh giấy tờ, chỉnh sửa thông tin và gửi yêu cầu xét duyệt mới.
-                </Text>
-                <Button
-                  label="Tạo yêu cầu hồ sơ mới"
-                  disabled={Boolean(busy) || picking}
-                  onPress={() => void run('Đang tạo yêu cầu hồ sơ mới…', startReverify)}
-                />
-              </>
-            ) : null}
-            {app.status === 'DRAFT' && app.approvedRevision != null && !app.identityHold ? (
-              <Button variant="ghost" label="Hủy cập nhật · Quay lại hồ sơ đã xác minh" disabled={Boolean(busy)}
-                onPress={() => void run('Đang khôi phục trạng thái…', cancelReverify)} />
-            ) : null}
-          </Card>
+          <EditingStatusBanner
+            app={app}
+            targetLabels={targetLabels}
+            needsCapture={needsCapture}
+            busy={busy}
+            picking={picking}
+            pending={Boolean(pending)}
+            onJumpCapture={() => { setConsent(true); jumpToFirstEditableSlot(); }}
+            onJumpFields={() => { setConsent(true); setStage('CONFIRM_FIELDS'); }}
+            onStartReverify={() => void run('Đang tạo yêu cầu hồ sơ mới…', startReverify)}
+            onCancelReverify={() => void run('Đang khôi phục trạng thái…', cancelReverify)}
+          />
         ) : null}
 
-        {/* Màn hình Trạng thái Đã xác minh (Read-Only) */}
         {!canEdit && app && hasVerifiedBaseline && !pending ? (
-          <View style={styles.sectionStack}>
-            <Card style={styles.statusCard}>
-              <View style={styles.verifiedHeaderRow}>
-                <View style={styles.flex}>
-                  <Text style={styles.statusHeadline}>Xác minh tài xế</Text>
-                  <Text style={styles.mutedText}>
-                    {app.identityHold
-                      ? 'Tạm giữ để kiểm tra danh tính'
-                      : app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'
-                        ? 'Đã xác minh · Đang chờ duyệt cập nhật mới'
-                        : 'Đã xác minh'}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: app.identityHold ? colors.errorContainer : colors.primaryContainer },
-                ]}>
-                  <Text style={[
-                    styles.statusBadgeText,
-                    { color: app.identityHold ? colors.onErrorContainer : colors.onPrimaryContainer },
-                  ]}>
-                    {app.identityHold ? 'Chờ kiểm tra' : 'Đã xác minh'}
-                  </Text>
-                </View>
-              </View>
-
-              {app.eligibilityStatus?.restrictionReason ? (
-                <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]}>
-                  <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
-                  <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>
-                    {restrictionLabels[app.eligibilityStatus.restrictionReason] ?? app.identityHoldReason ?? 'Quyền nhận chuyến tạm thời bị hạn chế.'}
-                  </Text>
-                </View>
-              ) : null}
-
-              {(app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW') && !app.identityHold ? (
-                <View style={[styles.infoBanner, { backgroundColor: colors.surfaceContainerHigh }]}>
-                  <MaterialIcons name="hourglass-top" size={20} color={colors.primary} importantForAccessibility="no" />
-                  <Text style={styles.flex}>
-                    Bản cập nhật giấy tờ mới đang chờ admin xét duyệt. Quyền nhận chuyến từ giấy tờ cũ còn hạn vẫn được giữ nguyên.
-                  </Text>
-                </View>
-              ) : null}
-
-              {app.status === 'REJECTED' ? (
-                <View
-                  style={[
-                    styles.alertBox,
-                    { backgroundColor: app.identityHold ? colors.errorContainer : colors.warningContainer },
-                  ]}
-                  accessibilityRole="alert"
-                >
-                  <MaterialIcons
-                    name={app.identityHold ? 'error-outline' : 'info-outline'}
-                    size={20}
-                    color={app.identityHold ? colors.onErrorContainer : colors.onWarningContainer}
-                    importantForAccessibility="no"
-                  />
-                  <Text style={[styles.alertText, { color: app.identityHold ? colors.onErrorContainer : colors.onWarningContainer }]}>
-                    {app.identityHold
-                      ? `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'}`
-                      : `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'} Hồ sơ đã xác minh trước đó vẫn còn hiệu lực.`}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Thẻ Căn cước công dân */}
-              <View style={[styles.verifiedTile, { backgroundColor: verifiedCccdExpired ? colors.errorContainer : colors.surfaceContainerHigh }]}>
-                <View style={styles.verifiedTileTop}>
-                  <Text style={styles.fieldLabel}>Căn cước công dân</Text>
-                  <Text style={[
-                    styles.verifiedPillText,
-                    { color: verifiedCccdExpired ? colors.onErrorContainer : colors.primary },
-                  ]}>
-                    {verifiedCccdExpired ? 'Đã hết hạn' : 'Đã xác minh'}
-                  </Text>
-                </View>
-                <Text style={styles.summaryValue}>Số định danh: {verifiedMaskedCccd}</Text>
-                {verifiedFullName ? <Text style={styles.mutedText}>Họ tên: {verifiedFullName}</Text> : null}
-                {verifiedCccdExpiry ? <Text style={styles.mutedText}>Có giá trị đến: {verifiedCccdExpiry}</Text> : null}
-              </View>
-
-              {/* Thẻ Giấy phép lái xe */}
-              <View style={[styles.verifiedTile, { backgroundColor: verifiedGplxExpired ? colors.errorContainer : colors.surfaceContainerHigh }]}>
-                <View style={styles.verifiedTileTop}>
-                  <Text style={styles.fieldLabel}>Giấy phép lái xe</Text>
-                  <Text style={[
-                    styles.verifiedPillText,
-                    { color: verifiedGplxExpired ? colors.onErrorContainer : colors.primary },
-                  ]}>
-                    {verifiedGplxExpired ? 'Đã hết hạn' : 'Đã xác minh'}
-                  </Text>
-                </View>
-                <Text style={styles.summaryValue}>Hạng {verifiedGplxClasses} · {verifiedGplxValidity}</Text>
-              </View>
-
-              {/* Thẻ Ảnh chân dung */}
-              <View style={[styles.verifiedTile, { backgroundColor: colors.surfaceContainerHigh }]}>
-                <View style={styles.verifiedTileTop}>
-                  <Text style={styles.fieldLabel}>Ảnh chân dung</Text>
-                  <Text style={[styles.verifiedPillText, { color: colors.primary }]}>Đã xác minh</Text>
-                </View>
-                <Text style={styles.bodyText}>Đã được admin kiểm tra</Text>
-              </View>
-
-              <Text style={styles.mutedText}>
-                Thông tin định danh đã xác minh không thể tự ý thay đổi.
-              </Text>
-
-              <View style={styles.buttonStack}>
-                <Button
-                  variant={app.status === 'APPROVED' ? 'primary' : 'secondary'}
-                  label="Chọn loại xe nhận lái hộ"
-                  onPress={() => router.push('/profile/capabilities')}
-                />
-                {app.status === 'APPROVED' || app.status === 'REJECTED' ? (
-                  <Button
-                    variant={app.status === 'APPROVED' ? 'secondary' : 'primary'}
-                    label="Cập nhật giấy tờ"
-                    disabled={Boolean(busy)}
-                    onPress={() => void run('Đang mở cập nhật giấy tờ…', startReverify)}
-                  />
-                ) : null}
-              </View>
-            </Card>
-
-            <GroupedList title="Tra cứu hồ sơ">
-              <SettingsListItem
-                title={showHistory ? 'Ẩn lịch sử xác minh' : 'Xem lịch sử xác minh'}
-                description={app.history?.length ? `${app.history.length} bản ghi cập nhật` : 'Chưa có lịch sử cập nhật'}
-                icon={showHistory ? 'expand-less' : 'history'}
-                onPress={() => setShowHistory(v => !v)}
-              />
-            </GroupedList>
-
-            {showHistory ? (
-              <Card>
-                <View style={styles.sectionStack}>
-                  <Text style={styles.sectionTitle}>Lịch sử xác minh</Text>
-                  {app.history?.length ? app.history.map((entry, idx) => (
-                    <View key={entry.revision + ':' + entry.action + ':' + idx}
-                      style={[styles.verifiedTile, { backgroundColor: colors.surfaceContainerHigh }]}>
-                      <Text style={styles.fieldLabel}>
-                        {historyActionLabels[entry.action] ?? entry.action} · Bản {entry.revision}
-                      </Text>
-                      <Text style={styles.mutedText}>
-                        {new Date(entry.at).toLocaleString('vi-VN')} · {entry.role === 'admin' ? 'Quản trị viên' : 'Tài xế'}
-                      </Text>
-                      {entry.metadata?.reason ? <Text style={styles.bodyText}>Lý do: {entry.metadata.reason}</Text> : null}
-                    </View>
-                  )) : <Text style={styles.mutedText}>Chưa có lịch sử cập nhật.</Text>}
-                </View>
-              </Card>
-            ) : null}
-          </View>
+          <VerifiedBaselineView
+            app={app}
+            busy={busy}
+            showHistory={showHistory}
+            onToggleHistory={() => setShowHistory(v => !v)}
+            onOpenCapabilities={() => router.push('/profile/capabilities')}
+            onStartReverify={() => void run('Đang mở cập nhật giấy tờ…', startReverify)}
+          />
         ) : null}
 
         {busy || message ? (
@@ -1199,361 +1257,143 @@ function Workflow({ uid }: { uid: string }) {
         ) : null}
 
         {settingsAction ? (
-          <Button variant="secondary" label="Mở cài đặt quyền camera" onPress={() => {
-            void Linking.openSettings().catch(() => setMessage('Không mở được cài đặt trên thiết bị này.'));
-          }} />
+          <Button
+            variant="secondary"
+            label="Mở cài đặt quyền camera"
+            onPress={() => {
+              void Linking.openSettings().catch(() => setMessage('Không mở được cài đặt trên thiết bị này.'));
+            }}
+          />
         ) : null}
 
-        {pending ? (
-          <Button label="Thử nộp lại" disabled={Boolean(busy)} onPress={() => void run('Đang kiểm tra lần nộp…', submit)} />
-        ) : null}
-
-        {/* Bước 6: Theo dõi xét duyệt khi chưa từng duyệt xong */}
         {!canEdit && app && !pending && !hasVerifiedBaseline ? (
-          <View style={styles.sectionStack}>
-            {renderWarnings(warnings)}
-            <Card>
-              <Text style={styles.sectionTitle}>Ảnh và thông tin đã nộp</Text>
-              {slots.filter(([key]) => app.document?.captures[key]).map(([key, label]) => (
-                <View key={key} style={styles.field}>
-                  <Text style={styles.fieldLabel}>{label}</Text>
-                  {renderPhoto(key, label)}
-                </View>
-              ))}
-            </Card>
-          </View>
+          <PendingReviewView
+            app={app}
+            warnings={warnings}
+            busy={Boolean(busy)}
+            resolvedUri={resolvedPhotoUri}
+            onPreviewSaved={key => void run('Đang mở ảnh…', signal => preview(key, signal))}
+            onGoHome={() => router.replace('/(tabs)/home')}
+          />
         ) : null}
 
-        {/* Luồng chính 5 bước trong ứng dụng */}
-        {canEdit ? (
-          <View style={styles.sectionStack}>
-            <Card style={styles.progressCard}>
-              <Text style={[styles.stepBadge, { color: colors.primary }]}>{stageLabels[stage]}</Text>
-              <ProgressBar
-                color={colors.primary}
-                style={{ backgroundColor: colors.surfaceContainerHigh, borderRadius: borderRadius.full }}
-                progress={
-                  stage === 'PREPARE' ? 0.15
-                    : stage === 'CAPTURE' ? 0.2 + ((step + 1) / slots.length) * 0.35
-                    : stage === 'OCR' ? 0.65
-                    : stage === 'CONFIRM_FIELDS' ? 0.85
-                    : 1
-                }
-              />
-            </Card>
+        {canEdit && stage === 'PREPARE' ? (
+          <VerificationPrepareStep
+            consent={consent}
+            locked={locked}
+            reading={reading}
+            onToggleConsent={value => { setConsent(value); setConfirm(false); }}
+          />
+        ) : null}
 
-            {/* BƯỚC 1: Chuẩn bị giấy tờ và đồng ý xử lý ảnh */}
-            {stage === 'PREPARE' ? (
-              <Card>
-                <View style={styles.sectionStack}>
-                  <Text style={styles.title}>Chuẩn bị giấy tờ trước khi bắt đầu</Text>
-                  <Text style={styles.bodyText}>Để quá trình xét duyệt nhanh chóng, hãy chuẩn bị sẵn:</Text>
-                  <View style={[styles.prepItem, { backgroundColor: colors.surfaceContainerHigh }]}>
-                    <MaterialIcons name="badge" size={22} color={colors.primary} importantForAccessibility="no" />
-                    <Text style={styles.flex}>Căn cước công dân (mặt trước và mặt sau rõ chữ, còn hạn).</Text>
-                  </View>
-                  <View style={[styles.prepItem, { backgroundColor: colors.surfaceContainerHigh }]}>
-                    <MaterialIcons name="fact-check" size={22} color={colors.primary} importantForAccessibility="no" />
-                    <Text style={styles.flex}>Giấy phép lái xe (mặt trước bắt buộc, mặt sau tùy chọn).</Text>
-                  </View>
-                  <View style={[styles.prepItem, { backgroundColor: colors.surfaceContainerHigh }]}>
-                    <MaterialIcons name="face" size={22} color={colors.primary} importantForAccessibility="no" />
-                    <Text style={styles.flex}>Ảnh chân dung (selfie) chụp rõ khuôn mặt ở nơi đủ sáng.</Text>
-                  </View>
+        {canEdit && stage === 'CAPTURE' && slot ? (
+          <VerificationCaptureStep
+            slotKey={slot[0]}
+            slotLabel={slot[1]}
+            stepIndex={step}
+            totalSlots={slots.length}
+            photo={photo}
+            photoUri={resolvedPhotoUri(slot[0])}
+            hasSavedCapture={Boolean(app?.document?.captures[slot[0]])}
+            allowed={currentSlotAllowed}
+            locked={locked}
+            reading={reading}
+            smallAck={Boolean(ack[slot[0]])}
+            slotWarnings={currentSlotWarnings}
+            backQrPromptDoc={backQrPromptDoc}
+            extractFailed={extractFailed}
+            onToggleSmallAck={value => setAck(old => ({ ...old, [slot[0]]: value }))}
+            onOpenCamera={() => openGuidedCapture(slot[0])}
+            onPickGallery={() => void pickFromGallery(slot[0])}
+            onOpenLiveQr={docType => openLiveQrScanner(docType, 'CAPTURE_NEXT')}
+            onSkipBackQr={isGplx => {
+              setBackQrPromptDoc(null);
+              if (isGplx) setGplxQrSkipped(true);
+              else setQrSkipped(true);
+              if (step + 1 < slots.length) setStep(step + 1);
+              else completeCaptureFlow();
+            }}
+          />
+        ) : null}
 
-                  <View style={[styles.row, styles.consentBox, { backgroundColor: colors.surfaceContainer }]}>
-                    <Switch accessibilityLabel="Đồng ý tải ảnh để xác minh" value={consent}
-                      disabled={locked || reading}
-                      onValueChange={value => { setConsent(value); setConfirm(false); }} />
-                    <Text style={styles.flex}>
-                      Tôi đồng ý tải ảnh giấy tờ và selfie để đối chiếu thông tin và xét duyệt hồ sơ tài xế.
-                    </Text>
-                  </View>
+        {canEdit && stage === 'OCR' ? (
+          <VerificationExtractionStep
+            reading={reading}
+            readingNote={readingNote}
+            readyCaptureCount={readyCaptureCount}
+            observations={observations}
+            qrDecision={qrDecision}
+            gplxQrDecision={gplxQrDecision}
+            qrSkipped={qrSkipped}
+            gplxQrSkipped={gplxQrSkipped}
+            hasCccdPhotos={Boolean(photos.cccd_front || photos.cccd_back || app?.document?.captures.cccd_front || app?.document?.captures.cccd_back)}
+            hasGplxPhotos={Boolean(photos.gplx_front || photos.gplx_back || app?.document?.captures.gplx_front || app?.document?.captures.gplx_back)}
+            cccdRevalidationNeeded={cccdRevalidationNeeded}
+            gplxRevalidationNeeded={gplxRevalidationNeeded}
+            ocrLockedCccdConflict={ocrLockedCccdConflict}
+            locked={locked}
+            disableAutoExtract={Boolean(targets && targets.captures.every(key => key === 'selfie'))}
+            onReadAutomatically={() => void readAutomatically()}
+            onOpenLiveQr={docType => openLiveQrScanner(docType, 'CONFIRM_FIELDS')}
+            onSkipQr={docType => (docType === 'GPLX' ? setGplxQrSkipped(true) : setQrSkipped(true))}
+          />
+        ) : null}
 
-                  <Button label="Bắt đầu chụp ảnh" disabled={locked || !consent} onPress={jumpToFirstEditableSlot} />
-                  {app?.status === 'NEEDS_MORE_INFO' && !needsCapture ? (
-                    <Button variant="secondary" label="Đi thẳng tới sửa thông tin" disabled={locked || !consent}
-                      onPress={() => setStage('CONFIRM_FIELDS')} />
-                  ) : null}
-                </View>
-              </Card>
-            ) : null}
+        {canEdit && stage === 'CONFIRM_FIELDS' ? (
+          <VerificationFieldsStep
+            app={app}
+            locked={locked}
+            reading={reading}
+            values={values}
+            noExpiry={noExpiry}
+            origins={origins}
+            manualFields={manualFields}
+            choices={choices}
+            warnings={warnings}
+            photos={photos}
+            resolvedUri={resolvedPhotoUri}
+            qrDecision={qrDecision}
+            gplxQrDecision={gplxQrDecision}
+            cccdRevalidationNeeded={cccdRevalidationNeeded}
+            gplxRevalidationNeeded={gplxRevalidationNeeded}
+            compareGroup={compareGroup}
+            nameMismatch={nameMismatch}
+            dobMismatch={dobMismatch}
+            ocrLockedCccdConflict={ocrLockedCccdConflict}
+            onToggleCompare={group => setCompareGroup(compareGroup === group ? null : group)}
+            onOpenLiveQr={docType => openLiveQrScanner(docType, 'CONFIRM_FIELDS')}
+            onPreviewSaved={key => void run('Đang mở ảnh…', signal => preview(key, signal))}
+            onManualChange={manual}
+            onApplyChoice={(key, choice) => applyChoice(key, choice, true)}
+          />
+        ) : null}
 
-            {/* BƯỚC 2: Chụp từng ảnh theo thứ tự cố định */}
-            {stage === 'CAPTURE' && slot ? (
-              <Card>
-                <View style={styles.sectionStack}>
-                  <Text style={styles.title}>{step + 1}/{slots.length} · {slot[1]}</Text>
-                  <Text style={styles.bodyText}>{captureInstructions[slot[0]]}</Text>
-                  {renderPhoto(slot[0], slot[1], true)}
-                  {photoWarnings(slot[0])}
-                  {photo && isSmall(photo) ? (
-                    <View style={[styles.row, styles.consentBox, { backgroundColor: colors.warningContainer }]}>
-                      <Switch accessibilityLabel="Xác nhận ảnh nhỏ" value={Boolean(ack[slot[0]])}
-                        disabled={locked}
-                        onValueChange={value => setAck(old => ({ ...old, [slot[0]]: value }))} />
-                      <Text style={[styles.flex, { color: colors.onWarningContainer }]}>
-                        Ảnh có độ phân giải nhỏ. Tôi đã kiểm tra chữ hoặc khuôn mặt vẫn rõ.
-                      </Text>
-                    </View>
-                  ) : null}
-                  {!slotAllowed(app, slot[0]) ? (
-                    <Text style={styles.mutedText}>Ảnh này không nằm trong danh sách cần bổ sung lần này.</Text>
-                  ) : null}
-                  <Button label={photos[slot[0]] || app?.document?.captures[slot[0]] ? 'Chụp lại bằng camera' : 'Mở camera hướng dẫn'}
-                    disabled={locked || !slotAllowed(app, slot[0])} onPress={() => openGuidedCapture(slot[0])} />
-                  {slot[0] !== 'selfie' ? (
-                    <Button variant="secondary" label="Chọn ảnh từ thư viện"
-                      disabled={locked || !slotAllowed(app, slot[0])} onPress={() => void pickFromGallery(slot[0])} />
-                  ) : (
-                    <Text style={styles.mutedText}>Selfie nên chụp trực tiếp để ảnh phản ánh đúng thời điểm xác minh.</Text>
-                  )}
-                  <View style={styles.buttonStack}>
-                    <Button
-                      label={step + 1 < slots.length
-                        ? (slot[0] === 'gplx_back' && !photos[slot[0]] && !app?.document?.captures[slot[0]]
-                          ? 'Tiếp tục (tùy chọn)' : 'Tiếp tục')
-                        : 'Xong ảnh · Đọc thông tin'}
-                      disabled={locked
-                        || (!photos[slot[0]] && slot[0] !== 'gplx_back' && !app?.document?.captures[slot[0]])
-                        || Boolean(photo && isSmall(photo) && !ack[slot[0]])}
-                      onPress={() => {
-                        if (step + 1 < slots.length) setStep(step + 1);
-                        else setStage('OCR');
-                      }}
-                    />
-                    <Button variant="ghost" label="Quay lại" disabled={locked}
-                      onPress={() => { if (step === 0) setStage('PREPARE'); else setStep(step - 1); }} />
-                  </View>
-                </View>
-              </Card>
-            ) : null}
-
-            {/* BƯỚC 3: Đọc thông tin tự động */}
-            {stage === 'OCR' ? (
-              <Card>
-                <View style={styles.sectionStack}>
-                  <Text style={styles.title}>Đọc thông tin từ giấy tờ</Text>
-                  <Text style={styles.bodyText}>
-                    Hệ thống sẽ đọc mã QR và chữ trên ảnh CCCD, GPLX đã chụp để điền sẵn giúp bạn. Nếu máy chủ bận hoặc ảnh khó đọc, bạn luôn có thể chọn nhập tay.
-                  </Text>
-                  <Text style={styles.mutedText}>Đã chuẩn bị {readyCaptureCount}/4 ảnh bắt buộc.</Text>
-
-                  <View style={styles.chipRow}>
-                    {slots.filter(([k]) => photos[k] || app?.document?.captures[k]).map(([k, label], _idx) => (
-                      <Button key={k} variant="ghost" label={'Chụp lại ' + label}
-                        disabled={locked || reading || !slotAllowed(app, k)}
-                        onPress={() => { setStep(slots.findIndex(([item]) => item === k)); setStage('CAPTURE'); }} />
-                    ))}
-                  </View>
-
-                  <Button
-                    label={reading ? 'Đang đọc thông tin…' : 'Đọc thông tin tự động'}
-                    disabled={locked || reading || Boolean(targets && targets.captures.every(key => key === 'selfie'))}
-                    onPress={() => void readAutomatically()}
-                  />
-
-                  {reading || readingNote ? (
-                    <View style={[styles.infoBanner, { backgroundColor: colors.surfaceContainerHigh }]}>
-                      {reading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-                      <Text style={styles.flex} accessibilityLiveRegion="polite">{readingNote || 'Đang xử lý…'}</Text>
-                    </View>
-                  ) : null}
-
-                  {slots.map(([key, label]) => {
-                    const result = observations[key];
-                    if (!result) return null;
-                    const msgs = result.warnings.map(code => warningLabels[code]).filter(Boolean);
-                    if (result.ocrStatus === 'OCR_UNSUPPORTED') msgs.push('Mặt này chưa hỗ trợ OCR.');
-                    if (!msgs.length) return null;
-                    return (
-                      <View key={key} style={[styles.alertBox, { backgroundColor: colors.warningContainer }]}>
-                        <Text style={[styles.alertText, { color: colors.onWarningContainer }]}>
-                          {label} · {[...new Set(msgs)].join(' ')}
-                        </Text>
-                      </View>
-                    );
-                  })}
-
-                  {ocrLockedCccdConflict ? (
-                    <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]}>
-                      <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
-                      <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>
-                        Số CCCD đọc từ ảnh mới khác với danh tính đã xác minh của tài khoản. Không thể sử dụng CCCD của người khác.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.buttonStack}>
-                    <Button label={Object.keys(observations).length ? 'Tiếp tục đối chiếu' : 'Nhập tay thông tin'}
-                      disabled={locked || reading}
-                      onPress={() => setStage('CONFIRM_FIELDS')} />
-                    <Button variant="ghost" label="Quay lại chụp ảnh" disabled={locked || reading}
-                      onPress={() => { setStep(slots.length - 1); setStage('CAPTURE'); }} />
-                  </View>
-                </View>
-              </Card>
-            ) : null}
-
-            {/* BƯỚC 4: Xác nhận thông tin chia 2 phần CCCD & GPLX */}
-            {stage === 'CONFIRM_FIELDS' ? (
-              <View style={styles.sectionStack}>
-                <Card>
-                  <View style={styles.sectionStack}>
-                    <Text style={styles.sectionTitle}>1. Thông tin Căn cước công dân (CCCD)</Text>
-                    <Button variant="secondary"
-                      label={compareGroup === 'CCCD' ? 'Ẩn ảnh CCCD' : 'Mở ảnh CCCD để đối chiếu'}
-                      onPress={() => setCompareGroup(compareGroup === 'CCCD' ? null : 'CCCD')} />
-                    {compareGroup === 'CCCD' ? renderCompareImages(['cccd_front', 'cccd_back']) : null}
-                    {cccdFieldKeys.map(renderFieldInput)}
-                  </View>
-                </Card>
-
-                <Card>
-                  <View style={styles.sectionStack}>
-                    <Text style={styles.sectionTitle}>2. Thông tin Giấy phép lái xe (GPLX)</Text>
-                    <Text style={styles.mutedText}>
-                      Thông tin GPLX dùng để quản trị viên xét quyền lái từng nhóm xe. Sau khi được duyệt, bạn sẽ chọn loại xe muốn nhận chuyến ở bước riêng.
-                    </Text>
-                    <Button variant="secondary"
-                      label={compareGroup === 'GPLX' ? 'Ẩn ảnh GPLX' : 'Mở ảnh GPLX để đối chiếu'}
-                      onPress={() => setCompareGroup(compareGroup === 'GPLX' ? null : 'GPLX')} />
-                    {compareGroup === 'GPLX' ? renderCompareImages(['gplx_front', 'gplx_back']) : null}
-                    {gplxFieldKeys.map(renderFieldInput)}
-                  </View>
-                </Card>
-
-                {nameMismatch && nameMismatch !== 'EXACT_MATCH' ? (
-                  <View style={[styles.alertBox, { backgroundColor: colors.warningContainer }]}>
-                    <MaterialIcons name="warning-amber" size={20} color={colors.onWarningContainer} importantForAccessibility="no" />
-                    <Text style={[styles.alertText, { color: colors.onWarningContainer }]}>
-                      {nameMismatch === 'DIACRITIC_MISMATCH'
-                        ? 'Họ tên khác dấu giữa CCCD và GPLX. Hãy đối chiếu lại.'
-                        : 'Họ tên khác nhau giữa CCCD và GPLX. Hãy đối chiếu lại.'}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {dobMismatch ? (
-                  <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]}>
-                    <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
-                    <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>Ngày sinh giữa CCCD và GPLX không trùng khớp.</Text>
-                  </View>
-                ) : null}
-
-                {ocrLockedCccdConflict ? (
-                  <View style={[styles.alertBox, { backgroundColor: colors.errorContainer }]}>
-                    <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
-                    <Text style={[styles.alertText, { color: colors.onErrorContainer }]}>
-                      Ảnh CCCD vừa quét có số định danh khác với tài khoản đã xác minh. Thông tin định danh cố định đã được giữ nguyên.
-                    </Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.buttonStack}>
-                  <Button label="Xem tổng hợp" disabled={locked} onPress={() => setStage('SUMMARY')} />
-                  <Button variant="ghost" label="Quay lại bước đọc" disabled={locked} onPress={() => setStage('OCR')} />
-                </View>
-              </View>
-            ) : null}
-
-            {/* BƯỚC 5: Xem tổng hợp và nộp */}
-            {stage === 'SUMMARY' ? (
-              <Card>
-                <View style={styles.sectionStack}>
-                  <Text style={styles.title}>Kiểm tra tổng hợp trước khi nộp</Text>
-
-                  <Text style={styles.sectionTitle}>Ảnh giấy tờ đã chuẩn bị</Text>
-                  <View style={styles.compareStack}>
-                    {slots.filter(([key]) => photos[key] || app?.document?.captures[key]).map(([key, label]) => (
-                      <View key={key} style={styles.field}>
-                        <Text style={styles.fieldLabel}>{label}</Text>
-                        {renderPhoto(key, label)}
-                        {photoWarnings(key)}
-                        {photos[key] && isSmall(photos[key]!) ? <Text style={styles.mutedText}>Ảnh nhỏ · đã xác nhận.</Text> : null}
-                        <Button variant="ghost" label={'Sửa ảnh ' + label} disabled={locked || !slotAllowed(app, key)}
-                          onPress={() => { setStep(slots.findIndex(([item]) => item === key)); setStage('CAPTURE'); setConfirm(false); }} />
-                      </View>
-                    ))}
-                  </View>
-
-                  <Text style={styles.sectionTitle}>Thông tin CCCD & GPLX</Text>
-                  <View style={[styles.summaryList, { backgroundColor: colors.surfaceContainerHigh }]}>
-                    {fields.map(([key, label]) => (
-                      <View key={key} style={styles.summaryRow}>
-                        <Text style={styles.mutedText}>{label}</Text>
-                        <Text style={styles.summaryValue}>
-                          {key === 'expiry_date' && noExpiry
-                            ? 'Không thời hạn'
-                            : key === 'cccd_gender'
-                              ? (values[key] === 'MALE' ? 'Nam' : values[key] === 'FEMALE' ? 'Nữ' : '—')
-                              : (values[key]?.trim() || '—')}
-                        </Text>
-                      </View>
-                    ))}
-                    <Button variant="ghost" label="Sửa thông tin" disabled={locked} onPress={() => setStage('CONFIRM_FIELDS')} />
-                  </View>
-
-                  {renderWarnings(warnings)}
-
-                  {faceNotice ? (
-                    <View style={[styles.row, styles.consentBox, { backgroundColor: colors.surfaceContainer }]}>
-                      <Switch accessibilityLabel="Đồng ý đối chiếu khuôn mặt thử nghiệm"
-                        value={faceConsent} onValueChange={value => { setFaceConsent(value); setDraftFace(undefined); setConfirm(false); }}
-                        disabled={locked || reading} />
-                      <Text style={styles.flex}>
-                        Tôi đồng ý kiểm tra chất lượng ảnh trong bản nháp nếu chủ động yêu cầu và cho admin đối chiếu ảnh CCCD, GPLX và selfie của bản nộp này.
-                        Tùy chọn này không ảnh hưởng khả năng nộp hồ sơ.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {faceNotice && faceConsent ? (
-                    <View style={styles.field}>
-                      <Button variant="secondary" label="Kiểm tra chất lượng ảnh chân dung" disabled={locked || reading}
-                        onPress={() => void run('Đang kiểm tra chất lượng ảnh…', checkFaceQuality)} />
-                      {liveFace ? (
-                        <Text accessibilityLiveRegion="polite">
-                          {liveFace.status === 'NOT_EVALUATED'
-                            ? 'Chưa đánh giá được ảnh. Bạn vẫn có thể gửi để admin xem thủ công.'
-                            : 'Đã kiểm tra chất lượng ảnh. Bạn có thể chụp lại theo cảnh báo hoặc gửi để admin xem thủ công.'}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-
-                  <View style={[styles.row, styles.consentBox, { backgroundColor: colors.surfaceContainer }]}>
-                    <Switch accessibilityLabel="Xác nhận ảnh và thông tin" value={confirm}
-                      onValueChange={setConfirm} disabled={locked || reading} />
-                    <Text style={styles.flex}>Tôi đã đối chiếu đầy đủ ảnh và thông tin, và đồng ý nộp hồ sơ.</Text>
-                  </View>
-
-                  {currentWarningReview ? (
-                    <View style={[styles.row, styles.consentBox, { backgroundColor: colors.warningContainer }]}>
-                      <Switch accessibilityLabel="Xác nhận đã xem cảnh báo" value={currentWarningReview.acknowledged}
-                        disabled={locked || reading}
-                        onValueChange={acknowledged => setWarningReview({ revision: currentWarningReview.revision, acknowledged })} />
-                      <Text style={[styles.flex, { color: colors.onWarningContainer }]}>
-                        Tôi đã xem cảnh báo của bản hồ sơ này và muốn tiếp tục.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.buttonStack}>
-                    <Button
-                      label={!currentWarningReview && warnings.some(warning => warning.requiresReview)
-                        ? 'Kiểm tra cảnh báo' : app?.status === 'NEEDS_MORE_INFO' ? 'Nộp bổ sung' : 'Nộp hồ sơ'}
-                      disabled={locked || reading || !confirm || Boolean(currentWarningReview && !currentWarningReview.acknowledged)}
-                      onPress={() => void run('Đang nộp hồ sơ…', submit)}
-                    />
-                    <Button variant="ghost" label="Sửa thông tin" disabled={locked} onPress={() => setStage('CONFIRM_FIELDS')} />
-                  </View>
-                </View>
-              </Card>
-            ) : null}
-          </View>
+        {canEdit && stage === 'SUMMARY' ? (
+          <VerificationSummaryStep
+            app={app}
+            locked={locked}
+            reading={reading}
+            photos={photos}
+            resolvedUri={resolvedPhotoUri}
+            values={values}
+            noExpiry={noExpiry}
+            warnings={warnings}
+            faceNotice={faceNotice}
+            faceConsent={faceConsent}
+            liveFace={liveFace}
+            confirm={confirm}
+            currentWarningReview={currentWarningReview}
+            onEditPhoto={idx => { setStep(idx); setStage('CAPTURE'); setConfirm(false); }}
+            onEditFields={() => setStage('CONFIRM_FIELDS')}
+            onPreviewSaved={key => void run('Đang mở ảnh…', signal => preview(key, signal))}
+            onToggleFaceConsent={value => { setFaceConsent(value); setDraftFace(undefined); setConfirm(false); }}
+            onCheckFaceQuality={() => void run('Đang kiểm tra chất lượng ảnh…', checkFaceQuality)}
+            onToggleConfirm={setConfirm}
+            onToggleWarningReview={(revision, acknowledged) => setWarningReview({ revision, acknowledged })}
+          />
         ) : null}
       </View>
+
       {guidedSlot ? (
         <GuidedCaptureScreen
           visible
@@ -1562,9 +1402,41 @@ function Workflow({ uid }: { uid: string }) {
           side={guidedSlot.endsWith('_back') ? 'back' : guidedSlot === 'selfie' ? undefined : 'front'}
           instruction={captureInstructions[guidedSlot]}
           onPickFromGallery={guidedSlot === 'selfie' ? undefined : () => { const key = guidedSlot; setGuidedSlot(null); void pickFromGallery(key); }}
-          onInspectServer={consent ? (photo, signal) => inspectCapturedWithServer(guidedSlot, photo, signal) : undefined}
-          onCapture={photo => onGuidedCaptured(guidedSlot, photo)}
+          onInspectServer={consent ? (captured, signal) => inspectCapturedWithServer(guidedSlot, captured, signal) : undefined}
+          onCapture={captured => onGuidedCaptured(guidedSlot, captured)}
           onClose={() => setGuidedSlot(null)}
+        />
+      ) : null}
+
+      {qrScannerOpen ? (
+        <QrScannerScreen
+          visible
+          documentType={qrScannerDocType}
+          defaultSide={(qrScannerDocType === 'GPLX' ? gplxQrDecision : qrDecision).defaultSide}
+          expectedVariant={(qrScannerDocType === 'GPLX' ? gplxQrDecision : qrDecision).expectedVariant}
+          onScanPayload={submitQrLivePayload}
+          onSkip={() => {
+            setQrScannerOpen(false);
+            setBackQrPromptDoc(null);
+            if (qrScannerDocType === 'GPLX') setGplxQrSkipped(true);
+            else setQrSkipped(true);
+            if (qrReturnTarget === 'CAPTURE_NEXT') {
+              const nextStep = step + 1;
+              if (nextStep < slots.length) setStep(nextStep);
+              else completeCaptureFlow();
+            }
+          }}
+          onDone={() => {
+            setQrScannerOpen(false);
+            setBackQrPromptDoc(null);
+            if (qrReturnTarget === 'CAPTURE_NEXT') {
+              const nextStep = step + 1;
+              if (nextStep < slots.length) setStep(nextStep);
+              else completeCaptureFlow();
+            } else {
+              setStage('CONFIRM_FIELDS');
+            }
+          }}
         />
       ) : null}
     </DriverPage>
@@ -1574,44 +1446,6 @@ function Workflow({ uid }: { uid: string }) {
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   page: { gap: spacing.spaceMd, paddingBottom: spacing.spaceXl },
   headerAction: { width: 48, height: 48, borderRadius: 24 },
-  statusCard: { gap: spacing.px3 },
-  statusHeadline: { ...typography.sectionTitle, color: colors.onSurface },
-  progressCard: { gap: spacing.spaceSm },
-  stepBadge: { ...typography.label },
-  title: { ...typography.screenTitle, color: colors.onSurface },
-  sectionTitle: { ...typography.sectionTitle, color: colors.onSurface },
-  bodyText: { ...typography.body, color: colors.onSurface },
-  mutedText: { ...typography.bodySecondary, color: colors.onSurfaceVariant },
-  fieldLabel: { ...typography.label, color: colors.onSurface },
-  hintText: { ...typography.caption },
-  input: { borderRadius: spacing.spaceMd, paddingHorizontal: spacing.px3, paddingVertical: spacing.px3 },
-  frame: {
-    backgroundColor: colors.surfaceContainerHigh, borderRadius: spacing.spaceMd, minHeight: 140,
-    padding: spacing.px3, justifyContent: 'center', alignItems: 'center', gap: spacing.spaceSm, overflow: 'hidden',
-  },
-  frameLarge: { width: 210, maxWidth: '100%', aspectRatio: 3 / 4, alignSelf: 'center' },
-  selfie: { borderRadius: borderRadius.sheet },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.spaceSm },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.spaceSm },
-  field: { gap: spacing.spaceSm },
-  fieldCard: { padding: spacing.px3, borderRadius: spacing.spaceMd, gap: spacing.spaceSm },
-  compareStack: { gap: spacing.px3 },
-  sectionStack: { gap: spacing.px3 },
-  buttonStack: { gap: spacing.spaceSm },
-  prepItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.px3, padding: spacing.px3, borderRadius: spacing.spaceMd },
-  consentBox: { padding: spacing.px3, borderRadius: spacing.spaceMd },
   infoBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.spaceSm, padding: spacing.px3, borderRadius: spacing.spaceMd },
-  alertBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.spaceSm, padding: spacing.px3, borderRadius: spacing.spaceMd },
-  alertText: { ...typography.label, flex: 1 },
-  summaryList: { padding: spacing.px3, borderRadius: spacing.spaceMd, gap: spacing.spaceSm },
-  summaryRow: { gap: spacing.xxs },
-  summaryValue: { ...typography.cardTitle, color: colors.onSurface },
-  verifiedHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.px3 },
-  statusBadge: { paddingHorizontal: spacing.px3, paddingVertical: spacing.py1_5, borderRadius: borderRadius.full },
-  statusBadgeText: { ...typography.badge },
-  verifiedTile: { padding: spacing.spaceMd, borderRadius: spacing.spaceMd, gap: spacing.spaceXs },
-  verifiedTileTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.spaceSm },
-  verifiedPillText: { ...typography.badge },
   flex: { flex: 1 },
 });
-

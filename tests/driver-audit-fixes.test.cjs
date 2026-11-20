@@ -102,8 +102,7 @@ test("Stage 1-4 audit fixes keep recovery UI, scrollable dialogs, virtualized li
   assert.match(reg, /Về màn đăng nhập/);
   assert.doesNotMatch(reg, /Bước 1\/4/);
 
-  const approval = read("apps/driver/src/features/auth/screens/ApprovalStatusScreen.tsx");
-  assert.doesNotMatch(approval, /Bước 6\/7/);
+
 
   const home = read("apps/driver/src/features/offers/screens/HomeScreen.tsx");
   assert.match(home, /title:\s*"Chưa tải được điều kiện nhận chuyến",\s*action:\s*"Thử lại"/);
@@ -131,8 +130,8 @@ test("Stage 1-4 audit fixes keep recovery UI, scrollable dialogs, virtualized li
   assert.match(photo, /from "expo-image"/);
   assert.match(photo, /sensitive \? "none" : "memory-disk"/);
 
-  const verification = read("apps/driver/src/features/verification/VerificationScreen.tsx");
-  assert.match(verification, /<DriverPhoto[^>]*sensitive/);
+  const verificationShared = read("apps/driver/src/features/verification/components/VerificationShared.tsx");
+  assert.match(verificationShared, /<DriverPhoto[^>]*sensitive/);
 
   const guided = read("apps/driver/src/features/verification/GuidedCaptureScreen.tsx");
   assert.match(guided, /from 'expo-image'/);
@@ -210,8 +209,9 @@ test("Stage 4 critique fixes: compact filters, wallet presets/hierarchy, and non
 
 test("Stage 5 critique fixes: consistent design tokens across verification, capabilities, ride and profile", () => {
   const verification = read("apps/driver/src/features/verification/VerificationScreen.tsx");
+  const verificationStatus = read("apps/driver/src/features/verification/components/VerificationStatusView.tsx");
   assert.match(verification, /headerAction=/);
-  assert.match(verification, /<GroupedList title="Tra cứu hồ sơ">/);
+  assert.match(verificationStatus, /<GroupedList title="Tra cứu hồ sơ">/);
   assert.doesNotMatch(verification, /label="Làm mới trạng thái"/);
 
   const capabilities = read("apps/driver/src/features/verification/CapabilitiesScreen.tsx");
