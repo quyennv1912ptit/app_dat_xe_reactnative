@@ -394,7 +394,7 @@ test('phase 11.1.3B qrScanDecision, source-aware collectChoices, and formatOrigi
   const merged = collectChoices(mixedObservations, liveQr);
   assert.equal(merged.cccd_id.length, 1);
   assert.deepEqual(merged.cccd_id[0].origins, ['OCR', 'QR_LIVE_SCAN']);
-  assert.equal(formatOriginLabel(merged.cccd_id[0]), 'OCR · Đọc từ quét QR trực tiếp');
+  assert.equal(formatOriginLabel(merged.cccd_id[0]), 'Đọc từ ảnh · Đọc từ quét QR trực tiếp');
   assert.equal(merged.cccd_name.length, 2);
   assert.equal(formatOriginLabel(merged.cccd_name[1]), 'Đọc từ quét QR trực tiếp');
   assert.equal(merged.cccd_dob.length, 1);

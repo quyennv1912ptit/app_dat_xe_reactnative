@@ -92,6 +92,7 @@ export function SlotPhotoFrame({
   large = false,
   tile = false,
   busy = false,
+  interactive = false,
   onLoadSaved,
 }: {
   uri?: string;
@@ -101,6 +102,7 @@ export function SlotPhotoFrame({
   large?: boolean;
   tile?: boolean;
   busy?: boolean;
+  interactive?: boolean;
   onLoadSaved?: () => void;
 }) {
   const styles = useThemedStyles(makeStyles);
@@ -108,14 +110,25 @@ export function SlotPhotoFrame({
   if (uri) return <DriverPhoto uri={uri} label={label} portrait={large && !tile} tile={tile} showCaption={false} sensitive />;
   return (
     <View style={[styles.frame, large && styles.frameLarge, isSelfie && styles.selfieFrame]}>
-      <MaterialIcons
-        name={hasSavedCapture ? 'cloud-done' : isSelfie ? 'face' : 'add-a-photo'}
-        size={28}
-        color={colors.onSurfaceVariant}
-        importantForAccessibility="no"
-      />
-      <Text style={styles.mutedText}>
-        {hasSavedCapture ? 'Ảnh đã lưu trên máy chủ' : 'Chưa có ảnh'}
+      <View
+        style={[
+          styles.iconBadge,
+          {
+            backgroundColor: !hasSavedCapture && interactive
+              ? colors.primaryContainer
+              : colors.surfaceContainer,
+          },
+        ]}
+      >
+        <MaterialIcons
+          name={hasSavedCapture ? 'cloud-done' : isSelfie ? 'face' : 'add-a-photo'}
+          size={24}
+          color={!hasSavedCapture && interactive ? colors.onPrimaryContainer : colors.onSurfaceVariant}
+          importantForAccessibility="no"
+        />
+      </View>
+      <Text style={[styles.mutedText, !hasSavedCapture && interactive && { color: colors.onSurface }]}>
+        {hasSavedCapture ? 'Ảnh đã lưu trên máy chủ' : interactive ? 'Chạm để mở camera' : 'Chưa có ảnh'}
       </Text>
       {hasSavedCapture && onLoadSaved ? (
         <Button
@@ -151,6 +164,13 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: spacing.spaceSm,
       overflow: 'hidden',
+    },
+    iconBadge: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     frameLarge: {
       width: 210,

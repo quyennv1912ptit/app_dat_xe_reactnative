@@ -6,6 +6,7 @@ import {
   Card,
   GroupedList,
   KeyValueRow,
+  MotionPressable,
   Typography as Text,
   spacing,
   typography,
@@ -16,6 +17,7 @@ import {
 import type { Application, VerificationWarning } from '../api';
 import {
   formatGenderValue,
+  formatVnDate,
   isSmall,
   slotAllowed,
   type PhotoAsset,
@@ -47,7 +49,6 @@ export function VerificationSummaryStep({
   confirm,
   currentWarningReview,
   onEditPhoto,
-  onEditFields,
   onPreviewSaved,
   onToggleFaceConsent,
   onCheckFaceQuality,
@@ -69,7 +70,6 @@ export function VerificationSummaryStep({
   confirm: boolean;
   currentWarningReview?: { revision: number; acknowledged: boolean };
   onEditPhoto: (index: number) => void;
-  onEditFields: () => void;
   onPreviewSaved: (key: SlotKey) => void;
   onToggleFaceConsent: (value: boolean) => void;
   onCheckFaceQuality: () => void;
@@ -90,7 +90,7 @@ export function VerificationSummaryStep({
     if (key === 'cccd_gender') return formatGenderValue(values[key]);
     const value = values[key]?.trim() || '—';
     return key.includes('dob') || key.includes('expiry_date')
-      ? value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1') : value;
+      ? formatVnDate(value) : value;
   }
 
   return (
@@ -152,16 +152,6 @@ export function VerificationSummaryStep({
             />
           ))}
         </View>
-        <View style={styles.editButtonWrap}>
-          <Button
-            variant="ghost"
-            label="Sửa thông tin"
-            icon="edit"
-            iconPosition="leading"
-            disabled={locked}
-            onPress={onEditFields}
-          />
-        </View>
       </GroupedList>
 
       {pendingPhotoCount > 0 ? (
@@ -178,9 +168,14 @@ export function VerificationSummaryStep({
       {faceNotice ? (
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Kiểm tra ảnh chân dung (tùy chọn)</Text>
-          <View style={[styles.switchBox, { backgroundColor: colors.surfaceContainerHigh }]}>
+          <MotionPressable
+            accessible={false}
+            disabled={locked || reading}
+            onPress={() => onToggleFaceConsent(!faceConsent)}
+            style={[styles.switchBox, { backgroundColor: colors.surfaceContainerHigh }]}
+          >
             <Switch
-              accessibilityLabel="Đồng ý đối chiếu khuôn mặt thử nghiệm"
+              accessibilityLabel="Cho phép kiểm tra chất lượng ảnh chân dung và để admin đối chiếu với ảnh giấy tờ"
               value={faceConsent}
               disabled={locked || reading}
               onValueChange={onToggleFaceConsent}
@@ -188,7 +183,7 @@ export function VerificationSummaryStep({
             <Text style={styles.switchText}>
               Cho phép kiểm tra chất lượng ảnh chân dung và để admin đối chiếu với ảnh giấy tờ. Không bắt buộc để nộp hồ sơ.
             </Text>
-          </View>
+          </MotionPressable>
           {faceConsent ? (
             <View style={styles.faceCheckBlock}>
               <Button
@@ -213,9 +208,26 @@ export function VerificationSummaryStep({
       ) : null}
 
       <Card style={styles.card}>
-        <View style={[styles.switchBox, { backgroundColor: colors.surfaceContainerHigh }]}>
+        <MotionPressable
+          accessible={false}
+          disabled={locked || reading}
+          onPress={() => {
+            const next = !(confirm && currentWarningReview?.acknowledged !== false);
+            onToggleConfirm(next);
+            if (currentWarningReview) onToggleWarningReview(currentWarningReview.revision, next);
+          }}
+          style={[
+            styles.switchBox,
+            {
+              backgroundColor:
+                confirm && currentWarningReview?.acknowledged !== false
+                  ? colors.primaryContainer
+                  : colors.surfaceContainerHigh,
+            },
+          ]}
+        >
           <Switch
-            accessibilityLabel="Xác nhận ảnh và thông tin"
+            accessibilityLabel="Tôi đã kiểm tra ảnh, thông tin và các lưu ý của hồ sơ này, đồng ý gửi xét duyệt"
             value={confirm && currentWarningReview?.acknowledged !== false}
             disabled={locked || reading}
             onValueChange={value => {
@@ -223,10 +235,15 @@ export function VerificationSummaryStep({
               if (currentWarningReview) onToggleWarningReview(currentWarningReview.revision, value);
             }}
           />
-          <Text style={styles.switchText}>
+          <Text
+            style={[
+              styles.switchText,
+              confirm && currentWarningReview?.acknowledged !== false && { color: colors.onPrimaryContainer },
+            ]}
+          >
             Tôi đã kiểm tra ảnh, thông tin và các lưu ý của hồ sơ này, đồng ý gửi xét duyệt.
           </Text>
-        </View>
+        </MotionPressable>
 
       </Card>
     </View>
@@ -253,13 +270,13 @@ const makeStyles = (colors: ThemeColors) =>
     },
     cellTitle: { ...typography.label, color: colors.onSurface },
     mutedText: { ...typography.caption, color: colors.onSurfaceVariant },
-    rowsContainer: { padding: spacing.spaceMd, gap: spacing.spaceSm },
-    editButtonWrap: { paddingHorizontal: spacing.spaceSm, paddingBottom: spacing.spaceSm },
+    rowsContainer: { paddingVertical: spacing.spaceXs, gap: spacing.spaceSm },
     switchBox: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.spaceSm,
       padding: spacing.px3,
+      minHeight: 56,
       borderRadius: spacing.spaceMd,
     },
     switchText: { ...typography.bodySecondary, color: colors.onSurface, flex: 1 },

@@ -180,3 +180,34 @@ export function formatGenderValue(value: string | undefined): string {
   if (value === 'FEMALE') return 'Nữ';
   return '—';
 }
+
+export function formatVnDate(value?: string | null): string {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : trimmed;
+}
+
+export function parseVnDateToIso(value: string): string | null {
+  const trimmed = value.trim();
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  if (!match) return null;
+  const iso = `${match[3]}-${match[2]}-${match[1]}`;
+  const time = Date.parse(iso);
+  if (!Number.isFinite(time) || new Date(time).toISOString().slice(0, 10) !== iso) return null;
+  return iso;
+}
+
+/** Chuyển ISO (yyyy-mm-dd) sang Date local giữa trưa để tránh lệch múi giờ khi chọn ngày. */
+export function isoToLocalDate(value?: string | null): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value?.trim() ?? '');
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Chuyển Date local sang ISO (yyyy-mm-dd) để giữ nguyên hợp đồng gửi máy chủ. */
+export function localDateToIso(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

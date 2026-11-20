@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
+  MotionPressable,
   Typography as Text,
   borderRadius,
   spacing,
@@ -18,14 +19,21 @@ export function VerificationStepHeader({
   stage,
   step,
   hasPhoto,
+  onSelectStep,
+  disabled = false,
+  isSlotAllowed,
 }: {
   stage: FlowStage;
   step: number;
   hasPhoto: (key: SlotKey) => boolean;
+  onSelectStep?: (index: number) => void;
+  disabled?: boolean;
+  isSlotAllowed?: (key: SlotKey) => boolean;
 }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
   const milestone = visibleMilestone(stage, step);
+  const doneCount = stage === 'CAPTURE' ? slots.filter(([key]) => hasPhoto(key)).length : 0;
 
   return (
     <View style={styles.root}>
@@ -33,6 +41,9 @@ export function VerificationStepHeader({
         <Text style={[styles.stepText, { color: colors.primary }]} accessibilityRole="header">
           {milestone.label}
         </Text>
+        {stage === 'CAPTURE' ? (
+          <Text style={styles.counterText}>{`Đã chụp ${doneCount}/${slots.length}`}</Text>
+        ) : null}
       </View>
       <ProgressBar
         progress={milestone.progress}
@@ -44,29 +55,41 @@ export function VerificationStepHeader({
           {slots.map(([key], idx) => {
             const done = hasPhoto(key);
             const active = idx === step;
+            const allowed = isSlotAllowed ? isSlotAllowed(key) : true;
             const bg = active
-              ? colors.primaryContainer
+              ? colors.primary
               : done
                 ? colors.successContainer
                 : colors.surfaceContainerHigh;
             const fg = active
-              ? colors.onPrimaryContainer
+              ? colors.onPrimary
               : done
                 ? colors.onSuccessContainer
                 : colors.onSurfaceVariant;
-            const stateLabel = active ? 'Đang chụp' : done ? 'Đã chụp' : 'Chưa chụp';
+            const stateLabel = active
+              ? 'Đang chụp'
+              : done
+                ? 'Đã chụp'
+                : allowed
+                  ? 'Chưa chụp'
+                  : 'Không cần bổ sung lần này';
+            const pillDisabled = disabled || !onSelectStep || !allowed;
+
             return (
-              <View
+              <MotionPressable
                 key={key}
-                accessible
+                accessibilityRole={onSelectStep ? 'button' : 'text'}
                 accessibilityLabel={`${shortSlotLabels[key]}: ${stateLabel}`}
-                style={[styles.slotPill, { backgroundColor: bg }]}
+                accessibilityState={{ selected: active, disabled: pillDisabled }}
+                disabled={pillDisabled}
+                onPress={() => onSelectStep?.(idx)}
+                style={[styles.slotPill, { backgroundColor: bg }, !allowed && styles.dimmed]}
               >
-                {done && !active ? (
+                {done ? (
                   <MaterialIcons name="check" size={14} color={fg} importantForAccessibility="no" />
                 ) : null}
                 <Text style={[styles.slotText, { color: fg }]}>{shortSlotLabels[key]}</Text>
-              </View>
+              </MotionPressable>
             );
           })}
         </View>
@@ -88,11 +111,17 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
       gap: spacing.spaceSm,
     },
     stepText: {
       ...typography.label,
-      flex: 1,
+      flexShrink: 1,
+    },
+    counterText: {
+      ...typography.caption,
+      color: colors.onSurfaceVariant,
+      fontVariant: ['tabular-nums'],
     },
     bar: {
       height: 6,
@@ -107,9 +136,9 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      paddingHorizontal: spacing.spaceSm,
-      paddingVertical: spacing.xxs + 2,
-      minHeight: 36,
+      paddingHorizontal: spacing.px3,
+      paddingVertical: spacing.spaceXs,
+      minHeight: 48,
       borderRadius: borderRadius.full,
     },
     slotText: {

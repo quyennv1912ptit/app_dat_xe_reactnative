@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, typography, Typography as Text, useThemeColors, useThemedStyles, type ThemeColors } from '@datxe/ui';
+import { Button, typography, Typography as Text, useReducedMotion, useThemeColors, useThemedStyles, type ThemeColors } from '@datxe/ui';
 import { cacheFileSize, removeCacheFile } from './captureFiles';
 import {
   assessCapture, mimeFromUri, summarizeChecks, type CaptureKind, type CheckState, type QualityCheck,
@@ -54,8 +54,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export function GuidedCaptureScreen(props: GuidedCaptureProps) {
+  const reduced = useReducedMotion();
   return (
-    <Modal visible={props.visible} animationType="slide" onRequestClose={props.onClose} statusBarTranslucent
+    <Modal visible={props.visible} animationType={reduced ? 'none' : 'slide'} onRequestClose={props.onClose} statusBarTranslucent
       supportedOrientations={['portrait', 'landscape']}>
       {props.visible ? <CaptureSession {...props} /> : null}
     </Modal>
@@ -318,8 +319,10 @@ function CaptureSession({
         </View>
         {showCamera && !selfie ? (
           <Pressable accessibilityRole="switch" accessibilityState={{ checked: torch }}
-            accessibilityLabel={torch ? 'Tắt đèn' : 'Bật đèn'} onPress={() => setTorch(v => !v)} hitSlop={12} style={styles.iconButton}>
-            <MaterialIcons name={torch ? 'flash-on' : 'flash-off'} size={26} color={colors.onScrim} />
+            accessibilityLabel={torch ? 'Tắt đèn' : 'Bật đèn'} onPress={() => setTorch(v => !v)} hitSlop={12}
+            style={[styles.iconButton, torch && { backgroundColor: colors.primaryContainer, borderRadius: 24 }]}>
+            <MaterialIcons name={torch ? 'flash-on' : 'flash-off'} size={26}
+              color={torch ? colors.onPrimaryContainer : colors.onScrim} />
           </Pressable>
         ) : <View style={styles.iconButton} />}
       </View>
@@ -360,15 +363,18 @@ function CaptureSession({
           <ScrollView style={styles.previewReview} contentContainerStyle={styles.checkList} keyboardShouldPersistTaps="handled">
           {summary.blocking ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.errorContainer }]}>
+              <MaterialIcons name="error-outline" size={20} color={colors.onErrorContainer} importantForAccessibility="no" />
               <Text style={[styles.verdictText, { color: colors.onErrorContainer }]}>Ảnh chưa đạt kích thước hoặc định dạng. Hãy chụp lại.</Text>
             </View>
           ) : summary.hasWarning || serverResult?.warnings.some(warning => warning.severe
             || ['IMAGE_BLURRY', 'IMAGE_GLARE', 'IMAGE_TOO_SMALL', 'CARD_CROPPED', 'FACE_INSUFFICIENT_QUALITY'].includes(warning.code)) ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.warningContainer }]}>
+              <MaterialIcons name="warning-amber" size={20} color={colors.onWarningContainer} importantForAccessibility="no" />
               <Text style={[styles.verdictText, { color: colors.onWarningContainer }]}>Có lưu ý về độ rõ hoặc ánh sáng. Bạn nên chụp lại nếu chữ bị mờ.</Text>
             </View>
           ) : serverResult?.verified ? (
             <View style={[styles.verdictBanner, { backgroundColor: colors.successContainer }]}>
+              <MaterialIcons name="check-circle" size={20} color={colors.onSuccessContainer} importantForAccessibility="no" />
               <Text style={[styles.verdictText, { color: colors.onSuccessContainer }]}>Ảnh đã qua kiểm tra máy và máy chủ.</Text>
             </View>
           ) : (
@@ -408,8 +414,17 @@ function CaptureSession({
           </ScrollView>
 
           <View style={styles.actions}>
-            <Button label="Dùng ảnh này" disabled={summary.blocking || inspecting} onPress={usePhoto} />
-            <Button variant="secondary" label="Chụp lại" onPress={retake} />
+            {summary.blocking ? (
+              <>
+                <Button label="Chụp lại" onPress={retake} />
+                <Button variant="secondary" label="Dùng ảnh này" disabled onPress={usePhoto} />
+              </>
+            ) : (
+              <>
+                <Button label="Dùng ảnh này" disabled={inspecting} onPress={usePhoto} />
+                <Button variant="secondary" label="Chụp lại" onPress={retake} />
+              </>
+            )}
           </View>
         </View>
       ) : (
@@ -440,7 +455,7 @@ function CaptureSession({
             <Pressable accessibilityRole="button" accessibilityLabel="Chụp ảnh"
               accessibilityState={{ disabled: !showCamera || !ready || busy, busy }}
               disabled={!showCamera || !ready || busy} onPress={() => void takePicture()}
-              style={[styles.shutterOuter, (!ready || busy) && styles.shutterDisabled]}>
+              style={({ pressed }) => [styles.shutterOuter, (!ready || busy) && styles.shutterDisabled, pressed && ready && !busy && styles.shutterPressed]}>
               {busy ? <ActivityIndicator color={colors.primary} /> : <View style={[styles.shutterInner, { backgroundColor: colors.primary }]} />}
             </Pressable>
             <View style={styles.sideSlot} />
@@ -534,8 +549,8 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   captureTips: { maxHeight: 160 },
   previewFooter: { maxHeight: '65%', flexShrink: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 8 },
   checkList: { gap: 8, paddingBottom: 4 },
-  verdictBanner: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-  verdictText: { ...typography.label },
+  verdictBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  verdictText: { ...typography.label, flex: 1 },
   verdictNeutral: { ...typography.label, color: colors.onScrim },
   panel: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 8 },
   instruction: { ...typography.cardTitle, color: colors.onScrim, textAlign: 'center' },
@@ -549,6 +564,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   shutterOuter: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.onScrim, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 58, height: 58, borderRadius: 29 },
   shutterDisabled: { opacity: 0.4 },
+  shutterPressed: { opacity: 0.8 },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   checkText: { ...typography.bodySecondary, flex: 1, color: colors.onScrim },
   checkLabel: { ...typography.label, color: colors.onScrim },

@@ -39,6 +39,7 @@ import {
 } from './verificationLabels';
 import { VerificationStepHeader } from './components/VerificationStepHeader';
 import { VerificationFooter } from './components/VerificationFooter';
+import { AlertBanner } from './components/VerificationShared';
 import { EditingStatusBanner, PendingReviewView, VerifiedBaselineView } from './components/VerificationStatusView';
 import { VerificationPrepareStep } from './components/VerificationPrepareStep';
 import { VerificationCaptureStep } from './components/VerificationCaptureStep';
@@ -136,10 +137,17 @@ function Workflow({ uid }: { uid: string }) {
   const [compareGroup, setCompareGroup] = useState<'CCCD' | 'GPLX' | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [guidedSlot, setGuidedSlot] = useState<SlotKey | null>(null);
+  const [fieldIssueCount, setFieldIssueCount] = useState(0);
   const [busy, setBusy] = useState('');
   const [reading, setReading] = useState(false);
   const [picking, setPicking] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'info' | 'error' | 'success'>('info');
+  const retryRef = useRef<{ label: string; action: (signal: AbortSignal) => Promise<unknown> } | null>(null);
+  const showMessage = useCallback((text: string, tone: 'info' | 'error' | 'success' = 'info') => {
+    setMessage(text);
+    setMessageTone(tone);
+  }, []);
   const [readingNote, setReadingNote] = useState('');
   const [settingsAction, setSettingsAction] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -308,12 +316,15 @@ function Workflow({ uid }: { uid: string }) {
     const controller = new AbortController();
     operation.current = controller;
     setBusy(label);
-    setMessage('');
+    showMessage('');
     try {
       await action(controller.signal);
+      if (alive.current && !controller.signal.aborted) retryRef.current = null;
     } catch (error) {
       if (alive.current && !controller.signal.aborted) {
-        setMessage(error instanceof Error ? error.message : 'Thao tác chưa hoàn tất.');
+        showMessage(error instanceof Error ? error.message : 'Thao tác chưa hoàn tất.', 'error');
+        const code = error instanceof VerificationError ? error.code : null;
+        retryRef.current = code && ['NETWORK', 'TIMEOUT', 'SERVER'].includes(code) ? { label, action } : null;
       }
     } finally {
       if (operation.current === controller) {
@@ -321,7 +332,7 @@ function Workflow({ uid }: { uid: string }) {
         if (alive.current) setBusy('');
       }
     }
-  }, []);
+  }, [showMessage]);
 
   useEffect(() => {
     alive.current = true;
@@ -350,7 +361,7 @@ function Workflow({ uid }: { uid: string }) {
         if (!pickerActive.current && !operation.current && !ocr.current && !qrScanRequest.current) {
           void run('Đang kiểm tra trạng thái…', reload);
         } else if (!pickerActive.current) {
-          setMessage('Làm mới trạng thái để kiểm tra tác vụ trước khi tiếp tục.');
+          showMessage('Làm mới trạng thái để kiểm tra tác vụ trước khi tiếp tục.', 'info');
         }
       }
     });
@@ -366,7 +377,7 @@ function Workflow({ uid }: { uid: string }) {
       Object.values(ownedPhotos.current).forEach(p => removeCacheFile(p.uri));
       Object.values(ownedPreviews.current).forEach(p => removeCacheFile(p.uri));
     };
-  }, [api, reload, run]);
+  }, [api, reload, run, showMessage]);
 
   /** Validates one photo (from guided camera or gallery) and clears stale extractions for its document. */
   function acceptAsset(key: SlotKey, asset: Picker.ImagePickerAsset) {
@@ -415,7 +426,7 @@ function Workflow({ uid }: { uid: string }) {
   function openGuidedCapture(key: SlotKey) {
     if (pickerActive.current || locked || !canEdit || !slotAllowed(current.current, key)) return;
     setSettingsAction(false);
-    setMessage('');
+    showMessage('');
     setGuidedSlot(key);
   }
 
@@ -435,7 +446,7 @@ function Workflow({ uid }: { uid: string }) {
         inspectedCapture.current = { ...inspectedCapture.current, [key]: undefined };
       }
     } catch (error) {
-      if (alive.current) setMessage(error instanceof Error ? error.message : 'Không dùng được ảnh này.');
+      if (alive.current) showMessage(error instanceof Error ? error.message : 'Không dùng được ảnh này.', 'error');
     }
   }
 
@@ -525,7 +536,7 @@ function Workflow({ uid }: { uid: string }) {
     pickerActive.current = true;
     setPicking(true);
     setSettingsAction(false);
-    setMessage('');
+    showMessage('');
     try {
       const result = await Picker.launchImageLibraryAsync({
         mediaTypes: ['images'], quality: DOCUMENT_JPEG_QUALITY, exif: false,
@@ -552,7 +563,7 @@ function Workflow({ uid }: { uid: string }) {
         fileSize: normalized.fileSize ?? undefined,
       });
     } catch (error) {
-      if (alive.current) setMessage(error instanceof Error ? error.message : 'Không mở được ảnh.');
+      if (alive.current) showMessage(error instanceof Error ? error.message : 'Không mở được ảnh.', 'error');
     } finally {
       pickerActive.current = false;
       if (alive.current) setPicking(false);
@@ -639,7 +650,7 @@ function Workflow({ uid }: { uid: string }) {
     applyConfirmedToForm(updated.document?.confirmed ?? updated.approvedDocument?.confirmed);
     accept(updated);
     setStage('PREPARE');
-    setMessage('Đã hủy cập nhật và khôi phục trạng thái hồ sơ đã xác minh.');
+    showMessage('Đã hủy cập nhật và khôi phục trạng thái hồ sơ đã xác minh.', 'success');
   }
 
   async function upload(key: SlotKey, base: Application, signal: AbortSignal) {
@@ -1105,7 +1116,7 @@ function Workflow({ uid }: { uid: string }) {
         accept(saved);
         if (saved.verificationWarnings?.some(warning => warning.requiresReview)) {
           setWarningReview({ revision: saved.revision, acknowledged: false });
-          setMessage('Hãy xem lại cảnh báo và bật xác nhận trước khi gửi.');
+          showMessage('Hãy xem lại cảnh báo và bật xác nhận trước khi gửi.', 'info');
           return;
         }
       }
@@ -1151,7 +1162,7 @@ function Workflow({ uid }: { uid: string }) {
     Object.values(livePreviews.current).forEach(p => removeCacheFile(p.uri));
     livePreviews.current = {};
     setPreviews({});
-    setMessage('Hồ sơ đã được gửi lên máy chủ.');
+    showMessage('Hồ sơ đã được gửi lên máy chủ.', 'success');
     try { await reload(signal); } catch { /* A confirmed submission remains successful. */ }
   }
 
@@ -1208,6 +1219,9 @@ function Workflow({ uid }: { uid: string }) {
           stage={stage}
           step={step}
           hasPhoto={key => Boolean(photos[key] || app?.document?.captures[key])}
+          onSelectStep={idx => { setBackQrPromptDoc(null); setStep(idx); }}
+          disabled={locked || reading}
+          isSlotAllowed={key => slotAllowed(app, key)}
         />
       ) : undefined}
       headerAction={(
@@ -1237,6 +1251,14 @@ function Workflow({ uid }: { uid: string }) {
           hasObservations={Object.keys(observations).length > 0}
           extractFailed={extractFailed}
           confirm={confirm}
+          fieldIssueCount={fieldIssueCount}
+          errorMessage={messageTone === 'error' && message ? message : undefined}
+          onRetry={messageTone === 'error' && retryRef.current
+            ? () => {
+                const retry = retryRef.current;
+                if (retry) void run(retry.label, retry.action);
+              }
+            : undefined}
           currentWarningReview={currentWarningReview}
           warnings={warnings}
           appStatus={app?.status}
@@ -1261,6 +1283,8 @@ function Workflow({ uid }: { uid: string }) {
           onBackFromFields={() => setStage(extractFailed ? 'OCR' : 'CAPTURE')}
           onSubmit={() => void run('Đang nộp hồ sơ…', submit)}
         />
+      ) : app && hasVerifiedBaseline ? (
+        <Button label="Chọn loại xe nhận lái hộ" onPress={() => router.push('/profile/capabilities')} />
       ) : undefined}
     >
       <View style={styles.page}>
@@ -1285,16 +1309,23 @@ function Workflow({ uid }: { uid: string }) {
             busy={busy}
             showHistory={showHistory}
             onToggleHistory={() => setShowHistory(v => !v)}
-            onOpenCapabilities={() => router.push('/profile/capabilities')}
             onStartReverify={() => void run('Đang mở cập nhật giấy tờ…', startReverify)}
           />
         ) : null}
 
-        {busy || message ? (
+        {busy ? (
           <View style={[styles.infoBanner, { backgroundColor: colors.surfaceContainerHigh }]}>
-            {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-            <Text style={styles.flex} accessibilityLiveRegion="polite">{busy || message}</Text>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.flex} accessibilityLiveRegion="polite">{busy}</Text>
           </View>
+        ) : message && !((pending || canEdit) && messageTone === 'error') ? (
+          <AlertBanner
+            tone={messageTone}
+            icon={messageTone === 'error' ? 'error-outline' : messageTone === 'success' ? 'check-circle' : 'info-outline'}
+            role={messageTone === 'error' ? 'alert' : undefined}
+            live
+            message={message}
+          />
         ) : null}
 
         {settingsAction ? (
@@ -1302,7 +1333,7 @@ function Workflow({ uid }: { uid: string }) {
             variant="secondary"
             label="Mở cài đặt quyền camera"
             onPress={() => {
-              void Linking.openSettings().catch(() => setMessage('Không mở được cài đặt trên thiết bị này.'));
+              void Linking.openSettings().catch(() => showMessage('Không mở được cài đặt trên thiết bị này.', 'error'));
             }}
           />
         ) : null}
@@ -1406,6 +1437,7 @@ function Workflow({ uid }: { uid: string }) {
             onPreviewSaved={key => void run('Đang mở ảnh…', signal => preview(key, signal))}
             onManualChange={manual}
             onApplyChoice={(key, choice) => applyChoice(key, choice, true)}
+            onIssueCountChange={setFieldIssueCount}
           />
         ) : null}
 
@@ -1426,7 +1458,6 @@ function Workflow({ uid }: { uid: string }) {
             confirm={confirm}
             currentWarningReview={currentWarningReview}
             onEditPhoto={idx => { setStep(idx); setStage('CAPTURE'); setConfirm(false); }}
-            onEditFields={() => setStage('CONFIRM_FIELDS')}
             onPreviewSaved={key => void run('Đang mở ảnh…', signal => preview(key, signal))}
             onToggleFaceConsent={value => { setFaceConsent(value); setDraftFace(undefined); setConfirm(false); }}
             onCheckFaceQuality={() => void run('Đang kiểm tra chất lượng ảnh…', checkFaceQuality)}
@@ -1457,6 +1488,10 @@ function Workflow({ uid }: { uid: string }) {
           defaultSide={(qrScannerDocType === 'GPLX' ? gplxQrDecision : qrDecision).defaultSide}
           expectedVariant={(qrScannerDocType === 'GPLX' ? gplxQrDecision : qrDecision).expectedVariant}
           onScanPayload={submitQrLivePayload}
+          onClose={() => {
+            setQrScannerOpen(false);
+            setBackQrPromptDoc(null);
+          }}
           onSkip={() => {
             setQrScannerOpen(false);
             setBackQrPromptDoc(null);

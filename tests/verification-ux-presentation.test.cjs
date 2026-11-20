@@ -53,14 +53,14 @@ test("review warning groups retain every affected photo and preserve distinct bl
 });
 test("one final confirmation acknowledges the current server revision and keeps informational notes collapsed", () => {
   const jsx = (type, props) => ({ type, props });
-  const ui = Object.fromEntries(["Button", "Card", "GroupedList", "KeyValueRow", "Typography"].map(name => [name, name]));
+  const ui = Object.fromEntries(["Button", "Card", "GroupedList", "KeyValueRow", "MotionPressable", "Typography"].map(name => [name, name]));
   const { VerificationSummaryStep } = load("apps/driver/src/features/verification/components/VerificationSummaryStep.tsx", {
     react: { useState: () => [false, () => {}] },
-    "react/jsx-runtime": { jsx, jsxs: jsx },
     "react-native": { StyleSheet: { create: x => x }, Switch: "Switch", View: "View" },
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "@datxe/ui": { ...ui, spacing: {}, typography: {}, useThemeColors: () => ({}), useThemedStyles: () => ({}) },
     "../warningPresentation": grouping,
-    "../verificationLabels": { formatGenderValue: value => value, isSmall: () => false, slotAllowed: () => true },
+    "../verificationLabels": { formatGenderValue: value => value, formatVnDate: value => value ?? "", isSmall: () => false, slotAllowed: () => true },
     "../workflow": { fields: [], slots: [] },
     "./VerificationShared": { AlertBanner: "AlertBanner", SlotPhotoFrame: "SlotPhotoFrame", WarningBannerList: "WarningBannerList" },
   });
@@ -79,7 +79,7 @@ test("one final confirmation acknowledges the current server revision and keeps 
     return [value, ...nodes(value.props.children)];
   }
   const all = nodes(tree);
-  const confirmation = all.find(node => node.props.accessibilityLabel === "Xác nhận ảnh và thông tin");
+  const confirmation = all.find(node => node.props.accessibilityLabel === "Tôi đã kiểm tra ảnh, thông tin và các lưu ý của hồ sơ này, đồng ý gửi xét duyệt");
   assert.equal(confirmation.props.value, false);
   confirmation.props.onValueChange(true);
   assert.deepEqual(events, [true, [7, true]]);
@@ -113,7 +113,167 @@ test("completed QR scans show success without asking to scan again and keep read
   }
   visit(tree);
   assert.equal(nodes.filter(node=>node.type==='AlertBanner' && node.props.tone==='success').length,2);
+  assert.ok(nodes.some(node=>node.type==='AlertBanner' && node.props.tone==='success'));
   assert.ok(!nodes.some(node=>node.type==='Button' && node.props.label.startsWith('Quét mã QR')));
   assert.ok(!nodes.some(node=>node.type==='AlertBanner' && node.props.message.includes('độ rõ')));
   assert.ok(nodes.some(node=>node.props.label==='Xem chi tiết đọc tự động'));
+});
+
+test("verification date helpers format DD/MM/YYYY and parse valid VN dates", () => {
+  const workflowMod = load("apps/driver/src/features/verification/workflow.ts");
+  const { formatVnDate, parseVnDateToIso } = load("apps/driver/src/features/verification/verificationLabels.ts", {
+    "./workflow": workflowMod,
+  });
+  assert.equal(formatVnDate("2031-12-19"), "19/12/2031");
+  assert.equal(formatVnDate(""), "");
+  assert.equal(parseVnDateToIso("19/12/2031"), "2031-12-19");
+  assert.equal(parseVnDateToIso("31/02/2031"), null);
+});
+
+test("VerifiedBaselineView removes duplicated Số định danh value prefix and formats VN dates", () => {
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const workflowMod = load("apps/driver/src/features/verification/workflow.ts");
+  const labelsMod = load("apps/driver/src/features/verification/verificationLabels.ts", {
+    "./workflow": workflowMod,
+  });
+  const ui = Object.fromEntries(
+    ["Button", "Card", "GroupedList", "KeyValueRow", "SettingsListItem", "SharedStatusBadge", "Typography"].map(
+      name => [name, name],
+    ),
+  );
+  const { VerifiedBaselineView } = load("apps/driver/src/features/verification/components/VerificationStatusView.tsx", {
+    react: { useState: init => [init, () => {}] },
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "react-native": { StyleSheet: { create: x => x }, View: "View" },
+    "react-native-paper": { Divider: "Divider" },
+    "@expo/vector-icons": { MaterialIcons: "MaterialIcons" },
+    "@/components/StatusBadge": { StatusBadge: "StatusBadge" },
+    "@datxe/ui": { ...ui, spacing: {}, typography: {}, useThemeColors: () => ({}), useThemedStyles: () => ({}) },
+    "../verificationLabels": labelsMod,
+    "../workflow": workflowMod,
+    "./VerificationShared": { AlertBanner: "AlertBanner", SlotPhotoFrame: "SlotPhotoFrame", WarningBannerList: "WarningBannerList" },
+  });
+
+  const tree = VerifiedBaselineView({
+    app: {
+      id: "app-1",
+      status: "APPROVED",
+      revision: 3,
+      approvedRevision: 3,
+      lockedIdentity: { maskedCccdId: "********2851", fullName: "NGUYỄN VĂN QUYỀN" },
+      approvedDocument: {
+        confirmed: { cccd_expiry_date: "2031-12-19", gplx_classes: ["A1"], no_expiry: true },
+      },
+      history: [],
+    },
+    busy: "",
+    showHistory: false,
+    onToggleHistory: () => {},
+    onOpenCapabilities: () => {},
+    onStartReverify: () => {},
+  });
+
+  const nodes = [];
+  function walk(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    nodes.push(node);
+    walk(node.props?.children);
+  }
+  walk(tree);
+
+  const idRow = nodes.find(node => node.type === "KeyValueRow" && node.props.label === "Số định danh");
+  assert.ok(idRow, "Expected Số định danh KeyValueRow");
+  assert.equal(idRow.props.value, "********2851");
+  assert.ok(nodes.some(node => node.props?.accessibilityLabel === "Số định danh: ********2851"));
+
+  const expiryRow = nodes.find(node => node.type === "KeyValueRow" && node.props.label === "Có giá trị đến");
+  assert.equal(expiryRow?.props.value, "19/12/2031");
+});
+
+test("CapabilitiesScreen deduplicates global blocker banners and avoids duplicate Divider inside GroupedList", () => {
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const workflowMod = load("apps/driver/src/features/verification/workflow.ts");
+  const labelsMod = load("apps/driver/src/features/verification/verificationLabels.ts", {
+    "./workflow": workflowMod,
+  });
+  const ui = Object.fromEntries(
+    ["Button", "Card", "GroupedList", "MotionPressable", "SharedStatusBadge", "Typography"].map(name => [name, name]),
+  );
+  const groups = [
+    { groupId: "moto-1", label: "Mô tô xăng 50–125 cm³", enabled: false, effective: false, reasonCode: "VERIFICATION_NOT_SYNCHRONIZED" },
+    { groupId: "moto-2", label: "Mô tô xăng 126–174 cm³", enabled: false, effective: false, reasonCode: "VERIFICATION_NOT_SYNCHRONIZED" },
+  ];
+  const { default: CapabilitiesScreen } = load("apps/driver/src/features/verification/CapabilitiesScreen.tsx", {
+    "@tanstack/react-query": {
+      useQuery: () => ({ data: { enabled: true, approvalRevision: null, preferenceVersion: 0, acceptingVehicleTypes: [], groups }, isLoading: false, isFetching: false, refetch: () => {} }),
+      useMutation: () => ({ isPending: false, mutate: () => {} }),
+      useQueryClient: () => ({ setQueryData: () => {}, invalidateQueries: () => {} }),
+    },
+    "expo-router": { useRouter: () => ({ push: () => {}, replace: () => {} }) },
+    "react-native": { StyleSheet: { create: x => x }, Switch: "Switch", View: "View" },
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "react-native-paper": { Appbar: { Action: "Action" } },
+    "@/components/DriverPage": { DriverPage: "DriverPage" },
+    "@/lib/driverCapabilities": { capabilitiesKey: ["caps"], getCapabilities: () => {}, updateCapability: () => {} },
+    "@datxe/ui": { ...ui, borderRadius: {}, spacing: {}, typography: {}, useThemeColors: () => ({}), useThemedStyles: () => ({}) },
+    "./verificationLabels": labelsMod,
+    "./components/VerificationShared": { AlertBanner: "AlertBanner" },
+  });
+
+  const tree = CapabilitiesScreen();
+  const text = JSON.stringify(tree);
+  const matches = text.match(/Đang chờ đồng bộ hồ sơ\. Hãy làm mới sau\./g) ?? [];
+  assert.equal(matches.length, 1, "Global blocker sentence should appear only once in top banner");
+  assert.doesNotMatch(text, /"Divider"/);
+});
+
+test("eKYC date fields use the shared CustomDatePickerModal and keep ISO values for the API", () => {
+  const labels = load("apps/driver/src/features/verification/verificationLabels.ts", {
+    "./workflow": load("apps/driver/src/features/verification/workflow.ts"),
+  });
+  assert.equal(labels.localDateToIso(new Date(1995, 2, 15, 12)), "1995-03-15");
+  const parsed = labels.isoToLocalDate("1995-03-15");
+  assert.equal(parsed.getFullYear(), 1995);
+  assert.equal(parsed.getMonth(), 2);
+  assert.equal(parsed.getDate(), 15);
+  assert.equal(labels.isoToLocalDate(""), null);
+  assert.equal(labels.formatVnDate("1995-03-15"), "15/03/1995");
+
+  const fieldsStep = fs.readFileSync("apps/driver/src/features/verification/components/VerificationFieldsStep.tsx", "utf8");
+  assert.match(fieldsStep, /CustomDatePickerModal/);
+  assert.doesNotMatch(fieldsStep, /YYYY-MM-DD/);
+  assert.match(fieldsStep, /localDateToIso\(date\)/);
+});
+
+test("pending submit keeps the failure reason visible and offers a single retry action", () => {
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const { VerificationFooter } = load("apps/driver/src/features/verification/components/VerificationFooter.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "react-native": { StyleSheet: { create: x => x }, View: "View" },
+    "@datxe/ui": { Button: "Button", Typography: "Text", spacing: {}, typography: {}, useThemedStyles: () => ({}) },
+    "../workflow": load("apps/driver/src/features/verification/workflow.ts"),
+    "./VerificationShared": { AlertBanner: "AlertBanner" },
+  });
+  const errorText = "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.";
+  const tree = VerificationFooter({
+    pending: true, canEdit: true, stage: "SUMMARY", step: 0, slotKey: undefined, busy: "", locked: false,
+    reading: false, consent: true, needsCapture: false, currentSlotAllowed: true, currentHasPhoto: true,
+    smallBlocked: false, hasObservations: true, extractFailed: false, confirm: true, fieldIssueCount: 0,
+    errorMessage: errorText, warnings: [], appStatus: "DRAFT",
+    onRetryPendingSubmit: () => {}, onStartCapture: () => {}, onJumpConfirmFields: () => {}, onOpenCamera: () => {},
+    onContinueBack: () => {}, onNextCaptureStep: () => {}, onCompleteCapture: () => {}, onBackFromCapture: () => {},
+    onAbortExtractionToManual: () => {}, onBackToCaptureFromOcr: () => {}, onGoSummary: () => {},
+    onBackFromFields: () => {}, onSubmit: () => {},
+  });
+  const nodes = [];
+  (function walk(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    nodes.push(node);
+    walk(node.props && node.props.children);
+  })(tree);
+  assert.ok(nodes.some(node => node.type === "AlertBanner" && node.props.message === errorText));
+  const retryButtons = nodes.filter(node => node.type === "Button" && (node.props.label === "Thử lại" || node.props.label === "Thử nộp lại"));
+  assert.equal(retryButtons.length, 1);
 });

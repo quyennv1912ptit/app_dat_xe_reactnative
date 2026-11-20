@@ -1,10 +1,13 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 import { Divider } from 'react-native-paper';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   Button,
   Card,
+  CustomDatePickerModal,
   FilterChip,
+  MotionPressable,
   SharedStatusBadge,
   Typography as Text,
   ThemedTextInput as TextInput,
@@ -20,8 +23,11 @@ import {
   cccdFieldKeys,
   fieldAllowed,
   fieldLabelMap,
+  formatVnDate,
   gplxFieldKeys,
   isIdentityLockedField,
+  isoToLocalDate,
+  localDateToIso,
   optionalFields,
   slotLabelMap,
   type PhotoAsset,
@@ -30,6 +36,7 @@ import {
 } from '../verificationLabels';
 import {
   compareNames,
+  fields,
   formatOriginLabel,
   type Choice,
   type Choices,
@@ -39,6 +46,29 @@ import {
   type SlotKey,
 } from '../workflow';
 import { AlertBanner, SlotPhotoFrame, WarningBannerList } from './VerificationShared';
+
+const dateFieldKeys = new Set<FieldKey>(['cccd_dob', 'gplx_dob', 'cccd_expiry_date', 'expiry_date']);
+const commonGplxClasses = ['A1', 'A', 'B1', 'B', 'C1', 'C'] as const;
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const time = Date.parse(value);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
+}
+
+function parseClassList(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const list: string[] = [];
+  for (const item of raw.toUpperCase().split(/[,;\s]+/)) {
+    const token = item.trim();
+    if (token && !seen.has(token)) {
+      seen.add(token);
+      list.push(token);
+    }
+  }
+  return list;
+}
 
 type Props = {
   app: Application | null;
@@ -65,6 +95,7 @@ type Props = {
   onPreviewSaved: (key: SlotKey) => void;
   onManualChange: (key: FieldKey, value: string, unlimited?: boolean) => void;
   onApplyChoice: (key: FieldKey, choice: Choice) => void;
+  onIssueCountChange?: (count: number) => void;
 };
 
 /** Flat two-section form (CCCD & GPLX) without card-per-field nesting, keeping origin and lock clarity. */
@@ -93,16 +124,21 @@ export function VerificationFieldsStep({
   onPreviewSaved,
   onManualChange,
   onApplyChoice,
+  onIssueCountChange,
 }: Props) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
+  const [dateField, setDateField] = useState<FieldKey | null>(null);
 
   function renderOriginBadge(key: FieldKey, identityLockedField: boolean) {
     if (identityLockedField) {
       return (
-        <Text style={[styles.originText, { color: colors.primary }]}>
-          Đã khóa xác minh
-        </Text>
+        <View style={styles.originLockWrap}>
+          <MaterialIcons name="lock-outline" size={14} color={colors.primary} importantForAccessibility="no" />
+          <Text style={[styles.originText, { color: colors.primary }]}>
+            Đã khóa xác minh
+          </Text>
+        </View>
       );
     }
     const origin = origins[key];
@@ -115,6 +151,21 @@ export function VerificationFieldsStep({
     return null;
   }
 
+  function hasInlineIssue(key: FieldKey): boolean {
+    const trimmed = (values[key] ?? '').trim();
+    if (!optionalFields.has(key) && !(key === 'expiry_date' && noExpiry) && !trimmed) return true;
+    if (!trimmed) return false;
+    if (key === 'cccd_id' && !/^\d{12}$/.test(trimmed)) return true;
+    if (dateFieldKeys.has(key) && !(key === 'expiry_date' && noExpiry) && !isValidIsoDate(trimmed)) return true;
+    return false;
+  }
+
+  const issueCount = fields.filter(([key]) => hasInlineIssue(key)).length;
+
+  useEffect(() => {
+    onIssueCountChange?.(issueCount);
+  }, [issueCount, onIssueCountChange]);
+
   function renderFieldRow(key: FieldKey) {
     const label = fieldLabelMap[key];
     const identityLockedField = isIdentityLockedField(key, app);
@@ -122,9 +173,16 @@ export function VerificationFieldsStep({
     const fieldWarnings = warnings.filter(warning => warning.fieldKey === key);
     const fieldChoices = identityLockedField ? [] : (choices[key] ?? []);
     const hasConflict = fieldChoices.length > 1 || fieldChoices.some(choice => choice.conflict);
+    const trimmedValue = (values[key] ?? '').trim();
     const missingRequired = !optionalFields.has(key)
       && !(key === 'expiry_date' && noExpiry)
-      && !(values[key] ?? '').trim();
+      && !trimmedValue;
+    const invalidCccd = key === 'cccd_id' && Boolean(trimmedValue) && !/^\d{12}$/.test(trimmedValue);
+    const isDateField = dateFieldKeys.has(key);
+    const invalidDate = isDateField && Boolean(trimmedValue) && !isValidIsoDate(trimmedValue);
+    const dateDisplay = trimmedValue ? formatVnDate(trimmedValue) : '';
+    const dateFieldDisabled = !fieldEditable || (key === 'expiry_date' && noExpiry);
+    const selectedClasses = key === 'gplx_classes' ? parseClassList(values[key]) : [];
 
     return (
       <View key={key} style={styles.fieldRow}>
@@ -159,6 +217,37 @@ export function VerificationFieldsStep({
               />
             ) : null}
           </View>
+        ) : isDateField ? (
+          <MotionPressable
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${key === 'expiry_date' && noExpiry ? 'không thời hạn' : dateDisplay || 'chưa chọn ngày'}`}
+            accessibilityHint="Mở bộ chọn ngày"
+            accessibilityState={{ disabled: dateFieldDisabled }}
+            disabled={dateFieldDisabled}
+            onPress={() => setDateField(key)}
+            style={[
+              styles.dateField,
+              { backgroundColor: identityLockedField ? colors.surfaceContainer : colors.surfaceContainerHigh },
+            ]}
+          >
+            <Text
+              style={[
+                styles.dateText,
+                !dateDisplay && styles.datePlaceholder,
+                identityLockedField && { color: colors.onSurfaceVariant },
+              ]}
+            >
+              {key === 'expiry_date' && noExpiry
+                ? 'Không thời hạn'
+                : dateDisplay || 'Chọn ngày'}
+            </Text>
+            <MaterialIcons
+              name="calendar-month"
+              size={20}
+              color={colors.onSurfaceVariant}
+              importantForAccessibility="no"
+            />
+          </MotionPressable>
         ) : (
           <TextInput
             accessibilityLabel={label}
@@ -171,11 +260,39 @@ export function VerificationFieldsStep({
             ]}
             value={values[key] ?? ''}
             keyboardType={key === 'cccd_id' ? 'number-pad' : 'default'}
+            maxLength={key === 'cccd_id' ? 12 : undefined}
+            autoCapitalize={key === 'cccd_name' || key === 'gplx_name' || key === 'gplx_number' || key === 'gplx_classes' ? 'characters' : 'none'}
+            returnKeyType="done"
             placeholder={key === 'expiry_date' && noExpiry ? 'Không thời hạn' : `Nhập ${label.toLowerCase()}`}
             editable={fieldEditable && !(key === 'expiry_date' && noExpiry)}
             onChangeText={value => onManualChange(key, value)}
           />
         )}
+
+        {key === 'gplx_classes' && fieldEditable ? (
+          <View style={styles.quickPickWrap}>
+            <Text style={styles.captionText}>Chọn nhanh hạng phổ biến:</Text>
+            <View style={styles.chipRow}>
+              {commonGplxClasses.map(cls => {
+                const active = selectedClasses.includes(cls);
+                return (
+                  <FilterChip
+                    key={cls}
+                    label={cls}
+                    selected={active}
+                    disabled={!fieldEditable}
+                    onPress={() => {
+                      const next = active
+                        ? selectedClasses.filter(item => item !== cls)
+                        : [...selectedClasses, cls];
+                      onManualChange(key, next.join(', '));
+                    }}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         {identityLockedField ? (
           <Text style={styles.helperText}>Thông tin định danh đã xác minh được giữ nguyên.</Text>
@@ -184,6 +301,18 @@ export function VerificationFieldsStep({
         {missingRequired ? (
           <Text style={[styles.helperText, { color: colors.error }]}>
             Thông tin bắt buộc — hãy kiểm tra hoặc nhập bổ sung.
+          </Text>
+        ) : null}
+
+        {invalidCccd ? (
+          <Text style={[styles.helperText, { color: colors.error }]}>
+            Cần nhập đủ 12 chữ số.
+          </Text>
+        ) : null}
+
+        {invalidDate ? (
+          <Text style={[styles.helperText, { color: colors.error }]}>
+            Ngày đã lưu chưa hợp lệ. Chạm vào ô ngày để chọn lại.
           </Text>
         ) : null}
 
@@ -210,7 +339,15 @@ export function VerificationFieldsStep({
         ) : null}
 
         {key === 'expiry_date' ? (
-          <View style={styles.switchRow}>
+          <MotionPressable
+            accessible={false}
+            disabled={!fieldEditable}
+            onPress={() => {
+              const nextNoExpiry = !noExpiry;
+              onManualChange('expiry_date', nextNoExpiry ? '' : values.expiry_date ?? '', nextNoExpiry);
+            }}
+            style={styles.switchRow}
+          >
             <Switch
               accessibilityLabel="GPLX không thời hạn"
               value={noExpiry}
@@ -220,7 +357,7 @@ export function VerificationFieldsStep({
             <Text style={styles.switchLabel}>
               {noExpiry ? 'GPLX không thời hạn' : 'Bằng lái có ngày hết hạn'}
             </Text>
-          </View>
+          </MotionPressable>
         ) : null}
       </View>
     );
@@ -265,6 +402,14 @@ export function VerificationFieldsStep({
       <Text style={styles.introText}>
         Kiểm tra lại thông tin đã điền sẵn và chỉnh sửa nếu có sai lệch so với giấy tờ gốc.
       </Text>
+
+      {issueCount > 0 ? (
+        <AlertBanner
+          tone="info"
+          icon="info-outline"
+          message={`Còn ${issueCount} mục bắt buộc chưa điền hoặc cần kiểm tra định dạng.`}
+        />
+      ) : null}
 
       <Card style={styles.sectionCard}>
         <View style={styles.sectionHeaderRow}>
@@ -384,6 +529,18 @@ export function VerificationFieldsStep({
           message="Ảnh CCCD vừa quét có số định danh khác với tài khoản đã xác minh. Thông tin định danh cố định đã được giữ nguyên."
         />
       ) : null}
+
+      <CustomDatePickerModal
+        visible={Boolean(dateField)}
+        title={dateField ? `Chọn ${fieldLabelMap[dateField].replace(/\s*\([^)]*\)/g, '').toLowerCase()}` : 'Chọn ngày'}
+        value={dateField ? isoToLocalDate(values[dateField]) : null}
+        maximumDate={dateField === 'cccd_dob' || dateField === 'gplx_dob' ? new Date() : undefined}
+        onCancel={() => setDateField(null)}
+        onConfirm={date => {
+          if (dateField) onManualChange(dateField, localDateToIso(date));
+          setDateField(null);
+        }}
+      />
     </View>
   );
 }
@@ -430,7 +587,21 @@ const makeStyles = (colors: ThemeColors) =>
       gap: spacing.spaceXs,
     },
     fieldLabel: { ...typography.label, color: colors.onSurface },
+    originLockWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
     originText: { ...typography.caption, color: colors.onSurfaceVariant },
+    captionText: { ...typography.caption, color: colors.onSurfaceVariant },
+    quickPickWrap: { gap: spacing.spaceXs, paddingTop: spacing.xxs },
+    dateField: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.spaceSm,
+      borderRadius: borderRadius.default,
+      paddingHorizontal: spacing.px3,
+      minHeight: 48,
+    },
+    dateText: { ...typography.body, color: colors.onSurface, flex: 1, fontVariant: ['tabular-nums'] },
+    datePlaceholder: { color: colors.onSurfaceVariant },
     input: {
       borderRadius: borderRadius.default,
       paddingHorizontal: spacing.px3,
@@ -453,6 +624,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.spaceSm,
+      minHeight: 48,
       paddingTop: spacing.xxs,
     },
     switchLabel: { ...typography.bodySecondary, color: colors.onSurface, flex: 1 },

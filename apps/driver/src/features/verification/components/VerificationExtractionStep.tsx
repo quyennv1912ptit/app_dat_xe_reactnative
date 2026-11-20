@@ -156,6 +156,7 @@ export function VerificationExtractionStep({
                   </Text>
                   <View style={styles.qrActions}>
                     <Button
+                      variant="secondary"
                       label={`Quét mã QR ${label} trực tiếp`}
                       icon="qr-code-scanner"
                       iconPosition="leading"
