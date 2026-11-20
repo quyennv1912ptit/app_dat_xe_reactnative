@@ -1,3 +1,4 @@
+import { driverWarningMessage, groupVerificationWarnings } from '../warningPresentation';
 import { StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DriverPhoto } from '@/components/DriverPhoto';
@@ -12,7 +13,7 @@ import {
   type ThemeColors,
 } from '@datxe/ui';
 import type { VerificationWarning } from '../api';
-import { formatServerWarning } from '../verificationLabels';
+import { shortSlotLabels } from '../verificationLabels';
 
 type AlertTone = 'info' | 'warning' | 'error' | 'success';
 
@@ -64,15 +65,17 @@ export function WarningBannerList({ items }: { items: readonly VerificationWarni
   if (!items.length) return null;
   return (
     <>
-      {items.map(warning => {
-        const severe = warning.severity === 'CRITICAL' || warning.severity === 'BLOCKING';
+      {groupVerificationWarnings(items).map(({ key, warning, slots }) => {
+        const context = slots.map(slot => shortSlotLabels[slot as keyof typeof shortSlotLabels] ?? slot).join(', ');
+        const severe = warning.blocksSubmission || warning.severity === 'CRITICAL' || warning.severity === 'BLOCKING';
+        const info = warning.severity === 'INFO';
         return (
           <AlertBanner
-            key={[warning.code, warning.slot, warning.fieldKey].join(':')}
-            tone={severe ? 'error' : 'warning'}
-            icon={severe ? 'error-outline' : 'warning-amber'}
-            role="alert"
-            message={formatServerWarning(warning)}
+            key={key}
+            tone={severe ? 'error' : info ? 'info' : 'warning'}
+            icon={severe ? 'error-outline' : info ? 'info-outline' : 'warning-amber'}
+            role={severe ? 'alert' : undefined}
+            message={context ? `${context} · ${driverWarningMessage(warning)}` : driverWarningMessage(warning)}
           />
         );
       })}
@@ -102,7 +105,7 @@ export function SlotPhotoFrame({
 }) {
   const styles = useThemedStyles(makeStyles);
   const colors = useThemeColors();
-  if (uri) return <DriverPhoto uri={uri} label={label} portrait={large && !tile} tile={tile} sensitive />;
+  if (uri) return <DriverPhoto uri={uri} label={label} portrait={large && !tile} tile={tile} showCaption={false} sensitive />;
   return (
     <View style={[styles.frame, large && styles.frameLarge, isSelfie && styles.selfieFrame]}>
       <MaterialIcons

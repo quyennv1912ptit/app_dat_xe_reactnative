@@ -12,6 +12,7 @@ import {
 import { useSessionStore } from '@/lib/store';
 import { jsonBody, verificationClient, verificationUrl, type Application, type ProposalResponse, type QrScanResponse, type VerificationWarning } from './api';
 import { VerificationError } from './transport';
+import { driverWarningMessage } from './warningPresentation';
 import { GuidedCaptureScreen, type CapturedPhoto, type ServerInspectionResult } from './GuidedCaptureScreen';
 import QrScannerScreen, { type QrScanSubmissionResult } from './QrScannerScreen';
 import { cacheFileSize, removeCacheFile } from './captureFiles';
@@ -26,11 +27,12 @@ import {
   TASK_STATUS_EXTRACTING,
   TASK_STATUS_UPLOADING,
   UPLOAD_TIMEOUT_MS,
+  captureInvalidationScope,
   hydratableObservationsFromApplication,
   resolveQrAttachmentBinding,
 } from './reliabilityHelpers';
 import {
-  appPath, captureInstructions, editable, faceSlots, fieldAllowed,
+  appPath, captureInstructions, cccdFieldKeys, gplxFieldKeys, shortSlotLabels, editable, faceSlots, fieldAllowed,
   isIdentityLockedField, isSmall, scoped, slotAllowed,
   visibleObservationWarnings,
   type FlowStage, type PhotoAsset, type SlotMap,
@@ -127,7 +129,7 @@ function Workflow({ uid }: { uid: string }) {
   const [warningReview, setWarningReview] = useState<{ revision: number; acknowledged: boolean }>();
   const setConfirm = useCallback((value: boolean) => {
     setConfirmed(value);
-    if (!value) setWarningReview(undefined);
+    if (!value) setWarningReview(previous => previous ? { ...previous, acknowledged: false } : undefined);
   }, []);
   const [stage, setStage] = useState<FlowStage>('PREPARE');
   const [step, setStep] = useState(0);
@@ -153,9 +155,11 @@ function Workflow({ uid }: { uid: string }) {
 
   const slot = slots[step];
   const photo = slot && photos[slot[0]];
-  const choices = collectChoices(observations, liveQr, gplxLiveQr);
-  const qrDecision = qrScanDecision(observations, { documentType: 'CCCD', liveQr, extractFailed });
-  const gplxQrDecision = qrScanDecision(observations, { documentType: 'GPLX', liveQr: gplxLiveQr, extractFailed });
+  const activeCccdQr = liveQr ?? app?.document?.qrLiveScan ?? undefined;
+  const activeGplxQr = gplxLiveQr ?? app?.document?.gplxQrLiveScan ?? undefined;
+  const choices = collectChoices(observations, activeCccdQr, activeGplxQr);
+  const qrDecision = qrScanDecision(observations, { documentType: 'CCCD', liveQr: activeCccdQr, extractFailed });
+  const gplxQrDecision = qrScanDecision(observations, { documentType: 'GPLX', liveQr: activeGplxQr, extractFailed });
   const targets = scoped(app);
   const targetLabels = [
     ...slots.filter(([key]) => targets?.captures.includes(key)).map(([, label]) => label),
@@ -168,10 +172,14 @@ function Workflow({ uid }: { uid: string }) {
   }, [targets]);
   const needsCapture = targets ? targets.captures.length > 0 : true;
   const liveFace = faceConsent && draftFace?.revision === app?.revision ? draftFace : undefined;
-  const warnings = [
+  const serverWarnings = [
     ...(app?.verificationWarnings ?? []),
     ...(liveFace?.verificationWarnings.filter(warning => warning.code === 'FACE_INSUFFICIENT_QUALITY') ?? []),
   ];
+  const warnings = serverWarnings.filter(warning =>
+    !(warning.code === 'DOCUMENT_REQUIRED' && warning.slot
+      && photos[warning.slot as SlotKey]),
+  );
   const currentWarningReview = warningReviewForRevision(app?.revision, warningReview);
   const canEdit = editable(app) && !pending;
   const locked = Boolean(busy) || picking || Boolean(pending);
@@ -194,7 +202,7 @@ function Workflow({ uid }: { uid: string }) {
     return merged;
   }, []);
 
-  const cancelReading = useCallback((abort = true) => {
+  const cancelReading = useCallback((abort = true, changedSlot?: SlotKey) => {
     setDraftFace(undefined);
     generation.current++;
     if (abort) {
@@ -202,20 +210,34 @@ function Workflow({ uid }: { uid: string }) {
       qrScanRequest.current?.abort();
       qrScanRequest.current = null;
     }
-    setObservations({});
-    setLiveQrState(undefined);
-    setGplxLiveQrState(undefined);
+    const { affectsCccd, affectsGplx } = captureInvalidationScope(changedSlot);
+    setObservations(previous => changedSlot
+      ? Object.fromEntries(Object.entries(previous).filter(([key]) =>
+          key.startsWith('cccd') ? !affectsCccd : key.startsWith('gplx') ? !affectsGplx : key !== changedSlot))
+      : {});
+    if (affectsCccd) setLiveQrState(undefined);
+    if (affectsGplx) setGplxLiveQrState(undefined);
     setExtractFailed(false);
-    setQrSkipped(false);
-    setGplxQrSkipped(false);
+    if (affectsCccd) setQrSkipped(false);
+    if (affectsGplx) setGplxQrSkipped(false);
     setBackQrPromptDoc(null);
     setQrScannerOpen(false);
-    serverExtracted.current = {};
-    inspectedCapture.current = {};
+    if (!changedSlot) {
+      serverExtracted.current = {};
+      inspectedCapture.current = {};
+    } else {
+      for (const [key] of slots) {
+        if ((affectsCccd && key.startsWith('cccd')) || (affectsGplx && key.startsWith('gplx')) || key === changedSlot) {
+          delete serverExtracted.current[key];
+          delete inspectedCapture.current[key];
+        }
+      }
+    }
     setReadingNote('');
     const form = currentValues.current;
     const next = { ...form, origins: { ...form.origins }, values: { ...form.values } };
     for (const [key] of fields) {
+      if (changedSlot && !(affectsCccd && cccdFieldKeys.includes(key)) && !(affectsGplx && gplxFieldKeys.includes(key))) continue;
       if (isIdentityLockedField(key, current.current)) continue;
       const approved = current.current?.approvedDocument?.confirmed?.[key];
       if (approved !== undefined && !fieldAllowed(current.current, key)) {
@@ -387,7 +409,7 @@ function Workflow({ uid }: { uid: string }) {
         setApp(current.current);
       }
     }
-    cancelReading();
+    cancelReading(true, key);
   }
 
   function openGuidedCapture(key: SlotKey) {
@@ -454,7 +476,7 @@ function Workflow({ uid }: { uid: string }) {
         .filter(w => w.slot === key && !w.fieldKey)
         .map(w => ({
           code: w.code,
-          message: w.humanReadableMessage + ' ' + w.recommendedAction,
+          message: driverWarningMessage(w),
           severe: w.severity === 'CRITICAL' || w.severity === 'BLOCKING',
         }));
 
@@ -463,9 +485,7 @@ function Workflow({ uid }: { uid: string }) {
       return {
         warnings: slotWarnings,
         verified: false,
-        note: slotWarnings.length
-          ? 'Máy chủ phát hiện cảnh báo kích thước/ảnh trên selfie.'
-          : 'Máy chủ đã kiểm tra định dạng và kích thước ảnh selfie.',
+        note: 'Ảnh chân dung đã được tải lên. Việc đối chiếu khuôn mặt được thực hiện riêng khi xét duyệt.',
       };
     }
 
@@ -478,16 +498,15 @@ function Workflow({ uid }: { uid: string }) {
       inspectedCapture.current = { ...inspectedCapture.current, [key]: { uri: captured.uri, proposal: response.proposal } };
       const combined = new Map<string, { code: string; message: string; severe?: boolean }>();
       for (const item of collectSlotWarnings(response.verificationWarnings)) combined.set(item.code, item);
-      for (const msg of visibleObservationWarnings(response.proposal.warnings)) {
-        if (!combined.has(msg)) combined.set(msg, { code: msg, message: msg });
+      for (const code of response.proposal.warnings) {
+        const [message] = visibleObservationWarnings([code]);
+        if (message && !combined.has(code)) combined.set(code, { code, message });
       }
       const list = [...combined.values()];
       return {
         warnings: list,
-        verified: true,
-        note: list.length
-          ? 'Máy chủ phát hiện vấn đề chất lượng trên ảnh.'
-          : 'Ảnh đạt kiểm tra độ rõ và góc thẻ từ máy chủ.',
+        verified: false,
+        note: 'Đã đọc thông tin từ ảnh. Kiểm tra lại chữ và các thông tin đã điền trước khi dùng ảnh.',
       };
     } catch (error) {
       if (error instanceof VerificationError && ['ENGINE_TIMEOUT', 'ENGINE_BUSY'].includes(error.code)) {
@@ -635,15 +654,13 @@ function Workflow({ uid }: { uid: string }) {
     trackUploads({ ...uploaded.current, [key]: selectedPhoto.uri });
     return accept({
       ...result,
-      document: {
+      document: result.document ?? {
         ...base.document,
         captures: {
           ...base.document?.captures,
-          [key]: result.document?.captures?.[key] ?? { id: '', mime: selectedPhoto.mimeType },
+          [key]: { id: '', mime: selectedPhoto.mimeType },
         },
-        proposals: result.document?.proposals ?? (
-          base.document?.proposals ? { ...base.document.proposals, [key]: undefined } : undefined
-        ),
+        proposals: base.document?.proposals ? { ...base.document.proposals, [key]: undefined } : undefined,
         qrLiveScan: (key === 'cccd_front' || key === 'cccd_back') ? null : base.document?.qrLiveScan,
         gplxQrLiveScan: (key === 'gplx_front' || key === 'gplx_back') ? null : base.document?.gplxQrLiveScan,
       },
@@ -704,8 +721,6 @@ function Workflow({ uid }: { uid: string }) {
     ocr.current = controller;
     setReading(true);
     setExtractFailed(false);
-    setQrSkipped(false);
-    setGplxQrSkipped(false);
     setBackQrPromptDoc(null);
     setReadingNote(TASK_STATUS_UPLOADING);
     const results: SlotMap<Extraction> = { ...observations };
@@ -1039,13 +1054,39 @@ function Workflow({ uid }: { uid: string }) {
     setPreviews(livePreviews.current);
   }
 
+  async function prepareSummary(signal: AbortSignal) {
+    const details = confirmedDetails(currentValues.current.values, currentValues.current.noExpiry);
+    const expected = current.current?.revision;
+    let base = await loadOrCreate(signal);
+    if (expected !== undefined && base.revision !== expected) {
+      throw new VerificationError('REVISION_CONFLICT');
+    }
+    for (const [key] of slots) {
+      if (!livePhotos.current[key] && !base.document?.captures[key]) {
+        setStep(slots.findIndex(([slot]) => slot === key));
+        setStage('CAPTURE');
+        throw new Error(`Cần bổ sung ảnh ${shortSlotLabels[key]}.`);
+      }
+      base = await upload(key, base, signal);
+    }
+    const saved = await api.json<Application>(appPath(base.id) + '/confirmation', {
+      method: 'PUT', ...jsonBody({ details, revision: base.revision }), signal, timeoutMs: METADATA_TIMEOUT_MS,
+    });
+    ensureActive(signal);
+    accept(saved);
+    setConfirm(false);
+    setWarningReview(saved.verificationWarnings?.some(warning => warning.requiresReview)
+      ? { revision: saved.revision, acknowledged: false } : undefined);
+    setStage('SUMMARY');
+  }
+
   async function submit(signal: AbortSignal) {
     let request = pendingRef.current;
     if (!request) {
       if (!consent || !confirm) return;
       const details = confirmedDetails(values, noExpiry);
       let saved = current.current;
-      if (!saved || !currentWarningReview?.acknowledged) {
+      if (!saved || (!saved.document?.confirmationCurrent && !currentWarningReview?.acknowledged)) {
         const expected = current.current?.revision;
         let base = await loadOrCreate(signal);
         if (expected !== undefined && base.revision !== expected) {
@@ -1216,7 +1257,7 @@ function Workflow({ uid }: { uid: string }) {
             setStage('CONFIRM_FIELDS');
           }}
           onBackToCaptureFromOcr={() => { setStep(slots.length - 1); setStage('CAPTURE'); }}
-          onGoSummary={() => setStage('SUMMARY')}
+          onGoSummary={() => void run('Đang kiểm tra hồ sơ…', prepareSummary)}
           onBackFromFields={() => setStage(extractFailed ? 'OCR' : 'CAPTURE')}
           onSubmit={() => void run('Đang nộp hồ sơ…', submit)}
         />
@@ -1371,6 +1412,7 @@ function Workflow({ uid }: { uid: string }) {
         {canEdit && stage === 'SUMMARY' ? (
           <VerificationSummaryStep
             app={app}
+            pendingPhotoCount={slots.filter(([key]) => photos[key] && uploadedPhotos[key] !== photos[key]?.uri).length}
             locked={locked}
             reading={reading}
             photos={photos}

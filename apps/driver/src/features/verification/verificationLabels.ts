@@ -92,7 +92,7 @@ export const warningLabels: Record<string, string> = {
   CARD_RECTIFICATION_REJECTED: 'Ảnh thẻ chưa đủ điều kiện căn chỉnh.',
   CARD_WARP_FAILED: 'Không căn chỉnh được thẻ. Hãy chụp thẳng hơn nếu cần.',
   CARD_GEOMETRY_REJECTED: 'Thẻ quá nhỏ hoặc nằm sát mép khung.',
-  CARD_QUALITY_REJECTED: 'Ảnh chưa đạt kiểm tra độ rõ.',
+  CARD_QUALITY_REJECTED: 'Lượt kiểm tra tự động chưa xác nhận được độ rõ. Hãy kiểm tra chữ trên ảnh.',
   QR_NOT_FOUND: 'Chưa đọc được mã QR từ ảnh chụp.',
   QR_DETECTED_UNREADABLE: 'Có mã QR trên ảnh nhưng hơi mờ, nên quét trực tiếp.',
   QR_INVALID_FORMAT: 'Mã QR đọc được chưa đúng định dạng giấy tờ.',

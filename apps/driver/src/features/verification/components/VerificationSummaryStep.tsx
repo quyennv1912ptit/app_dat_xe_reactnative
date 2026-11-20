@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { groupVerificationWarnings, isPhotoQualityWarning } from '../warningPresentation';
 import { StyleSheet, Switch, View } from 'react-native';
 import {
   Button,
@@ -34,6 +36,7 @@ export function VerificationSummaryStep({
   locked,
   reading,
   photos,
+  pendingPhotoCount,
   resolvedUri,
   values,
   noExpiry,
@@ -55,6 +58,7 @@ export function VerificationSummaryStep({
   locked: boolean;
   reading: boolean;
   photos: SlotMap<PhotoAsset>;
+  pendingPhotoCount: number;
   resolvedUri: (key: SlotKey) => string | undefined;
   values: Fields;
   noExpiry: boolean;
@@ -72,6 +76,11 @@ export function VerificationSummaryStep({
   onToggleConfirm: (value: boolean) => void;
   onToggleWarningReview: (revision: number, acknowledged: boolean) => void;
 }) {
+  const [showNotes, setShowNotes] = useState(false);
+  const urgent = warnings.filter(warning => warning.blocksSubmission || warning.blocksActivation
+    || warning.severity === 'CRITICAL' || warning.severity === 'BLOCKING');
+  const notes = warnings.filter(warning => !urgent.includes(warning));
+  const noteCount = groupVerificationWarnings(notes).length;
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
   const preparedSlots = slots.filter(([key]) => Boolean(photos[key] || app?.document?.captures[key]));
@@ -79,7 +88,9 @@ export function VerificationSummaryStep({
   function displayValue(key: FieldKey): string {
     if (key === 'expiry_date' && noExpiry) return 'Không thời hạn';
     if (key === 'cccd_gender') return formatGenderValue(values[key]);
-    return values[key]?.trim() || '—';
+    const value = values[key]?.trim() || '—';
+    return key.includes('dob') || key.includes('expiry_date')
+      ? value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1') : value;
   }
 
   return (
@@ -88,13 +99,15 @@ export function VerificationSummaryStep({
         Kiểm tra nhanh ảnh giấy tờ và thông tin cá nhân trước khi gửi xét duyệt.
       </Text>
 
+      <WarningBannerList items={urgent} />
+
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>Ảnh giấy tờ ({preparedSlots.length}/{slots.length})</Text>
         <View style={styles.photoGrid}>
           {preparedSlots.map(([key, label]) => {
             const slotIdx = slots.findIndex(([item]) => item === key);
             const allowed = slotAllowed(app, key);
-            const slotWarns = warnings.filter(w => w.slot === key && !w.fieldKey);
+            const slotWarns = warnings.filter(w => w.slot === key && isPhotoQualityWarning(w));
             return (
               <View key={key} style={styles.photoCell}>
                 <Text style={styles.cellTitle}>{label}</Text>
@@ -111,8 +124,8 @@ export function VerificationSummaryStep({
                   <Text style={styles.mutedText}>Ảnh nhỏ · đã xác nhận</Text>
                 ) : null}
                 {slotWarns.length ? (
-                  <Text style={[styles.mutedText, { color: colors.onWarningContainer }]}>
-                    Có lưu ý chất lượng
+                  <Text style={[styles.mutedText, { color: colors.onSurfaceVariant }]}>
+                    Kiểm tra lại độ rõ của ảnh
                   </Text>
                 ) : null}
                 <Button
@@ -133,7 +146,7 @@ export function VerificationSummaryStep({
           {fields.map(([key, label]) => (
             <KeyValueRow
               key={key}
-              label={label}
+              label={label.replace(/\s*\([^)]*\)/g, '')}
               value={displayValue(key)}
               tabular={key === 'cccd_id' || key === 'cccd_dob' || key === 'gplx_dob' || key === 'expiry_date' || key === 'cccd_expiry_date' || key === 'gplx_number'}
             />
@@ -151,7 +164,16 @@ export function VerificationSummaryStep({
         </View>
       </GroupedList>
 
-      <WarningBannerList items={warnings} />
+      {pendingPhotoCount > 0 ? (
+        <AlertBanner tone="info" icon="cloud-upload" message={`${pendingPhotoCount} ảnh đang lưu trên máy. Ảnh sẽ được tải lên khi bạn kiểm tra hồ sơ để nộp.`} />
+      ) : null}
+      {noteCount > 0 ? (
+        <Card style={styles.card}>
+          <Button variant="ghost" label={showNotes ? "Thu gọn lưu ý" : `Xem ${noteCount} lưu ý khi xét duyệt`}
+            accessibilityLabel={showNotes ? "Thu gọn lưu ý xét duyệt" : `Mở ${noteCount} lưu ý xét duyệt`} onPress={() => setShowNotes(value => !value)} />
+          {showNotes ? <WarningBannerList items={notes} /> : null}
+        </Card>
+      ) : null}
 
       {faceNotice ? (
         <Card style={styles.card}>
@@ -194,28 +216,18 @@ export function VerificationSummaryStep({
         <View style={[styles.switchBox, { backgroundColor: colors.surfaceContainerHigh }]}>
           <Switch
             accessibilityLabel="Xác nhận ảnh và thông tin"
-            value={confirm}
+            value={confirm && currentWarningReview?.acknowledged !== false}
             disabled={locked || reading}
-            onValueChange={onToggleConfirm}
+            onValueChange={value => {
+              onToggleConfirm(value);
+              if (currentWarningReview) onToggleWarningReview(currentWarningReview.revision, value);
+            }}
           />
           <Text style={styles.switchText}>
-            Tôi xác nhận các ảnh và thông tin ở trên là chính xác và đồng ý gửi xét duyệt.
+            Tôi đã kiểm tra ảnh, thông tin và các lưu ý của hồ sơ này, đồng ý gửi xét duyệt.
           </Text>
         </View>
 
-        {currentWarningReview ? (
-          <View style={[styles.switchBox, { backgroundColor: colors.warningContainer }]}>
-            <Switch
-              accessibilityLabel="Xác nhận đã xem cảnh báo"
-              value={currentWarningReview.acknowledged}
-              disabled={locked || reading}
-              onValueChange={acknowledged => onToggleWarningReview(currentWarningReview.revision, acknowledged)}
-            />
-            <Text style={[styles.switchText, { color: colors.onWarningContainer }]}>
-              Tôi đã đọc các lưu ý của bản hồ sơ này và muốn tiếp tục nộp.
-            </Text>
-          </View>
-        ) : null}
       </Card>
     </View>
   );

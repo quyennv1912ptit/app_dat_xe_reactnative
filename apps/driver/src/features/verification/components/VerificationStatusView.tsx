@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -300,6 +301,10 @@ export function PendingReviewView({
   const colors = useThemeColors();
   const capturedSlots = slots.filter(([key]) => Boolean(app.document?.captures[key]));
   const waiting = app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW';
+  const [showNotes, setShowNotes] = useState(false);
+  const urgent = warnings.filter(warning => warning.blocksSubmission || warning.blocksActivation
+    || warning.severity === 'CRITICAL' || warning.severity === 'BLOCKING');
+  const notes = warnings.filter(warning => !urgent.includes(warning));
 
   return (
     <View style={styles.stack}>
@@ -312,7 +317,7 @@ export function PendingReviewView({
             <View style={styles.heroTitleWrap}>
               <Text style={styles.headline}>Hồ sơ đang chờ xét duyệt</Text>
               <Text style={styles.mutedText}>
-                Hệ thống sẽ thông báo ngay khi có kết quả (thường trong vòng 24 giờ).
+                Bạn sẽ nhận thông báo khi có kết quả hoặc cần bổ sung hồ sơ.
               </Text>
             </View>
           </View>
@@ -320,7 +325,14 @@ export function PendingReviewView({
         </Card>
       ) : null}
 
-      <WarningBannerList items={warnings} />
+      <WarningBannerList items={waiting ? urgent : warnings} />
+      {waiting && notes.length > 0 ? (
+        <Card style={styles.historyCard}>
+          <Button variant="ghost" label={showNotes ? 'Thu gọn lưu ý hồ sơ' : 'Xem lưu ý của hồ sơ đã nộp'}
+            onPress={() => setShowNotes(value => !value)} />
+          {showNotes ? <WarningBannerList items={notes} /> : null}
+        </Card>
+      ) : null}
 
       {capturedSlots.length ? (
         <Card style={styles.historyCard}>

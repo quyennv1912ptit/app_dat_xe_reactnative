@@ -174,7 +174,7 @@ export function VerificationFooter({
   if (stage === 'CONFIRM_FIELDS') {
     return (
       <View style={styles.footerStack}>
-        <Button label="Xem tổng hợp" disabled={locked} onPress={onGoSummary} />
+        <Button label="Xem tổng hợp" disabled={locked || reading} onPress={onGoSummary} />
         <Button
           variant="ghost"
           label="Quay lại"
@@ -190,20 +190,23 @@ export function VerificationFooter({
 
   if (stage === 'SUMMARY') {
     const missingWarningAck = Boolean(currentWarningReview && !currentWarningReview.acknowledged);
+    const blocked = warnings.some(warning => warning.blocksSubmission);
     return (
       <View style={styles.footerStack}>
-        {!confirm ? (
-          <Text style={styles.disabledHint}>Hãy bật xác nhận ở trên để gửi hồ sơ.</Text>
+        {blocked ? (
+          <Text style={styles.disabledHint}>Bổ sung ảnh hoặc sửa mục được báo ở đầu hồ sơ để có thể nộp.</Text>
+        ) : !confirm ? (
+          <Text style={styles.disabledHint}>Xác nhận đã kiểm tra ảnh và thông tin để tiếp tục.</Text>
         ) : missingWarningAck ? (
-          <Text style={styles.disabledHint}>Hãy xác nhận đã đọc các lưu ý ở trên để tiếp tục.</Text>
+          <Text style={styles.disabledHint}>Hồ sơ đã được đồng bộ. Xem các lưu ý và xác nhận lại để nộp.</Text>
         ) : null}
         <Button
           label={!currentWarningReview && warnings.some(warning => warning.requiresReview)
-            ? 'Kiểm tra cảnh báo'
+            ? 'Kiểm tra hồ sơ để nộp'
             : appStatus === 'NEEDS_MORE_INFO'
               ? 'Nộp bổ sung'
               : 'Nộp hồ sơ'}
-          disabled={locked || reading || !confirm || missingWarningAck}
+          disabled={locked || reading || !confirm || missingWarningAck || blocked}
           onPress={onSubmit}
         />
         <Button variant="ghost" label="Sửa thông tin" disabled={locked} onPress={onJumpConfirmFields} />

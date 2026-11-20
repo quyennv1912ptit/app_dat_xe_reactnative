@@ -274,9 +274,9 @@ export function VerificationFieldsStep({
 
         {cccdRevalidationNeeded ? (
           <AlertBanner
-            tone="warning"
+            tone="info"
             icon="refresh"
-            message="Ảnh CCCD đã thay đổi — hãy đọc hoặc quét lại mã QR trước khi nộp."
+            message="Ảnh CCCD đã thay đổi. Kiểm tra thông tin bên dưới theo ảnh mới. Có thể quét QR để điền nhanh."
           />
         ) : null}
 
@@ -321,9 +321,9 @@ export function VerificationFieldsStep({
 
         {gplxRevalidationNeeded ? (
           <AlertBanner
-            tone="warning"
+            tone="info"
             icon="refresh"
-            message="Ảnh GPLX đã thay đổi — hãy đọc hoặc quét lại mã QR trước khi nộp."
+            message="Ảnh GPLX đã thay đổi. Kiểm tra thông tin bên dưới theo ảnh mới. Có thể quét QR để điền nhanh."
           />
         ) : null}
 

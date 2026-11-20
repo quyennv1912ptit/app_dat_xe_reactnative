@@ -6,12 +6,12 @@ import { Modal, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 export function DriverPhoto({
-  uri, label, tile = false, portrait = false, sensitive = false,
-}: { uri: string; label: string; tile?: boolean; portrait?: boolean; sensitive?: boolean }) {
+  uri, label, tile = false, portrait = false, sensitive = false, showCaption = true,
+}: { uri: string; label: string; tile?: boolean; portrait?: boolean; sensitive?: boolean; showCaption?: boolean }) {
   const [open, setOpen] = useState(false);
   const colors = useThemeColors();
   const close = () => setOpen(false);
-  const cachePolicy = sensitive ? "none" : "memory-disk";
+  const cachePolicy = sensitive ? "memory" : "memory-disk";
   const frameStyle = tile
     ? [styles.tile, { backgroundColor: colors.rideInset }]
     : portrait
@@ -23,16 +23,16 @@ export function DriverPhoto({
         style={frameStyle}>
         <Image accessibilityLabel={label} contentFit="contain" cachePolicy={cachePolicy} recyclingKey={uri}
           source={{ uri }} style={tile ? styles.tileImage : styles.thumbnailImage} />
-        {tile ? (
+        {tile && showCaption ? (
           <LinearGradient colors={[colors.transparent, colors.photoCaptionScrim]} style={styles.caption}>
             <Typography style={[styles.captionText, { color: colors.onScrim }]}>{label}</Typography>
           </LinearGradient>
-        ) : (
+        ) : !tile ? (
           <View style={[styles.zoomHint, { backgroundColor: colors.photoCaptionScrim }]} pointerEvents="none">
             <MaterialIcons name="zoom-in" size={16} color={colors.onScrim} importantForAccessibility="no" />
             <Typography style={[styles.zoomHintText, { color: colors.onScrim }]}>Chạm để phóng to</Typography>
           </View>
-        )}
+        ) : null}
       </MotionPressable>
       <Modal visible={open} animationType="fade" onRequestClose={close}>
         <ScreenWrapper>

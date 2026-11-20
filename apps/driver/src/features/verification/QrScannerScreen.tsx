@@ -292,7 +292,7 @@ function QrScannerSession({
           <Text style={styles.topTitle} accessibilityRole="header">
             {isGplx ? 'Quét mã QR GPLX' : 'Quét mã QR CCCD'}
           </Text>
-          <Text style={styles.topSubtitle}>Camera sau · Chỉ đọc chuỗi QR gửi máy chủ</Text>
+          <Text style={styles.topSubtitle}>Đưa mã QR trên giấy tờ vào giữa khung</Text>
         </View>
         {showCamera ? (
           <Pressable
