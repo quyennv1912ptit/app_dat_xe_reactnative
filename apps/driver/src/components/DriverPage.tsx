@@ -1,4 +1,6 @@
 import { driverApi } from "@/lib/driverApi";
+import { unreadDriverNotifications } from "@/lib/notificationVisibility";
+import type { CustomerNotification } from "@datxe/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ActivityIndicator, Appbar } from "react-native-paper";
 import {
@@ -13,8 +15,8 @@ import {
   useThemedStyles,
   type ThemeColors,
 } from "@datxe/ui";
-import { usePathname, useRouter, type Href } from "expo-router";
-import { useEffect, useRef, type ComponentRef, type ReactNode } from "react";
+import { useFocusEffect, usePathname, useRouter, type Href } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { rideStyles } from "./rideStyles";
 import { useSessionStore } from "@/lib/store";
@@ -73,16 +75,25 @@ export function DriverPage({
   const rideBackground = appearance === "ride" ? styles.rideBackground : undefined;
   const router = useRouter();
   const pathname = usePathname();
+  // Mở chi tiết rồi quay lại phải dựng lại thanh tab, tránh giữ lại vệt nhấn/ripple
+  // hình chữ nhật từ lần chạm trước đó.
+  const [tabBarRevision, setTabBarRevision] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (tabs) setTabBarRevision((revision) => revision + 1);
+    }, [tabs]),
+  );
   const activeRide = useSessionStore((state) => state.activeRide);
   const userId = useSessionStore((state) => state.user?.id);
   const { width } = useWindowDimensions();
   const tablet = width >= 768;
   const tabletColumn = tablet ? styles.tabletColumn : undefined;
+  // Badge được tính từ danh sách đã lọc để không tính thông báo đánh giá bị ẩn ở app tài xế.
   const { data: unread } = useQuery({
-    queryKey: ["driver", "notifications", "count"],
-    queryFn: driverApi.notificationCount,
+    queryKey: ["driver", "notifications"],
+    queryFn: driverApi.notifications,
     enabled: tabs && Boolean(userId),
-    select: (result) => result?.unread_count ?? 0,
+    select: (items) => unreadDriverNotifications(items as CustomerNotification[] | undefined),
   });
   return (
     <ScreenWrapper style={rideBackground}>
@@ -161,6 +172,7 @@ export function DriverPage({
       </KeyboardAvoidingView>
       {tabs ? (
         <TonalNavigationBar
+          key={tabBarRevision}
           items={tabsList.map((tab) => ({ ...tab, id: tab.route, badge: tab.route === "notifications" ? unread : undefined }))}
           active={
             tabsList.find((tab) => pathname.endsWith("/" + tab.route))?.route ??

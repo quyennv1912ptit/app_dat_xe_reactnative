@@ -50,6 +50,8 @@ export function createMaterialTheme(
       onErrorContainer: colors.onErrorContainer,
       background: colors.background,
       onBackground: colors.onBackground,
+      // Nền mờ sau dialog/modal trong suốt hoàn toàn (alpha 0) ở cả app khách lẫn tài xế.
+      backdrop: colors.transparent,
       surface: colors.cardSurface,
       onSurface: colors.onSurface,
       surfaceVariant: colors.surfaceVariant,

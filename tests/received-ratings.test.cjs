@@ -131,6 +131,31 @@ test("customer rating history calls the shared received-ratings contract with pa
   await assert.rejects(failing.getReceivedRatings(0, 20), /Chưa tải được đánh giá/);
 });
 
+test("driver customer profile shows the same DriverReviews summary as the customer app without polluting trip history", () => {
+  const reviews = fs.readFileSync("apps/driver/src/features/ride/components/CustomerReviews.tsx", "utf8");
+  assert.match(reviews, /\/driver\/profile\/reviews/);
+  assert.match(reviews, /<DriverReviews\b/);
+  assert.match(reviews, /type DriverReviewSummary/);
+  assert.doesNotMatch(reviews, /ReceivedRatings|\/driver\/ratings\/received|\/customer\/ratings\/received/);
+
+  const card = fs.readFileSync("apps/driver/src/features/ride/components/RideCustomerCard.tsx", "utf8");
+  assert.match(card, /<CustomerReviews enabled=\{visible\} \/>/);
+  assert.match(card, /<Text accessibilityRole="header" style=\{s\.title\}>Hồ sơ khách hàng<\/Text>/);
+  // Hồ sơ khách hàng là bottom sheet trượt lên từ đáy, không phải Dialog giữa màn hình.
+  assert.match(card, /<Modal\s+visible=\{visible\}\s+transparent\s+animationType="slide"/);
+  assert.match(card, /justifyContent: "flex-end"/);
+  assert.doesNotMatch(card, /<Dialog|Portal/);
+
+  const inProgress = fs.readFileSync("apps/driver/src/features/ride/screens/InProgressScreen.tsx", "utf8");
+  assert.match(inProgress, /<RideCustomerCard key=\{ride\.id\} ride=\{ride\} \/>/);
+
+  const detail = fs.readFileSync("apps/driver/src/features/ride/screens/CompleteScreen.tsx", "utf8");
+  assert.doesNotMatch(detail, /RideCustomerCard/);
+
+  const history = fs.readFileSync("apps/driver/src/features/history/screens/HistoryScreen.tsx", "utf8");
+  assert.doesNotMatch(history, /Đã đánh giá|myRatingStars|hasRated/);
+});
+
 test("driver wallet is the app wallet and history only covers the two driver wallets", () => {
   const screen = fs.readFileSync("apps/driver/src/features/profile/screens/DriverWalletScreen.tsx", "utf8");
   assert.match(screen, /title="Ví ứng dụng"/);
@@ -168,10 +193,12 @@ test("bottom navigation keeps a pill touch target in every state", () => {
   // Ô tab chỉ là vùng chạm trong suốt: không bo 999, không overflow hidden để nhãn 2 dòng và badge lớn không bị cắt.
   assert.doesNotMatch(tabStyle[0], /borderRadius:\s*999/);
   assert.doesNotMatch(tabStyle[0], /overflow:\s*["']hidden["']/);
-  // MD3 dùng TouchableRipple; vệt nhấn được bo theo viên thuốc (borderRadius 16) của ô tab, không dùng android_ripple chữ nhật.
-  assert.match(bar, /import \{[^}]*TouchableRipple[^}]*\} from "react-native-paper"/);
+  // Không dùng TouchableRipple/android_ripple: vệt nhấn của nó là hình chữ nhật, bị kẹt lại sau khi
+  // mở chi tiết rồi quay lại. Phản hồi nhấn phải nằm trên viên thuốc quanh icon (borderRadius 16).
+  assert.doesNotMatch(bar, /TouchableRipple|android_ripple/);
+  assert.match(bar, /import \{[^}]*Pressable[^}]*\} from "react-native"/);
+  assert.match(bar, /pressedId === item\.id\s*\?\s*colors\.surfaceContainerHighest/);
   assert.match(tabStyle[0], /borderRadius:\s*16/);
-  assert.doesNotMatch(bar, /android_ripple/);
   // Vùng chạm tối thiểu 48dp (thực tế 64dp) và nhãn được phép xuống dòng thay vì bị cắt.
   assert.match(tabStyle[0], /minHeight:\s*64/);
   assert.match(bar, /textBreakStrategy="simple"/);
@@ -180,4 +207,11 @@ test("bottom navigation keeps a pill touch target in every state", () => {
   assert.ok(indicator, "indicator style must exist");
   assert.match(indicator[0], /borderRadius:\s*16/);
   assert.match(indicator[0], /height:\s*32/);
+});
+
+test("driver tab bar remounts on focus so a pressed ripple cannot survive navigation", () => {
+  const page = fs.readFileSync("apps/driver/src/components/DriverPage.tsx", "utf8");
+  assert.match(page, /useFocusEffect/);
+  assert.match(page, /setTabBarRevision\(\(revision\) => revision \+ 1\)/);
+  assert.match(page, /<TonalNavigationBar\s+key=\{tabBarRevision\}/);
 });

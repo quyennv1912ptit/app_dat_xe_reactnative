@@ -1,7 +1,8 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { translate } from "@datxe/shared";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
-import { Badge, Text, TouchableRipple } from "react-native-paper";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Badge, Text } from "react-native-paper";
 import { fontWeight, typography } from "../theme/colors";
 import { useThemeColors } from "../theme/ThemeProvider";
 
@@ -32,6 +33,11 @@ export function TonalNavigationBar({
     : { width: 390, fontScale: 1 };
   const compactBar = dimensions.width < 360 || dimensions.fontScale >= 1.4;
   const flat = appearance === "flat";
+  // Phản hồi nhấn chỉ tô sáng viên thuốc (pill) quanh icon, không phủ
+  // ripple hình chữ nhật lên cả ô tab.
+  const [pressedId, setPressedId] = useState<string | null>(null);
+  // Đổi tab hoặc quay lại màn cũ không được giữ lại highlight nhấn của tab trước.
+  useEffect(() => { setPressedId(null); }, [active]);
   return (
     <View
       accessibilityRole="tablist"
@@ -40,7 +46,7 @@ export function TonalNavigationBar({
       {items.map((item) => {
         const selected = item.id === active;
         return (
-          <TouchableRipple
+          <Pressable
             key={item.id}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
@@ -48,8 +54,11 @@ export function TonalNavigationBar({
               ? translate("{0}, {1} chưa đọc", { 0: translate(item.label), 1: item.badge })
               : translate(item.label)}
             onPress={() => {
+              setPressedId(null);
               if (!selected) onSelect(item.id);
             }}
+            onPressIn={() => setPressedId(item.id)}
+            onPressOut={() => setPressedId(current => (current === item.id ? null : current))}
             style={styles.tab}
           >
             <View style={styles.content}>
@@ -62,7 +71,9 @@ export function TonalNavigationBar({
                         ? colors.transparent
                         : selected
                           ? colors.primaryContainer
-                          : colors.transparent,
+                          : pressedId === item.id
+                            ? colors.surfaceContainerHighest
+                            : colors.transparent,
                     },
                   ]}
                 >
@@ -112,7 +123,7 @@ export function TonalNavigationBar({
                 {translate(item.label)}
               </Text>
             </View>
-          </TouchableRipple>
+          </Pressable>
         );
       })}
     </View>
