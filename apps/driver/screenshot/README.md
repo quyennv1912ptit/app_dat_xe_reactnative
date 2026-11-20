@@ -1,5 +1,7 @@
 # Kiểm kê màn hình và rà soát UI/UX Driver
 
+> Tài liệu lưu kết quả kiểm tra trước V42. Luồng xác minh hiện hành dùng `/profile/verification`.
+
 Chụp trên Android ngày 06/11/2026, độ phân giải gốc 1080 × 2400. Bộ **62 ảnh PNG** bao phủ **17 màn hình riêng và route `ride/handover` dùng chung màn biên bản**. `index.web.tsx` chuyển hướng sang Đăng nhập. Các ảnh có hậu tố `cuon` ghi lại phần dưới của cùng một màn hình.
 
 - [Ảnh phiên Driver hiện tại](native/00-home-phien-hien-tai.png) ghi nhận Home đang bật nhận chuyến, WebSocket kết nối và có GPS mới tại thời điểm chụp.

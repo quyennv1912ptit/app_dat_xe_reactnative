@@ -1,13 +1,11 @@
 import { capabilitiesKey, getCapabilities } from '@/lib/driverCapabilities';
 import { useDriverCredit } from '@/lib/useDriverCredit';
 import { usePendingOffer } from '@/lib/driverOffer';
-import { driverApi } from '@/lib/driverApi';
 import { useSessionStore } from '@/lib/store';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { getHomeDailySummary,getHomeActiveRide,getHomeSession,getHomeVerification,setDriverAvailability } from '../api';
-const skipRefreshCapabilities = () => undefined;
 export function useHome() {
   const router = useRouter();
   const client = useQueryClient();
@@ -18,18 +16,12 @@ export function useHome() {
   useRefreshOnFocus(summary.refetch);
   const credit = useDriverCredit();
   const offer = usePendingOffer(credit.allowed);
-  const capabilityMode = verification.data?.verification_workflow === 'EKYC';
-  const capabilities = useQuery({ queryKey: capabilitiesKey, queryFn: getCapabilities, enabled: capabilityMode });
-  const skills = useQuery({ queryKey: ['driver', 'skills'], queryFn: driverApi.skills });
-  const documents = useQuery({ queryKey: ['driver', 'documents'], queryFn: driverApi.documents });
+  const capabilities = useQuery({ queryKey: capabilitiesKey, queryFn: getCapabilities });
   useRefreshOnFocus(session.refetch);
   useRefreshOnFocus(verification.refetch);
   useRefreshOnFocus(active.refetch);
   useRefreshOnFocus(offer.refetch);
-  useRefreshOnFocus(skills.refetch);
-  const refreshCapabilities = capabilityMode ? capabilities.refetch : undefined;
-  useRefreshOnFocus(refreshCapabilities ?? skipRefreshCapabilities);
-  useRefreshOnFocus(documents.refetch);
+  useRefreshOnFocus(capabilities.refetch);
   const availability = useMutation({
     mutationFn: async (body: Parameters<typeof setDriverAvailability>[0]) => {
       if (body.online) {
@@ -50,5 +42,5 @@ export function useHome() {
       await client.invalidateQueries({ queryKey: ['driver'] });
     },
   });
-  return { router, credit, capabilities, summary, session, verification, active, offer, skills, documents, availability };
+  return { router, credit, capabilities, summary, session, verification, active, offer, availability };
 }

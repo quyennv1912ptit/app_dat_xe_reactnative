@@ -1,5 +1,7 @@
 # Rà soát kết nối màn hình — 30/10/2026
 
+> Tài liệu lưu kết quả kiểm tra trước V42. Luồng xác minh hiện hành dùng `/profile/verification`.
+
 Project áp dụng: D:\datxe_rn. Đối chiếu controller/DTO/service tại D:\datxebackend. Không thay hợp đồng API backend, không sửa .env/key.
 
 ## Customer — từng route

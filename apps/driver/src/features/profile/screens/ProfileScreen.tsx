@@ -143,18 +143,13 @@ export default function DriverProfileScreen() {
               : v.data?.verification_status === "REJECTED"
                 ? "Chưa đạt · Mở để cập nhật và gửi lại"
                 : v.data?.verification_status === "PENDING"
-                  ? "Đang chờ xét duyệt · Xem tiến độ hoặc bổ sung"
+                  ? "Xem tiến độ hoặc hoàn tất hồ sơ"
                   : "Chụp CCCD, GPLX và ảnh chân dung"
           }
           onPress={() => router.push("/profile/verification")}
         />
         <SettingsListItem title="Loại xe nhận lái hộ" icon="tune" onPress={() => router.push("/profile/capabilities")} />
         <SettingsListItem title="Cài đặt" icon="settings" onPress={() => router.push("/settings")} />
-        <SettingsListItem
-          title="Xem kết quả xét duyệt"
-          icon="verified-user"
-          onPress={() => router.push("/(auth)/approval-status")}
-        />
         <SettingsListItem
           title="Trung tâm hỗ trợ"
           icon="help-outline"

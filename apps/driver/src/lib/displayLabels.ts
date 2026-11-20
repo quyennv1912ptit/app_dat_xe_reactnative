@@ -29,12 +29,8 @@ const statusTables: Record<string, Record<string, StatusLabel>> = {
   approval: {
     APPROVED: { label: 'Hồ sơ đã được duyệt', tone: 'success' },
     REJECTED: { label: 'Cần bổ sung hồ sơ', tone: 'danger' },
-    PENDING: { label: 'Chờ xét duyệt hồ sơ', tone: 'pending' },
-  },
-  documentReview: {
-    APPROVED: { label: 'Đã được duyệt', tone: 'success' },
-    REJECTED: { label: 'Không được duyệt', tone: 'danger' },
-    PENDING: { label: 'Chờ xét duyệt', tone: 'pending' },
+    PENDING: { label: 'Chưa hoàn tất xác minh', tone: 'pending' },
+    SUSPENDED: { label: 'Tạm ngừng xác minh', tone: 'danger' },
   },
   payment: {
     PENDING: { label: 'Chờ thanh toán', tone: 'pending' },
@@ -43,7 +39,7 @@ const statusTables: Record<string, Record<string, StatusLabel>> = {
     REFUNDED: { label: 'Đã hoàn tiền', tone: 'neutral' },
   },
 };
-export type StatusKind = 'ride' | 'availability' | 'approval' | 'documentReview' | 'payment';
+export type StatusKind = 'ride' | 'availability' | 'approval' | 'payment';
 function lookup<T>(table: Record<string, T>, value: string | null | undefined): T | undefined {
   return value && Object.hasOwn(table, value) ? table[value] : undefined;
 }
@@ -51,12 +47,6 @@ export function statusLabel(kind: StatusKind, value: string | null | undefined):
   return lookup(statusTables[kind], value) ?? { label: value ? 'Chưa xác định trạng thái' : 'Chưa có trạng thái', tone: 'neutral' };
 }
 
-const documentTypes: Record<string, string> = {
-  CCCD: 'Mặt trước căn cước công dân', CCCD_BACK: 'Mặt sau căn cước công dân',
-  SELFIE: 'Ảnh chân dung', DRIVER_LICENSE: 'Mặt trước giấy phép lái xe',
-  DRIVER_LICENSE_BACK: 'Mặt sau giấy phép lái xe',
-};
-export const documentTypeLabel = (value: string | null | undefined) => lookup(documentTypes, value) ?? 'Giấy tờ khác';
 export const vehicleTypeLabel = (value: string | null | undefined) => lookup({ CAR: 'Ô tô', MOTORCYCLE: 'Xe máy' }, value) ?? 'Chưa rõ loại xe';
 export const transmissionLabel = (value: string | null | undefined) => lookup({ AUTO: 'Số tự động', MANUAL: 'Số sàn' }, value) ?? 'Chưa rõ hộp số';
 
@@ -65,7 +55,7 @@ const notificationTypes: Record<string, string> = {
   RIDE_UPDATED: 'Cập nhật chuyến đi', HANDOVER_CONFIRMED: 'Biên bản đã được xác nhận',
   RIDE_CANCELLED: 'Chuyến đi đã bị hủy', RIDE_COMPLETED: 'Chuyến đi đã hoàn tất',
   RIDE_NO_DRIVER: 'Chưa tìm được tài xế', RIDE_ASSIGNED: 'Chuyến đi đã có tài xế',
-  DRIVER_DOCUMENT_REVIEWED: 'Kết quả kiểm tra giấy tờ', DRIVER_VERIFICATION_UPDATED: 'Cập nhật xét duyệt hồ sơ',
+  DRIVER_VERIFICATION_UPDATED: 'Cập nhật xét duyệt hồ sơ',
   DRIVER_FORCE_OFFLINE: 'Tạm ngừng nhận chuyến', CHAT_MESSAGE: 'Tin nhắn mới', CHAT_READ: 'Tin nhắn đã được đọc',
   RATING_RECEIVED: 'Đánh giá mới', VOUCHER_GRANTED: 'Ưu đãi mới', VOUCHER_CAMPAIGN: 'Chương trình ưu đãi',
 };

@@ -28,7 +28,7 @@ for (const app of ['driver', 'customer']) {
   }
   test(`${app}: native upload contains actual image bytes and signed fields`, async () => {
     const { calls, upload } = setup();
-    await upload({ uri: 'file:///picked.png' }, 'DRIVER_DOCUMENT');
+    await upload({ uri: 'file:///picked.png' }, 'SUPPORT');
     const form = calls[0].options.body;
     assert.equal(await form.get('file').text(), 'real image bytes');
     assert.equal(form.get('file').name, 'picked.png');

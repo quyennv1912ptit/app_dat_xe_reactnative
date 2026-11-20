@@ -94,8 +94,7 @@ export interface Application {
 
 const backendOrigin = env.apiUrl.replace(/\/api\/?$/, '');
 export const verificationUrl =
-  verificationOrigin(backendOrigin, __DEV__) ??
-  verificationOrigin(env.driverVerificationUrl, __DEV__);
+  verificationOrigin(backendOrigin, __DEV__);
 
 export function verificationClient(expectedUid: string) {
   if (!verificationUrl) throw new VerificationError('SERVER');

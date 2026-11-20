@@ -102,8 +102,7 @@ test("Stage 1-4 audit fixes keep recovery UI, scrollable dialogs, virtualized li
   assert.match(reg, /Về màn đăng nhập/);
   assert.doesNotMatch(reg, /Bước 1\/4/);
 
-  const approval = read("apps/driver/src/features/auth/screens/ApprovalStatusScreen.tsx");
-  assert.doesNotMatch(approval, /Bước 6\/7/);
+
 
   const home = read("apps/driver/src/features/offers/screens/HomeScreen.tsx");
   assert.match(home, /title:\s*"Chưa tải được điều kiện nhận chuyến",\s*action:\s*"Thử lại"/);

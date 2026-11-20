@@ -79,10 +79,6 @@ const messages: Readonly<Record<string, NotificationText>> = {
     title: "Đã xác nhận bàn giao",
     description: "Biên bản bàn giao xe đã được xác nhận.",
   },
-  DRIVER_DOCUMENT_REVIEWED: {
-    title: "Đã có kết quả kiểm tra giấy tờ",
-    description: "Vui lòng xem kết quả kiểm tra giấy tờ trong hồ sơ của bạn.",
-  },
   DRIVER_VERIFICATION_UPDATED: {
     title: "Hồ sơ tài xế có cập nhật",
     description: "Thông tin xét duyệt hồ sơ tài xế của bạn vừa được cập nhật.",

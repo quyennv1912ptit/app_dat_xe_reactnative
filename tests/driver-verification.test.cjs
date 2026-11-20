@@ -140,7 +140,8 @@ test('capability controls send both revisions and disable unapproved enable acti
   assert.match(control, /approvalRevision, current.preferenceVersion, enabled/);
   assert.match(control, /!group.enabled && Boolean\(group.reasonCode\)/);
   const home = read('features/offers/screens/HomeScreen.tsx');
-  assert.match(home, /capabilityMode && !vehicleTypes.length/);
+  assert.match(home, /!vehicleTypes\.length/);
+  assert.doesNotMatch(home, /capabilityMode/);
   assert.match(home, /acceptingVehicleTypes/);
 });
 
@@ -280,10 +281,7 @@ test('rejected driver application without verified baseline can initiate a new v
   assert.match(statusView, /Lý do từ chối: \$\{app\.reason\}/);
   assert.match(statusView, /app\.status === 'DRAFT' && app\.approvedRevision != null && !app\.identityHold/);
 
-  const approval = read('features/auth/screens/ApprovalStatusScreen.tsx');
-  assert.match(approval, /const rejected = v\.data\?\.verification_status === "REJECTED"/);
-  assert.match(approval, /rejected && managed \? "Hồ sơ eKYC chưa được duyệt"/);
-  assert.match(approval, /rejected \? "Tạo yêu cầu hồ sơ mới"/);
+  assert.equal(require("node:fs").existsSync(join(__dirname, "../apps/driver/src/app/(auth)/approval-status.tsx")), false);
 });
 
 test('phase 11.1.3B qrScanDecision, source-aware collectChoices, and formatOriginLabel cover all QR workflows', async () => {
@@ -567,9 +565,7 @@ test('driver eKYC UX redesign removes technical leaks, uses 4 clear milestones, 
   assert.match(summaryStep, /KeyValueRow/);
   assert.match(summaryStep, /\btile\b/);
 
-  const approval = read('features/auth/screens/ApprovalStatusScreen.tsx');
-  assert.doesNotMatch(approval, /\bstepBadge\b/);
-  assert.doesNotMatch(approval, /progress=\{1\}/);
+  assert.equal(require("node:fs").existsSync(join(__dirname, "../apps/driver/src/app/(auth)/approval-status.tsx")), false);
 
   const guided = read('features/verification/GuidedCaptureScreen.tsx');
   assert.match(guided, /showCheckDetails/);

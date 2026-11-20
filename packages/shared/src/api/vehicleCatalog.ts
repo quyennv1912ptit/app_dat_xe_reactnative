@@ -1,8 +1,7 @@
 import type { createApiClient } from './client';
-import type { DriverSkill } from '../types/driver';
 
-export type BookingVehicleType = DriverSkill['vehicle_type'];
-export type VehicleTransmission = DriverSkill['transmission'];
+export type BookingVehicleType = 'CAR' | 'MOTORCYCLE';
+export type VehicleTransmission = 'AUTO' | 'MANUAL';
 export type VehicleCatalog = {
   version: string;
   bookingTypes: Partial<Record<BookingVehicleType, string>>;

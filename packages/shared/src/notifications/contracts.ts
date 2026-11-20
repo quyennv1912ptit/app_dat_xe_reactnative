@@ -94,7 +94,6 @@ export function pushPresentation(event: PushEnvelope, now = Date.now()) {
     HANDOVER_CONFIRMED: 'Biên bản đã được xác nhận',
     OFFER_EXPIRED: 'Lời mời nhận chuyến đã hết hạn',
     OFFER_CANCELLED: 'Lời mời nhận chuyến đã hủy',
-    DRIVER_DOCUMENT_REVIEWED: 'Có kết quả kiểm tra giấy tờ',
     DRIVER_VERIFICATION_UPDATED: 'Hồ sơ tài xế có cập nhật', DRIVER_FORCE_OFFLINE: 'Đã tạm ngừng nhận chuyến',
   };
   return {
@@ -165,7 +164,7 @@ export async function resolvePushDestination(event: PushEnvelope, role: PushRole
       notice: event.type === 'OFFER_EXPIRED' ? 'Lời mời nhận chuyến đã hết hạn.' : 'Lời mời nhận chuyến đã bị hủy.',
     };
   }
-  if (role === 'DRIVER' && ['DRIVER_DOCUMENT_REVIEWED', 'DRIVER_VERIFICATION_UPDATED'].includes(event.type)) return { pathname: '/(auth)/approval-status' };
+  if (role === 'DRIVER' && event.type === 'DRIVER_VERIFICATION_UPDATED') return { pathname: '/profile/verification' };
   if (!id) return { pathname: '/(tabs)/notifications' };
   const ride = await api.ride(id); // Authorize against the restored account; never trust a payload URL/status.
   if (event.type === 'CHAT_MESSAGE') return { pathname: '/chat', params: { rideId: String(id) } };
