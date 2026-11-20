@@ -53,7 +53,8 @@ export function EditingStatusBanner({
   onCancelReverify: () => void;
 }) {
   const styles = useThemedStyles(makeStyles);
-  const headline = app.status === 'DRAFT' && app.approvedRevision != null
+  const updatingDraft = app.status === 'DRAFT' && (app.submissionRevision != null || app.approvedRevision != null);
+  const headline = updatingDraft
     ? 'Đang cập nhật giấy tờ mới'
     : (statusLabels[app.status] ?? app.status);
 
