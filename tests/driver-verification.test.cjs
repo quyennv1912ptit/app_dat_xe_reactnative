@@ -263,4 +263,14 @@ test('rejected driver application without verified baseline can initiate a new v
   assert.match(approval, /const rejected = v\.data\?\.verification_status === "REJECTED"/);
   assert.match(approval, /rejected && managed \? "Hồ sơ eKYC chưa được duyệt"/);
   assert.match(approval, /rejected \? "Tạo yêu cầu hồ sơ mới"/);
+  const approvalHook = read('features/auth/hooks/useApprovalStatus.ts');
+  assert.match(approvalHook, /enabled: verification\.isSuccess && !managed/);
+  assert.match(approval, /serverErrorCopy\(v\.error\?\.message \|\| \(managed \? undefined : d\.error\?\.message\)\)/);
+
+  // Backend eKYC (DriverVerificationSummary) không trả unverified_skills.
+  // Đọc trực tiếp .length từ field này sẽ crash màn hình Xét duyệt hồ sơ.
+  assert.match(approval, /v\.data\?\.unverified_skills\?\.length \?\? 0/);
+  assert.doesNotMatch(approval, /v\.data\.unverified_skills\.length/);
+  const driverTypes = readFileSync(join(__dirname, '../packages/shared/src/types/driver.ts'), 'utf8');
+  assert.match(driverTypes, /unverified_skills\?:DriverSkill\[\]/);
 });

@@ -28,6 +28,23 @@ test('credit gate remains closed for unknown, failed or refreshing balances', ()
   state.isError = false; state.isFetching = true;
   assert.equal(useDriverCredit().allowed, false);
 });
+test('technical server errors never reach driver screens verbatim', () => {
+  const { serverErrorCopy } = load('apps/driver/src/lib/errorCopy.ts', {});
+  assert.equal(
+    serverErrorCopy('No static resource api/driver/documents.'),
+    'Không tải được dữ liệu từ máy chủ. Vui lòng kiểm tra kết nối và thử lại.',
+  );
+  assert.equal(serverErrorCopy('Số dư ví tín dụng không đủ.'), 'Số dư ví tín dụng không đủ.');
+  assert.equal(serverErrorCopy('  '), undefined);
+  assert.equal(serverErrorCopy(undefined), undefined);
+
+  const home = fs.readFileSync('apps/driver/src/features/offers/screens/HomeScreen.tsx', 'utf8');
+  assert.match(home, /error=\{serverErrorCopy\(/);
+  const useHome = fs.readFileSync('apps/driver/src/features/offers/hooks/useHome.ts', 'utf8');
+  assert.match(useHome, /const legacyProfileMode = verification\.isSuccess && !capabilityMode;/);
+  assert.match(useHome, /enabled: legacyProfileMode/);
+});
+
 test('online action rechecks balance before changing availability', async () => {
   let availability;
   let balance = { data: { canReceive: false } };

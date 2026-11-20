@@ -16,6 +16,7 @@ import {
 } from "@datxe/ui";
 import { useState } from "react";
 import { useSessionStore } from "@/lib/store";
+import { serverErrorCopy } from "@/lib/errorCopy";
 import { useHome } from "../hooks/useHome";
 
 const today = () => {
@@ -71,8 +72,8 @@ export default function DriverHomeScreen() {
       h.verification.refetch(),
       h.active.refetch(),
       capabilityMode && h.capabilities ? h.capabilities.refetch() : Promise.resolve(),
-      !capabilityMode ? h.skills.refetch() : Promise.resolve(),
-      !capabilityMode ? h.documents.refetch() : Promise.resolve(),
+      !capabilityMode && h.verification.data ? h.skills.refetch() : Promise.resolve(),
+      !capabilityMode && h.verification.data ? h.documents.refetch() : Promise.resolve(),
       h.credit.refetch(),
     ]);
   const blocker = syncingRide
@@ -106,15 +107,15 @@ export default function DriverHomeScreen() {
       title="Trang chủ tài xế"
       tabs
       loading={h.session.isLoading || h.active.isLoading}
-      error={
+      error={serverErrorCopy(
         h.session.error?.message ||
         h.verification.error?.message ||
         h.active.error?.message ||
         h.offer.error?.message ||
         (capabilityMode ? h.capabilities?.error?.message : h.skills.error?.message) ||
-        h.documents.error?.message ||
+        (!capabilityMode ? h.documents.error?.message : undefined) ||
         h.availability.error?.message
-      }
+      )}
       retry={() =>
         Promise.all([
           retryConditions(),

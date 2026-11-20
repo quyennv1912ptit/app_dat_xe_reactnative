@@ -37,7 +37,6 @@ export default function DriverWalletScreen() {
       <View style={styles.balanceGrid}>
         <WalletBalanceCard
           accent="primary"
-          style={styles.balanceTile}
           title="Ví tín dụng"
           balance={walletBalance(overview.data, 'CREDIT')}
           description={
@@ -50,7 +49,6 @@ export default function DriverWalletScreen() {
         </WalletBalanceCard>
         <WalletBalanceCard
           accent="neutral"
-          style={styles.balanceTile}
           title="Ví ứng dụng"
           balance={walletBalance(overview.data, 'CASH')}
           description="Khách trả qua ví ứng dụng được cộng vào đây; số dư đã trừ khoản chờ duyệt rút."
@@ -119,8 +117,9 @@ export default function DriverWalletScreen() {
 const styles = StyleSheet.create({
   listContent: { padding: spacing.spaceMd, gap: spacing.px3, paddingBottom: spacing.spaceXl },
   header: { gap: spacing.px3 },
-  balanceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.px3 },
-  balanceTile: { flex: 1, minWidth: 220 },
+  // Xếp dọc: flexDirection row + flex:1/minWidth trong flexWrap từng làm hai
+  // thẻ ví ở cùng một hàng và đè lên nhau trên màn hình hẹp.
+  balanceGrid: { gap: spacing.px3 },
   sectionHeader: { paddingTop: spacing.spaceXs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.spaceSm },
   chip: { minHeight: 48, justifyContent: 'center' },

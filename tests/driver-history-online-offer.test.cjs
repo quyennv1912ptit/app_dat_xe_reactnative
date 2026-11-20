@@ -221,6 +221,7 @@ test('HomeScreen does not guess vehicleTypes[0] when backend has not confirmed o
       },
       '@/components/rideStyles': { rideStyles: () => ({}) },
       '@/lib/store': { useSessionStore: selector => selector({ onlineVehicleType: onlineVehicleTypeStore }) },
+      '@/lib/errorCopy': { serverErrorCopy: message => message },
       '@datxe/shared': { formatMoney: v => String(v) },
       '@datxe/ui': {
         Button: () => null,

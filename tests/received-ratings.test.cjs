@@ -143,6 +143,10 @@ test("driver wallet is the app wallet and history only covers the two driver wal
   assert.match(screen, /kind: 'CASH', label: 'Ứng dụng'/);
   assert.match(screen, /kind: 'CREDIT', label: 'Tín dụng'/);
   assert.doesNotMatch(screen, /Ví tiền mặt/);
+  // Hai thẻ ví phải xếp dọc; row + flex:1/minWidth từng làm chúng đè lên nhau.
+  assert.match(screen, /balanceGrid:\s*\{\s*gap:/);
+  assert.doesNotMatch(screen, /balanceGrid:[^\n]*flexDirection:\s*'row'/);
+  assert.doesNotMatch(screen, /balanceTile/);
 
   const withdrawal = fs.readFileSync("apps/driver/src/features/profile/screens/DriverWithdrawalScreen.tsx", "utf8");
   assert.match(withdrawal, /Ví ứng dụng khả dụng/);

@@ -20,16 +20,19 @@ export function useHome() {
   const offer = usePendingOffer(credit.allowed);
   const capabilityMode = verification.data?.verification_workflow === 'EKYC';
   const capabilities = useQuery({ queryKey: capabilitiesKey, queryFn: getCapabilities, enabled: capabilityMode });
-  const skills = useQuery({ queryKey: ['driver', 'skills'], queryFn: driverApi.skills });
-  const documents = useQuery({ queryKey: ['driver', 'documents'], queryFn: driverApi.documents });
+  // Giấy tờ/kỹ năng chỉ dùng cho luồng hồ sơ cũ. Tài khoản eKYC không gọi
+  // endpoint này (máy chủ có thể đã bỏ) để trang chủ không hiện lỗi giả.
+  const legacyProfileMode = verification.isSuccess && !capabilityMode;
+  const skills = useQuery({ queryKey: ['driver', 'skills'], queryFn: driverApi.skills, enabled: legacyProfileMode });
+  const documents = useQuery({ queryKey: ['driver', 'documents'], queryFn: driverApi.documents, enabled: legacyProfileMode });
   useRefreshOnFocus(session.refetch);
   useRefreshOnFocus(verification.refetch);
   useRefreshOnFocus(active.refetch);
   useRefreshOnFocus(offer.refetch);
-  useRefreshOnFocus(skills.refetch);
+  useRefreshOnFocus(legacyProfileMode ? skills.refetch : skipRefreshCapabilities);
   const refreshCapabilities = capabilityMode ? capabilities.refetch : undefined;
   useRefreshOnFocus(refreshCapabilities ?? skipRefreshCapabilities);
-  useRefreshOnFocus(documents.refetch);
+  useRefreshOnFocus(legacyProfileMode ? documents.refetch : skipRefreshCapabilities);
   const availability = useMutation({
     mutationFn: async (body: Parameters<typeof setDriverAvailability>[0]) => {
       if (body.online) {

@@ -1,6 +1,7 @@
 import { DriverPage } from "@/components/DriverPage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { documentTypeLabel } from "@/lib/displayLabels";
+import { serverErrorCopy } from "@/lib/errorCopy";
 import { rideStyles } from "@/components/rideStyles";
 import { Button, Card, GroupedList, Typography as Text, borderRadius, spacing, typography, useThemeColors, useThemedStyles } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -14,10 +15,12 @@ export default function ApprovalStatusScreen() {
   const colors = useThemeColors();
   const { verification: v, documents: d } = useApprovalStatus();
   const router = useRouter();
-  const reload = () => Promise.all([v.refetch(), d.refetch()]);
+  const managed = v.data?.verification_workflow === "EKYC";
+  const reload = () => Promise.all([v.refetch(), managed ? Promise.resolve() : d.refetch()]);
   const approved = v.data?.verification_status === "APPROVED";
   const rejected = v.data?.verification_status === "REJECTED";
-  const managed = v.data?.verification_workflow === "EKYC";
+  // Backend eKYC không trả unverified_skills: phải dùng optional chaining, không đọc .length trực tiếp.
+  const unverifiedSkillCount = v.data?.unverified_skills?.length ?? 0;
   const types = [...new Set([...(v.data?.required_document_types ?? []), ...(d.data ?? []).map((doc) => doc.document_type)])];
   const documents = types.map((type) => ({ type, document: d.data?.find((doc) => doc.document_type === type) }));
   const rank = (value?: string) => value === "APPROVED" ? 2 : value === "PENDING" ? 1 : 0;
@@ -27,7 +30,7 @@ export default function ApprovalStatusScreen() {
 
   return (
     <DriverPage title="Xét duyệt hồ sơ" loading={v.isLoading || d.isLoading}
-      error={v.error?.message || d.error?.message} retry={reload}>
+      error={serverErrorCopy(v.error?.message || (managed ? undefined : d.error?.message))} retry={reload}>
       {v.data ? (
         <Card style={s.card}>
           <Text style={[styles.stepBadge, { color: colors.primary }]}>Theo dõi kết quả xét duyệt</Text>
@@ -51,11 +54,11 @@ export default function ApprovalStatusScreen() {
               : d.data && needsChanges ? "Xem các giấy tờ cần bổ sung hoặc thay ảnh bên dưới."
               : "Bạn có thể kiểm tra lại kết quả tại đây sau khi hồ sơ được xem xét."}
           </Text>
-          {v.data.unverified_skills.length ? (
+          {unverifiedSkillCount > 0 ? (
             <View style={[styles.infoBanner, { backgroundColor: colors.warningContainer }]}>
               <MaterialIcons name="info-outline" size={20} color={colors.onWarningContainer} importantForAccessibility="no" />
               <Text style={[styles.bannerText, { color: colors.onWarningContainer }]}>
-                {v.data.unverified_skills.length} kỹ năng chưa được duyệt
+                {unverifiedSkillCount} kỹ năng chưa được duyệt
               </Text>
             </View>
           ) : null}
