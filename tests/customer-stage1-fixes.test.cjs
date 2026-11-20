@@ -232,7 +232,7 @@ test("TonalNavigationBar keeps badge and tab text unclipped for large font scali
     "@expo/vector-icons": { MaterialIcons: "MaterialIcons" },
     "@datxe/shared": { translate: (v) => v },
     "react": { useState: (initial) => [initial, () => {}], useEffect: () => {} },
-    "react-native": { StyleSheet: { create: (v) => v }, View: "View" },
+    "react-native": { StyleSheet: { create: (v) => v }, View: "View", Pressable: "Pressable" },
     "react-native-paper": { Badge: "Badge", Text: "Text", TouchableRipple: "TouchableRipple" },
     "../theme/colors": {
       fontWeight: { medium: "500", semibold: "600" },
@@ -261,7 +261,9 @@ test("TonalNavigationBar keeps badge and tab text unclipped for large font scali
     ],
   });
   const nodes = allNodes(tree);
-  const tab = nodes.find((n) => n.type === "TouchableRipple");
+  const tab = nodes.find((n) => n.type === "Pressable");
+  assert.ok(tab, "tab must use the ripple-free Pressable");
+  assert.equal(tab.props.android_ripple, undefined);
   assert.notEqual(tab.props.style.overflow, "hidden");
   assert.notEqual(tab.props.style.borderRadius, 999);
   const badge = nodes.find((n) => n.type === "Badge");

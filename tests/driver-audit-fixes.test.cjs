@@ -161,7 +161,7 @@ test("Stage 1 critique fixes: clean avatar initials, online vehicle badge, and s
 test("Stage 2 critique fixes: InProgress GroupedList, RideCustomerCard horizontal actions, and Complete receipt", () => {
   const customerCard = read("apps/driver/src/features/ride/components/RideCustomerCard.tsx");
   assert.match(customerCard, /DriverChatButton/);
-  assert.match(customerCard, /label="Gọi khách"/);
+  assert.match(customerCard, /label=\{i18nT\("Gọi khách"\)\}/);
   assert.match(customerCard, /flexDirection:\s*"row"/);
 
   const inProgress = read("apps/driver/src/features/ride/screens/InProgressScreen.tsx");

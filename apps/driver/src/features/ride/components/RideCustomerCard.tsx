@@ -14,6 +14,7 @@ import {
   useLanguage,
   useThemeColors,
   useThemedStyles,
+  typography,
   type ThemeColors,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -251,7 +252,7 @@ const customerStyles = (c: ThemeColors) =>
     card: { padding: 16, gap: 16 },
     quickActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     quickAction: { flexGrow: 1, flexBasis: 135, width: "auto", minWidth: 0 },
-    eyebrow: { color: c.onSurfaceVariant, fontSize: 13, fontWeight: "600" },
+    eyebrow: { ...typography.label, color: c.onSurfaceVariant },
     identity: { flexDirection: "row", alignItems: "center", gap: 16 },
     identityLarge: { alignItems: "flex-start" },
     copy: { flex: 1, minWidth: 0, gap: 8 },
@@ -262,11 +263,11 @@ const customerStyles = (c: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    name: { color: c.onSurface, fontSize: 19, fontWeight: "700", flexShrink: 1 },
+    name: { ...typography.sectionTitle, color: c.onSurface, flexShrink: 1 },
     rating: { flexDirection: "row", alignItems: "center", gap: 8 },
-    body: { color: c.onSurface, fontSize: 16, lineHeight: 23, flexShrink: 1 },
-    meta: { color: c.onSurfaceVariant, fontSize: 14, lineHeight: 21 },
-    link: { color: c.primary, fontSize: 14, fontWeight: "600" },
+    body: { ...typography.body, color: c.onSurface, flexShrink: 1 },
+    meta: { ...typography.bodySecondary, color: c.onSurfaceVariant },
+    link: { ...typography.label, color: c.primary },
     overlay: {
       flex: 1,
       justifyContent: "flex-end",
@@ -292,7 +293,7 @@ const customerStyles = (c: ThemeColors) =>
       paddingTop: 12,
       gap: 12,
     },
-    title: { flex: 1, color: c.onSurface, fontSize: 22, fontWeight: "500" },
+    title: { ...typography.screenTitle, flex: 1, color: c.onSurface },
     close: {
       minWidth: 48,
       minHeight: 48,

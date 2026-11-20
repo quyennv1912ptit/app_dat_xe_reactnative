@@ -164,9 +164,12 @@ test("bottom navigation keeps a pill touch target in every state", () => {
   // Ô tab chỉ là vùng chạm trong suốt: không ripple chữ nhật, không cắt chữ.
   assert.doesNotMatch(tabStyle[0], /borderRadius:\s*999/);
   assert.doesNotMatch(tabStyle[0], /overflow:\s*["']hidden["']/);
-  assert.match(bar, /rippleColor=\{colors\.transparent\}/);
-  // Phản hồi nhấn nằm trên viên thuốc quanh icon.
+  // Dùng Pressable gốc, không gắn android_ripple để không còn vệt chữ nhật khi quay lại màn.
+  assert.match(bar, /import \{ Pressable, StyleSheet, View, useWindowDimensions \} from "react-native"/);
+  assert.doesNotMatch(bar, /TouchableRipple|rippleColor|android_ripple/);
+  // Phản hồi nhấn nằm trên viên thuốc quanh icon và được xóa khi đổi tab.
   assert.match(bar, /pressedId === item\.id\s*\?\s*colors\.surfaceContainerHighest/);
+  assert.match(bar, /setPressedId\(null\);\s*\}, \[active\]\)/);
   const indicator = bar.match(/indicator:\s*\{[^}]*\}/);
   assert.ok(indicator, "indicator style must exist");
   assert.match(indicator[0], /borderRadius:\s*16/);
