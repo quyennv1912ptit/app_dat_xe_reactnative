@@ -1,9 +1,10 @@
 import { StyleSheet, Switch, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
-  Card,
   GroupedList,
+  MotionPressable,
   Typography as Text,
+  borderRadius,
   spacing,
   typography,
   useThemeColors,
@@ -43,6 +44,7 @@ export function VerificationPrepareStep({
 }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
+  const toggleDisabled = locked || reading;
 
   return (
     <View style={styles.root}>
@@ -67,17 +69,25 @@ export function VerificationPrepareStep({
         ))}
       </GroupedList>
 
-      <Card style={styles.consentCard}>
+      <MotionPressable
+        accessible={false}
+        disabled={toggleDisabled}
+        onPress={() => onToggleConsent(!consent)}
+        style={[
+          styles.consentCard,
+          { backgroundColor: consent ? colors.primaryContainer : colors.cardSurface },
+        ]}
+      >
         <Switch
-          accessibilityLabel="Đồng ý tải ảnh để xác minh"
+          accessibilityLabel="Đồng ý gửi ảnh giấy tờ và ảnh chân dung để xác minh"
           value={consent}
-          disabled={locked || reading}
+          disabled={toggleDisabled}
           onValueChange={onToggleConsent}
         />
-        <Text style={styles.consentText}>
+        <Text style={[styles.consentText, { color: consent ? colors.onPrimaryContainer : colors.onSurface }]}>
           Tôi đồng ý gửi ảnh giấy tờ và ảnh chân dung để đối chiếu thông tin và xét duyệt hồ sơ tài xế.
         </Text>
-      </Card>
+      </MotionPressable>
     </View>
   );
 }
@@ -92,7 +102,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.px3,
-      padding: spacing.spaceMd,
+      paddingVertical: spacing.spaceSm,
     },
     iconCircle: {
       width: 44,
@@ -109,10 +119,12 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.px3,
+      padding: spacing.spaceMd,
+      minHeight: 56,
+      borderRadius: borderRadius.default,
     },
     consentText: {
       ...typography.bodySecondary,
-      color: colors.onSurface,
       flex: 1,
     },
   });

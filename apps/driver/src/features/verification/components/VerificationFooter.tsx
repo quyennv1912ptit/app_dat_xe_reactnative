@@ -10,6 +10,7 @@ import {
 import type { Application, VerificationWarning } from '../api';
 import type { FlowStage } from '../verificationLabels';
 import { slots, type SlotKey } from '../workflow';
+import { AlertBanner } from './VerificationShared';
 
 /** Anchored thumb-zone footer keeping one clear primary CTA per eKYC step. */
 export function VerificationFooter({
@@ -29,6 +30,9 @@ export function VerificationFooter({
   hasObservations,
   extractFailed,
   confirm,
+  fieldIssueCount,
+  errorMessage,
+  onRetry,
   currentWarningReview,
   warnings,
   appStatus,
@@ -62,6 +66,9 @@ export function VerificationFooter({
   hasObservations: boolean;
   extractFailed: boolean;
   confirm: boolean;
+  fieldIssueCount: number;
+  errorMessage?: string;
+  onRetry?: () => void;
   currentWarningReview?: { revision: number; acknowledged: boolean };
   warnings: readonly VerificationWarning[];
   appStatus?: Application['status'];
@@ -80,14 +87,28 @@ export function VerificationFooter({
   onSubmit: () => void;
 }) {
   const styles = useThemedStyles(makeStyles);
+  const errorBanner = errorMessage ? (
+    <View style={styles.errorBlock}>
+      <AlertBanner tone="error" icon="error-outline" role="alert" live message={errorMessage} />
+      {onRetry ? (
+        <Button variant="secondary" label="Thử lại" disabled={Boolean(busy)} onPress={onRetry} />
+      ) : null}
+    </View>
+  ) : null;
 
   if (pending) {
     return (
-      <Button
-        label="Thử nộp lại"
-        disabled={Boolean(busy)}
-        onPress={onRetryPendingSubmit}
-      />
+      <View style={styles.footerStack}>
+        {errorMessage ? (
+          <AlertBanner tone="error" icon="error-outline" role="alert" live message={errorMessage} />
+        ) : null}
+        <Button
+          label="Thử nộp lại"
+          loading={Boolean(busy)}
+          disabled={Boolean(busy)}
+          onPress={onRetryPendingSubmit}
+        />
+      </View>
     );
   }
   if (!canEdit) return null;
@@ -95,10 +116,11 @@ export function VerificationFooter({
   if (stage === 'PREPARE') {
     return (
       <View style={styles.footerStack}>
+        {errorBanner}
         {!consent ? (
           <Text style={styles.disabledHint}>Hãy bật đồng ý gửi ảnh ở trên để bắt đầu chụp.</Text>
         ) : null}
-        <Button label="Bắt đầu chụp ảnh" disabled={locked || !consent} onPress={onStartCapture} />
+        <Button label="Bắt đầu chụp ảnh" loading={Boolean(busy)} disabled={locked || !consent} onPress={onStartCapture} />
         {appStatus === 'NEEDS_MORE_INFO' && !needsCapture ? (
           <Button
             variant="secondary"
@@ -115,6 +137,7 @@ export function VerificationFooter({
     const needCaptureFirst = currentSlotAllowed && !currentHasPhoto;
     return (
       <View style={styles.footerStack}>
+        {errorBanner}
         {smallBlocked ? (
           <Text style={styles.disabledHint}>Hãy xác nhận ảnh nhỏ ở trên để tiếp tục.</Text>
         ) : null}
@@ -123,6 +146,7 @@ export function VerificationFooter({
             label="Mở camera hướng dẫn"
             icon="photo-camera"
             iconPosition="leading"
+            loading={Boolean(busy)}
             disabled={locked}
             onPress={onOpenCamera}
           />
@@ -135,6 +159,7 @@ export function VerificationFooter({
                 : step + 1 < slots.length
                   ? 'Tiếp tục'
                   : 'Hoàn tất chụp ảnh'}
+            loading={Boolean(busy) || reading}
             disabled={locked || reading || smallBlocked}
             onPress={() => {
               if (slotKey === 'cccd_back') { onContinueBack('CCCD'); return; }
@@ -161,8 +186,10 @@ export function VerificationFooter({
     }
     return (
       <View style={styles.footerStack}>
+        {errorBanner}
         <Button
           label={hasObservations ? 'Tiếp tục kiểm tra thông tin' : 'Tự nhập thông tin'}
+          loading={Boolean(busy)}
           disabled={locked}
           onPress={onJumpConfirmFields}
         />
@@ -174,7 +201,18 @@ export function VerificationFooter({
   if (stage === 'CONFIRM_FIELDS') {
     return (
       <View style={styles.footerStack}>
-        <Button label="Xem tổng hợp" disabled={locked} onPress={onGoSummary} />
+        {errorBanner}
+        {fieldIssueCount > 0 ? (
+          <Text style={styles.disabledHint}>
+            {`Còn ${fieldIssueCount} mục bắt buộc chưa điền hoặc sai định dạng.`}
+          </Text>
+        ) : null}
+        <Button
+          label="Xem tổng hợp"
+          loading={Boolean(busy) || reading}
+          disabled={locked || reading || fieldIssueCount > 0}
+          onPress={onGoSummary}
+        />
         <Button
           variant="ghost"
           label="Quay lại"
@@ -190,20 +228,25 @@ export function VerificationFooter({
 
   if (stage === 'SUMMARY') {
     const missingWarningAck = Boolean(currentWarningReview && !currentWarningReview.acknowledged);
+    const blocked = warnings.some(warning => warning.blocksSubmission);
     return (
       <View style={styles.footerStack}>
-        {!confirm ? (
-          <Text style={styles.disabledHint}>Hãy bật xác nhận ở trên để gửi hồ sơ.</Text>
+        {errorBanner}
+        {blocked ? (
+          <Text style={styles.disabledHint}>Bổ sung ảnh hoặc sửa mục được báo ở đầu hồ sơ để có thể nộp.</Text>
+        ) : !confirm ? (
+          <Text style={styles.disabledHint}>Xác nhận đã kiểm tra ảnh và thông tin để tiếp tục.</Text>
         ) : missingWarningAck ? (
-          <Text style={styles.disabledHint}>Hãy xác nhận đã đọc các lưu ý ở trên để tiếp tục.</Text>
+          <Text style={styles.disabledHint}>Hồ sơ đã được đồng bộ. Xem các lưu ý và xác nhận lại để nộp.</Text>
         ) : null}
         <Button
           label={!currentWarningReview && warnings.some(warning => warning.requiresReview)
-            ? 'Kiểm tra cảnh báo'
+            ? 'Kiểm tra hồ sơ để nộp'
             : appStatus === 'NEEDS_MORE_INFO'
               ? 'Nộp bổ sung'
               : 'Nộp hồ sơ'}
-          disabled={locked || reading || !confirm || missingWarningAck}
+          loading={Boolean(busy) || reading}
+          disabled={locked || reading || !confirm || missingWarningAck || blocked}
           onPress={onSubmit}
         />
         <Button variant="ghost" label="Sửa thông tin" disabled={locked} onPress={onJumpConfirmFields} />
@@ -217,5 +260,6 @@ export function VerificationFooter({
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     footerStack: { gap: spacing.spaceSm },
+    errorBlock: { gap: spacing.spaceSm },
     disabledHint: { ...typography.bodySecondary, color: colors.onSurfaceVariant, textAlign: 'center' },
   });

@@ -1,6 +1,14 @@
 import type { Application } from './api';
 import type { Extraction, QrDocumentSide, QrDocumentType, SlotKey } from './workflow';
 
+/** Replacing a photo invalidates only evidence from that document. Selfies preserve both QR scans. */
+export function captureInvalidationScope(changedSlot?: SlotKey) {
+  return {
+    affectsCccd: !changedSlot || changedSlot.startsWith('cccd'),
+    affectsGplx: !changedSlot || changedSlot.startsWith('gplx'),
+  };
+}
+
 export const METADATA_TIMEOUT_MS = 15_000;
 export const UPLOAD_TIMEOUT_MS = 45_000;
 export const EXTRACT_TIMEOUT_MS = 80_000;
