@@ -5,6 +5,7 @@ export * from "./FilterChip";
 export * from "./Input";
 export * from "./KeyValueRow";
 export * from "./MoneyText";
+export * from "./ReceivedRatings";
 export * from "./PaperTextInput";
 export * from "./MotionPressable";
 export * from "./ScreenWrapper";

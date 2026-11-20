@@ -2,15 +2,15 @@ import { useCallback } from 'react';
 import { DriverPage } from '@/components/DriverPage';
 import { useDriverCredit } from '@/lib/useDriverCredit';
 import { useWalletHistory, useWalletOverview } from '@/lib/useWallet';
-import { walletBalance, formatMoney, type WalletEntry } from '@datxe/shared';
+import { walletBalance, formatMoney, type WalletEntry, type WalletKind } from '@datxe/shared';
 import { Button, Card, FilterChip, Typography as Text, WalletBalanceCard, WalletEntryCard, WalletLoadState, borderRadius, spacing, typography, useThemeColors } from '@datxe/ui';
 import { useRouter } from 'expo-router';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
-const filterOptions = [
-  { kind: undefined, label: 'Tất cả ví' },
-  { kind: 'CREDIT' as const, label: 'Tín dụng' },
-  { kind: 'CASH' as const, label: 'Tiền mặt' },
+const filterOptions: readonly { kind: WalletKind | undefined; label: string }[] = [
+  { kind: undefined, label: 'Tất cả' },
+  { kind: 'CASH', label: 'Ứng dụng' },
+  { kind: 'CREDIT', label: 'Tín dụng' },
 ];
 
 export default function DriverWalletScreen() {
@@ -37,23 +37,21 @@ export default function DriverWalletScreen() {
       <View style={styles.balanceGrid}>
         <WalletBalanceCard
           accent="primary"
-          style={styles.balanceTile}
           title="Ví tín dụng"
           balance={walletBalance(overview.data, 'CREDIT')}
           description={
             credit.data
               ? `Hạn mức ${formatMoney(credit.data.minimumCredit)}${credit.data.shortfall > 0 ? ` · Thiếu ${formatMoney(credit.data.shortfall)}` : ' · Đủ điều kiện'}`
-              : 'Dùng trừ chiết khấu chuyến.'
+              : 'Đang trừ chiết khấu chuyến.'
           }
         >
           <Button label="Nạp tiền" icon="add" iconPosition="leading" onPress={() => router.push('/profile/top-up')} />
         </WalletBalanceCard>
         <WalletBalanceCard
           accent="neutral"
-          style={styles.balanceTile}
-          title="Ví tiền mặt"
+          title="Ví ứng dụng"
           balance={walletBalance(overview.data, 'CASH')}
-          description="Thu nhập chuyến trả ví khả dụng (đã trừ khoản chờ duyệt rút)."
+          description="Khách trả qua ví ứng dụng được cộng vào đây; số dư đã trừ khoản chờ duyệt rút."
         >
           <Button variant="secondary" label="Rút tiền" onPress={() => router.push('/profile/withdraw')} />
         </WalletBalanceCard>
@@ -79,7 +77,7 @@ export default function DriverWalletScreen() {
 
   const empty = !history.isLoading && !history.error ? (
     <Card style={styles.emptyCard}>
-      <Text>Chưa có giao dịch. Các khoản nạp, thanh toán và hoàn tiền sẽ hiển thị tại đây.</Text>
+      <Text>Chưa có giao dịch. Các khoản nạp, thanh toán và hoàn tiền của hai ví sẽ hiển thị tại đây.</Text>
     </Card>
   ) : null;
 
@@ -119,8 +117,9 @@ export default function DriverWalletScreen() {
 const styles = StyleSheet.create({
   listContent: { padding: spacing.spaceMd, gap: spacing.px3, paddingBottom: spacing.spaceXl },
   header: { gap: spacing.px3 },
-  balanceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.px3 },
-  balanceTile: { flex: 1, minWidth: 220 },
+  // Xếp dọc: flexDirection row + flex:1/minWidth trong flexWrap từng làm hai
+  // thẻ ví ở cùng một hàng và đè lên nhau trên màn hình hẹp.
+  balanceGrid: { gap: spacing.px3 },
   sectionHeader: { paddingTop: spacing.spaceXs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.spaceSm },
   chip: { minHeight: 48, justifyContent: 'center' },

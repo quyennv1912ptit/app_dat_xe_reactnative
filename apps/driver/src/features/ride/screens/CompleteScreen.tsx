@@ -210,7 +210,7 @@ export default function CompleteRideScreen() {
                           ? "Khoản bù voucher đã cộng vào ví; vui lòng thu phần tiền mặt còn lại từ khách."
                           : payment?.method === "CASH"
                             ? "Tiền chuyến và khoản bù voucher đã được quyết toán."
-                            : "Đã cộng vào ví tiền mặt."
+                            : "Đã cộng vào ví ứng dụng."
                         : earnings.paid
                           ? "Tiền khách đã trả trực tiếp; chiết khấu đã trừ từ ví tín dụng."
                           : "Chờ thu tiền khách. Chiết khấu đã trừ từ ví tín dụng."}

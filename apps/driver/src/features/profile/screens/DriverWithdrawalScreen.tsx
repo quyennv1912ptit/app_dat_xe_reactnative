@@ -71,7 +71,7 @@ export default function DriverWithdrawalScreen() {
       const latest = await walletApi.overview();
       if (useSessionStore.getState().user?.id !== userId) throw new Error('Phiên đăng nhập đã thay đổi.');
       const balance = walletBalance(latest, 'CASH');
-      if (previous?.amount !== amount && (balance === undefined || balance < amount)) throw new Error('Số dư ví tiền mặt không đủ.');
+      if (previous?.amount !== amount && (balance === undefined || balance < amount)) throw new Error('Số dư ví ứng dụng không đủ.');
       const attempt = await persistWalletAttempt(AsyncStorage, scope, amount);
       await createWithdrawal(amount, attempt.key);
       await AsyncStorage.removeItem(scope);
@@ -85,7 +85,7 @@ export default function DriverWithdrawalScreen() {
 
   const header = (
     <View style={styles.header}>
-      <WalletBalanceCard title="Ví tiền mặt khả dụng" balance={cash} description="Tiền đang chờ duyệt rút đã được trừ khỏi số dư khả dụng. Ví tín dụng không thể rút." />
+      <WalletBalanceCard title="Ví ứng dụng khả dụng" balance={cash} description="Tiền đang chờ duyệt rút đã được trừ khỏi số dư khả dụng. Ví tín dụng không thể rút." />
       <WalletLoadState loading={overview.isLoading} error={overview.error?.message} onRetry={() => void overview.refetch()} />
       <Card style={styles.card}>
         <Text style={typography.cardTitle}>Tài khoản nhận tiền</Text>
