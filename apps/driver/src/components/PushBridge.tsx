@@ -65,7 +65,12 @@ export function PushBridge() {
       },
     });
     controller.current = coordinator;
-    const opened = (event: PushEnvelope) => { if (!stopped) void rememberPushOpen(event, coordinator.enqueue).catch(logError); };
+    const opened = (event: PushEnvelope) => {
+      if (stopped) return;
+      // App tài xế bỏ qua thông báo đánh giá: chỉ tiêu thụ để không mở chuyến cũ.
+      if (event.type === 'RATING_RECEIVED') void acknowledgePushOpen(event).catch(logError);
+      else void rememberPushOpen(event, coordinator.enqueue).catch(logError);
+    };
     const stopRemote = subscribeToRemotePushOpens(opened);
     let stopLocal = () => {};
     void subscribeToLocalPushOpens(opened).then(stop => { if (stopped) stop(); else stopLocal = stop; }).catch(logError);
@@ -82,7 +87,8 @@ export function PushBridge() {
       } else {
         void client.invalidateQueries({ queryKey: ['driver'] });
       }
-      void presentPushNotification(event).catch(logError);
+      // Vẫn invalidate queries ở trên để cập nhật điểm đánh giá, nhưng không hiện banner.
+      if (event.type !== 'RATING_RECEIVED') void presentPushNotification(event).catch(logError);
     };
     const stopMessages = subscribeToPushMessages(receive);
     const stopStomp = driverRealtime.subscribe('/user/queue/trip', message => {

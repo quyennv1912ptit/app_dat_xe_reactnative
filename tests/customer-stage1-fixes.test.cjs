@@ -231,8 +231,9 @@ test("TonalNavigationBar keeps badge and tab text unclipped for large font scali
   const { TonalNavigationBar } = load("packages/ui/src/components/TonalNavigationBar.tsx", {
     "@expo/vector-icons": { MaterialIcons: "MaterialIcons" },
     "@datxe/shared": { translate: (v) => v },
-    "react-native": { StyleSheet: { create: (v) => v }, View: "View" },
-    "react-native-paper": { Badge: "Badge", Text: "Text", TouchableRipple: "TouchableRipple" },
+    "react": { useState: (initial) => [initial, () => {}], useEffect: () => {} },
+    "react-native": { StyleSheet: { create: (v) => v }, View: "View", Pressable: "Pressable" },
+    "react-native-paper": { Badge: "Badge", Text: "Text" },
     "../theme/colors": {
       fontWeight: { medium: "500", semibold: "600" },
       typography: { navigationLabel: { fontSize: 13, lineHeight: 18 } },
@@ -260,7 +261,7 @@ test("TonalNavigationBar keeps badge and tab text unclipped for large font scali
     ],
   });
   const nodes = allNodes(tree);
-  const tab = nodes.find((n) => n.type === "TouchableRipple");
+  const tab = nodes.find((n) => n.type === "Pressable");
   assert.notEqual(tab.props.style.overflow, "hidden");
   assert.notEqual(tab.props.style.borderRadius, 999);
   const badge = nodes.find((n) => n.type === "Badge");

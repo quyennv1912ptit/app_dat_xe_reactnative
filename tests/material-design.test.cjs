@@ -124,6 +124,8 @@ test("both brands expose the requested screen/card tones through their app-wide 
       assert.equal(paper.colors.surface, colors.cardSurface);
       assert.equal(paper.colors.primary, colors.primary);
       assert.equal(paper.colors.onPrimaryContainer, colors.onPrimaryContainer);
+      // Nền mờ sau dialog/modal trong suốt hoàn toàn ở mọi brand và chế độ.
+      assert.equal(paper.colors.backdrop, colors.transparent);
     }
   }
   assert.equal(palette.borderRadius.xxl, 24);
