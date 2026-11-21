@@ -1,23 +1,21 @@
 import { AUTH_FULL_NAME_MAX_LENGTH } from "@datxe/shared";
 import {
+  AuthBackButton,
   Button,
-  Card,
   Input,
-  MotionPressable as Pressable,
   OtpCodeInput,
   ResendOtpButton,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
-  fontSize,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { KeyboardAvoidingView, ScrollView, View } from "react-native";
-import { ProgressBar } from "react-native-paper";
 
 import { styles } from "../components/RegisterScreenParts";
 import { useRegister } from "../hooks/useRegister";
+
 export default function DriverRegisterScreen() {
   const colors = useThemeColors();
   const themed_styles = useThemedStyles(styles);
@@ -41,71 +39,39 @@ export default function DriverRegisterScreen() {
     verifyCode,
     submit,
   } = useRegister();
+
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(auth)/login" as never);
+  };
+
   if (!user) {
     return (
       <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Quay lại"
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/(auth)/login")}
-          style={themed_styles.backButton}
-        >
-          <MaterialIcons
-            color={colors.onSurface}
-            name="arrow-back"
-            size={fontSize.iconXl}
-          />
-        </Pressable>
+        <View style={themed_styles.topBar}>
+          <AuthBackButton onPress={leave} />
+          <Text accessibilityRole="header" style={themed_styles.title}>Đăng ký tài xế</Text>
+        </View>
         <View style={themed_styles.content}>
-          <Card style={themed_styles.card}>
-            <Text accessibilityRole="header" style={themed_styles.title}>Phiên đăng ký chưa sẵn sàng</Text>
-            <Text style={themed_styles.subtitle}>
-              Không tìm thấy phiên đăng nhập hiện tại. Vui lòng đăng nhập lại để tiếp tục tạo hồ sơ tài xế.
-            </Text>
-            <Button label="Về màn đăng nhập" onPress={() => router.replace("/(auth)/login")} />
-          </Card>
+          <Text style={themed_styles.intro}>
+            Không tìm thấy phiên đăng nhập hiện tại. Vui lòng đăng nhập lại để tiếp tục tạo hồ sơ tài xế.
+          </Text>
+          <Button label="Về màn đăng nhập" onPress={() => router.replace("/(auth)/login")} />
         </View>
       </SafeAreaView>
     );
   }
   return (
     <SafeAreaView edges={["top", "bottom"]} style={themed_styles.safeArea}>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Quay lại"
-        onPress={() => router.canGoBack() ? router.back() : router.replace("/(auth)/login")}
-        style={themed_styles.backButton}
-      >
-        <MaterialIcons
-          color={colors.onSurface}
-          name="arrow-back"
-          size={fontSize.iconXl}
-        />
-      </Pressable>
-      <ScrollView
-        contentContainerStyle={themed_styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={themed_styles.iconCircle}>
-          <MaterialIcons
-            color={colors.primary}
-            name="verified-user"
-            size={fontSize.icon3xl}
-          />
-        </View>
-        <Text style={themed_styles.step}>Giai đoạn 1 · Tạo tài khoản</Text>
-        <ProgressBar
-          progress={0.25}
-          color={colors.primary}
-          style={{ width: "100%", marginBottom: 12, backgroundColor: colors.surfaceContainerHigh, borderRadius: 999 }}
-        />
-        <Text style={themed_styles.title}>Đăng ký đối tác tài xế</Text>
-        <Text style={themed_styles.subtitle}>
-          Xác minh thông tin để bắt đầu hồ sơ tài xế.
-        </Text>
-
-        <Card style={themed_styles.card}>
+      <View style={themed_styles.topBar}>
+        <AuthBackButton onPress={leave} />
+        <Text accessibilityRole="header" style={themed_styles.title}>Đăng ký tài xế</Text>
+      </View>
+      <KeyboardAvoidingView behavior="padding" style={themed_styles.flex}>
+        <ScrollView
+          contentContainerStyle={themed_styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <Input
             editable={!loading}
             autoCapitalize="words"
@@ -119,6 +85,7 @@ export default function DriverRegisterScreen() {
             }}
             placeholder="Nguyễn Văn An"
             defaultValue={initialName}
+            style={themed_styles.inputSurface}
           />
 
           {verifiedPhone ? (
@@ -126,7 +93,8 @@ export default function DriverRegisterScreen() {
               <MaterialIcons
                 color={colors.primary}
                 name="verified"
-                size={fontSize.iconMd}
+                size={20}
+                importantForAccessibility="no"
               />
               <Text style={themed_styles.verifiedText}>
                 Số điện thoại đã xác minh: {verifiedPhone}
@@ -144,8 +112,9 @@ export default function DriverRegisterScreen() {
                   setPhone(value);
                   setError("");
                 }}
-                placeholder="0912 345 678"
+                placeholder="Nhập số điện thoại của bạn"
                 defaultValue={initialPhone}
+                style={themed_styles.inputSurface}
               />
               {codeSent ? (
                 <>
@@ -161,8 +130,7 @@ export default function DriverRegisterScreen() {
                 disabled={codeSent && code.length !== 6}
                 loadingLabel="Đang xác minh..."
                 onPress={codeSent ? verifyCode : sendCode}
-                style={themed_styles.secondaryButton}
-                variant="tertiary"
+                variant="secondary"
               />
             </>
           )}
@@ -174,15 +142,13 @@ export default function DriverRegisterScreen() {
           ) : null}
           <Button
             disabled={!verifiedPhone}
-            icon="arrow-forward"
             label="Tạo tài khoản và tiếp tục"
             loading={loading && Boolean(verifiedPhone)}
             loadingLabel="Đang tạo tài khoản..."
             onPress={submit}
             style={themed_styles.submitButton}
           />
-        </Card>
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

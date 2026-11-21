@@ -13,16 +13,18 @@ export type DriverReviewSummary = {
   recent: { id: number; stars: number; comment: string | null; createdAt: string }[];
 };
 
-export function DriverReviews({ data, loading, error, retry }: {
+export function DriverReviews({ data, loading, error, retry, title = 'Đánh giá tài xế', reviewerLabel = 'Khách hàng ẩn danh' }: {
   data?: DriverReviewSummary | null;
   loading: boolean;
   error: boolean;
   retry: () => void;
+  title?: string;
+  reviewerLabel?: string;
 }) {
   const colors = useThemeColors();
   const locale = getLocale();
   return <View style={styles.section}>
-    <Text accessibilityRole="header" style={styles.heading}>{t('Đánh giá tài xế')}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>{t(title)}</Text>
     {loading && !data ? <ActivityIndicator accessibilityLabel={t('Đang tải đánh giá')} /> : null}
     {error ? <View style={styles.section}>
       <Text accessibilityRole="alert">{t('Chưa tải được đánh giá.')}</Text>
@@ -51,7 +53,7 @@ export function DriverReviews({ data, loading, error, retry }: {
       <Text accessibilityRole="header" style={styles.heading}>{t('Đánh giá gần đây')}</Text>
       {data.recent.map(review => <View key={review.id} style={styles.review}>
         <View style={styles.reviewHeader}>
-          <Text style={styles.reviewer}>{t('Khách hàng ẩn danh')}</Text>
+          <Text style={styles.reviewer}>{t(reviewerLabel)}</Text>
           <Text>{new Date(review.createdAt).toLocaleDateString(locale)}</Text>
         </View>
         <Text accessibilityLabel={t('{0} sao', { 0: review.stars })} style={{ color: colors.primary }}>

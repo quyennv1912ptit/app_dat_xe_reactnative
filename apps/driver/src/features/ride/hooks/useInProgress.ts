@@ -2,6 +2,7 @@ import type { CustomerRideDetail } from '@datxe/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { stopDriverBackgroundLocation } from '@/lib/backgroundLocation';
 import { getDriverActiveRide, getDriverRide, progressDriverRide } from '../api';
 import { isTerminalRideStatus, ridePresentation } from '../ridePresentation';
 
@@ -47,6 +48,8 @@ export function useInProgress() {
     onSuccess: async (_, { id, endpoint }) => {
       await client.invalidateQueries({ queryKey: ['driver'] });
       if (endpoint === 'complete') {
+        // Tắt GPS nền ngay lúc bấm kết thúc, không chờ query activeRide trả về null.
+        void stopDriverBackgroundLocation().catch(() => {});
         router.replace({ pathname: '/ride/complete', params: { rideId: String(id) } });
       }
     },

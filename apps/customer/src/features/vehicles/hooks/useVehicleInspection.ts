@@ -1,12 +1,13 @@
 import { request } from '@/lib/api';
 import { customerHandoverInspectionPresentation } from '@/lib/customerRidePresentation';
-import { pickSupportImage } from '@/lib/supportImages';
-import { AuthApiError, translate as i18nT, type CustomerRideDetail, type SupportImage } from '@datxe/shared';
+import { captureSupportImage } from '@/lib/supportImages';
+import { AuthApiError, translate as i18nT, type CustomerRideDetail } from '@datxe/shared';
 import { localizedAlert } from '@datxe/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { confirmCustomerHandover, getCustomerRide } from '../api';
+import type { CorrectionPhoto } from '../components/CorrectionPhotoChecklist';
 
 export function useVehicleInspection() {
   const router = useRouter();
@@ -30,8 +31,9 @@ export function useVehicleInspection() {
   const [acknowledged, setAcknowledged] = useState<{ rideId: number; phase: string; revision: number } | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [reason, setReason] = useState('');
-  const [images, setImages] = useState<SupportImage[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [photos, setPhotos] = useState<CorrectionPhoto[]>([]);
+  const [uploadingAngle, setUploadingAngle] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<{ angle: string; message: string } | null>(null);
 
   const reportRevision = report?.revision ?? 1;
   const sameTarget = Boolean(ride && acknowledged && acknowledged.rideId === ride.id && acknowledged.phase === phase);
@@ -53,7 +55,31 @@ export function useVehicleInspection() {
     setAcknowledged({ rideId: ride.id, phase, revision: report.revision ?? 1 });
     setCorrectionOpen(false);
     setReason('');
-    setImages([]);
+    setPhotos([]);
+    setUploadingAngle(null);
+    setPhotoError(null);
+  };
+
+  const capturePhoto = async (angle: string) => {
+    if (uploadingAngle || saving) return;
+    setPhotoError(null);
+    setUploadingAngle(angle);
+    try {
+      const image = await captureSupportImage();
+      if (image) {
+        setPhotos(previous => [
+          ...previous.filter(photo => photo.angle !== angle),
+          { angle, fileUrl: image.fileUrl, publicId: image.publicId },
+        ]);
+      }
+    } catch (err) {
+      setPhotoError({
+        angle,
+        message: err instanceof Error ? err.message : i18nT('Chưa tải được ảnh. Hãy thử lại.'),
+      });
+    } finally {
+      setUploadingAngle(null);
+    }
   };
 
   const revisions = useQuery({
@@ -70,8 +96,8 @@ export function useVehicleInspection() {
       if (!report || !presentation.canRequestCorrection) {
         throw new Error(i18nT("Biên bản vừa được cập nhật. Vui lòng xem phiên bản mới trước khi phản hồi."));
       }
-      if (uploading || saving || reason.trim().length < 10) {
-        throw new Error('Nhập lý do từ 10 ký tự và chờ ảnh tải xong.');
+      if (saving || reason.trim().length < 10) {
+        throw new Error(i18nT('Nhập lý do từ 10 ký tự.'));
       }
       const targetRevision = report.revision ?? 1;
       if (acknowledgedRevision !== targetRevision) {
@@ -79,13 +105,19 @@ export function useVehicleInspection() {
       }
       return request(`/customer/rides/${rideId}/handover/${phase.toLowerCase()}/corrections`, {
         method: 'POST',
-        body: { revision: targetRevision, reason: reason.trim(), images },
+        body: {
+          revision: targetRevision,
+          reason: reason.trim(),
+          images: photos.map(({ fileUrl, publicId }) => ({ fileUrl, publicId })),
+        },
       });
     },
     onSuccess: async () => {
       setCorrectionOpen(false);
       setReason('');
-      setImages([]);
+      setPhotos([]);
+      setUploadingAngle(null);
+      setPhotoError(null);
       await client.invalidateQueries({ queryKey: ['customer'] });
     },
     onError: () => {
@@ -141,12 +173,11 @@ export function useVehicleInspection() {
     setCorrectionOpen,
     reason,
     setReason,
-    images,
-    setImages,
-    uploading,
-    setUploading,
+    photos,
+    capturePhoto,
+    uploadingAngle,
+    photoError,
     correction,
-    pickSupportImage,
     revisions,
     refresh,
     valid,

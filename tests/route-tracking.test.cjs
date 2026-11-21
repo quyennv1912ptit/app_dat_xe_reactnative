@@ -117,3 +117,34 @@ test('trimming at a travelled distance drops passed vertices and starts on the l
   assert.equal(atStart[1].lng, cornerRoute[1].lng);
   assert.equal(atStart[2].lat, cornerRoute[2].lat);
 });
+
+test('driver navigation screen projects onto the route and interpolates camera and marker', () => {
+  const map = fs.readFileSync(path.join(__dirname, '../apps/driver/src/components/DriverDirectionsMap.native.tsx'), 'utf8');
+  assert.match(map, /const GPS_TIME_INTERVAL_MS = 1000/);
+  assert.match(map, /const GPS_DISTANCE_INTERVAL_M = 3/);
+  assert.match(map, /distanceInterval: GPS_DISTANCE_INTERVAL_M, timeInterval: GPS_TIME_INTERVAL_MS/);
+  assert.match(map, /projectOnRoute\(coordinates, routeCumulative, current\)/);
+  assert.match(map, /offsetMeters \?\? 0\) > REROUTE_OFFSET_METERS/);
+  assert.match(map, /camera\.current\?\.easeTo\(\{/);
+  assert.match(map, /duration: reducedMotion \? 0 : SMOOTHING_MS/);
+  assert.match(map, /easing: 'linear'/);
+  assert.match(map, /<DriverRouteLayers/);
+  assert.doesNotMatch(map, /slice\(nearestIndex\)/);
+  assert.doesNotMatch(map, /jumpTo\(\{ center: \[current\.lng/);
+
+  const layers = fs.readFileSync(path.join(__dirname, '../apps/driver/src/components/DriverRouteLayers.tsx'), 'utf8');
+  assert.match(layers, /memo\(function DriverRouteLayers/);
+  assert.match(layers, /useSmoothedRoutePosition\(target, coordinates, cumulative/);
+  assert.match(layers, /trimRouteAtDistance\(coordinates, cumulative, alongMeters\)/);
+  assert.match(layers, /const ROUTE_LAYOUT =/);
+});
+
+test('customer tracking map smooths the driver marker and keeps map bounds stable', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../apps/customer/src/components/map/BookingMap.tsx'), 'utf8');
+  assert.match(source, /useSmoothedRoutePosition\(driver \?\? null, coordinates, cumulative/);
+  assert.match(source, /enabled: !reducedMotion/);
+  assert.match(source, /trimRouteAtDistance\(coordinates, cumulative, alongMeters\)/);
+  assert.match(source, /const points = \[\.\.\.anchors, \.\.\.\(route \?\? \[\]\)\]/);
+  assert.match(source, /route=\{remainingRoute\}/);
+  assert.doesNotMatch(source, /markers\.map\(marker => marker\.coordinate\)/);
+});

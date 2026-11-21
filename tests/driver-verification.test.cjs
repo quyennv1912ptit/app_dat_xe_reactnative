@@ -125,9 +125,9 @@ test('driver review acknowledges only the displayed server revision', async () =
   const screen = readFileSync(join(__dirname, '../apps/driver/src/features/verification/VerificationScreen.tsx'), 'utf8');
   const summary = readFileSync(join(__dirname, '../apps/driver/src/features/verification/components/VerificationSummaryStep.tsx'), 'utf8');
   const footer = readFileSync(join(__dirname, '../apps/driver/src/features/verification/components/VerificationFooter.tsx'), 'utf8');
-  assert.match(summary, /accessibilityLabel="Xác nhận đã xem cảnh báo"/);
+  assert.match(summary, /onToggleWarningReview\(currentWarningReview\.revision, value\)/);
   assert.match(footer, /const missingWarningAck = Boolean\(currentWarningReview && !currentWarningReview\.acknowledged\)/);
-  assert.match(footer, /disabled=\{locked \|\| reading \|\| !confirm \|\| missingWarningAck\}/);
+  assert.match(footer, /disabled=\{locked \|\| reading \|\| !confirm \|\| missingWarningAck \|\| blocked\}/);
   assert.match(screen, /warningAcknowledgementRevision: request\.warningAcknowledgementRevision/);
 });
 
@@ -394,7 +394,7 @@ test('phase 11.1.3B qrScanDecision, source-aware collectChoices, and formatOrigi
   const merged = collectChoices(mixedObservations, liveQr);
   assert.equal(merged.cccd_id.length, 1);
   assert.deepEqual(merged.cccd_id[0].origins, ['OCR', 'QR_LIVE_SCAN']);
-  assert.equal(formatOriginLabel(merged.cccd_id[0]), 'OCR · Đọc từ quét QR trực tiếp');
+  assert.equal(formatOriginLabel(merged.cccd_id[0]), 'Đọc từ ảnh · Đọc từ quét QR trực tiếp');
   assert.equal(merged.cccd_name.length, 2);
   assert.equal(formatOriginLabel(merged.cccd_name[1]), 'Đọc từ quét QR trực tiếp');
   assert.equal(merged.cccd_dob.length, 1);

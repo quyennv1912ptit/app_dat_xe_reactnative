@@ -2,7 +2,7 @@
 
 > Workspace: `F:\datxe_rn` (`apps/driver`)
 > North Star & Design System: **PtitGo Material Design 3** · **Deep Emerald (`brand="driver"`)** · **The Confident Co-Pilot** (`@datxe/ui`, `DESIGN.md`, `PRODUCT.md`, `apps/driver/PRODUCT.md`)
-> Status: Implemented & verified against monorepo static/unit/lint/typecheck/Android Hermes bundle gates. Real Android/iOS device visual capture & TalkBack/VoiceOver remain **NOT VERIFIED** (no `adb`/emulator/iOS runtime on host).
+> Cập nhật 20/11/2026: xem mục 8 cho đợt sửa mới và kiểm chứng trên Android emulator. Mục 1–7 ghi lại đợt tái thiết kế trước. Thiết bị thật, iOS và trình đọc màn hình chưa được kiểm chứng trong đợt mới.
 
 ---
 
@@ -123,3 +123,35 @@ Mặc dù `FlowStage` nội bộ giữ nguyên `'PREPARE' | 'CAPTURE' | 'OCR' | 
 | `git diff --check` (`F:\datxe_rn`) | **PASS** | `exit code 0`, không có lỗi whitespace / conflict marker. |
 | Android Emulator / Thiết bị thật (`adb`, Light/Dark, `font_scale 1.3`, camera/QR live, TalkBack) | **NOT VERIFIED / BLOCKED** | Máy host không cài `adb` (`'adb' is not recognized`) và không có Android emulator/thiết bị kết nối. |
 | iOS Simulator / iPhone (Edge-swipe, VoiceOver, Dynamic Type) | **NOT VERIFIED / BLOCKED** | Môi trường Windows, không có macOS/Xcode Simulator. |
+
+## 8. Sửa luồng đăng ký ngày 20/11/2026
+
+### Nguyên nhân và thay đổi
+
+- `acceptAsset` từng xóa toàn bộ QR, kết quả đọc và thông tin tự điền khi nhận bất kỳ ảnh nào. Nay chỉ vô hiệu hóa chứng cứ của giấy tờ vừa thay ảnh. Chụp GPLX giữ CCCD, chụp chân dung giữ cả hai giấy tờ. Lựa chọn bỏ qua QR cũng được giữ khi chụp mục khác.
+- Kết quả QR đã lưu trên backend được dùng lại khi hiển thị và điền thông tin. QR đã đọc hiện trạng thái hoàn thành, không yêu cầu quét lại ở bước đọc thông tin.
+- Trước khi mở tổng hợp, app kiểm tra đủ năm ảnh, tải ảnh còn chờ và lưu thông tin xác nhận theo revision hiện tại. Lỗi mạng giữ lại dữ liệu để thử lại. Hồ sơ bị thay đổi từ phiên khác phải kiểm tra lại trước khi ghi.
+- `F:/datxebackend` trả document hiện tại trong các phản hồi `withWarnings`, tránh dựng trạng thái ảnh từ metadata cũ. Snapshot bản nộp giữ thêm QR GPLX giống QR CCCD.
+- Không gọi ảnh là kém chất lượng chỉ vì chưa đọc được QR hoặc chưa nhận diện được khung thẻ. Các lưu ý được gom trùng và ghi rõ ảnh liên quan. Lỗi chặn nộp, chặn kích hoạt và sai lệch nghiêm trọng vẫn hiện trực tiếp.
+- Màn tổng hợp có một xác nhận chung gắn với revision máy chủ. Thông tin kỹ thuật nằm trong mục mở rộng. Ngày tháng hiển thị `dd/mm/yyyy`, bỏ hướng dẫn nhập liệu khỏi bảng xem lại.
+- Camera có một hướng dẫn chính. Mẹo chụp và chi tiết kiểm tra mở theo nhu cầu. Nút dùng ảnh/chụp lại nằm ngoài vùng chi tiết cuộn. Không báo kiểm tra chất lượng thành công chỉ vì endpoint đọc ảnh trả HTTP thành công.
+- Bỏ nhãn trùng trên thumbnail, dùng cache ảnh nhạy cảm trong bộ nhớ. Nhãn chi tiết kiểm tra camera dùng `onScrim` để đọc được trên nền ảnh kể cả khi app đang ở chế độ sáng.
+- Màn chờ xét duyệt thu gọn lưu ý không khẩn cấp và không đưa ra thời hạn xét duyệt chưa được xác nhận.
+
+### Kiểm chứng đợt mới
+
+| Phạm vi | Kết quả |
+|---|---|
+| `npm run check` tại `F:/datxe_rn` | Đạt architecture, typecheck, lint và 249 tests. |
+| Regression frontend mới | 5 ca chạy logic phân nhóm, phân loại chất lượng, phạm vi vô hiệu hóa theo giấy tờ, xác nhận theo revision và không gợi ý quét lại QR đã hoàn thành. |
+| Backend eKYC | 11 tests của `DriverVerificationIdentityLockTest` và `DriverVerificationWorkflowTest` đạt, không bỏ qua ca nào. |
+| PostgreSQL | Chạy migration và luồng integration trên PostgreSQL 17 trong container riêng cổng 55434. Kiểm tra phản hồi ảnh đã tải không còn `DOCUMENT_REQUIRED` cho ảnh đó và snapshot giữ QR GPLX. Container thử đã dừng, không thao tác DB server. |
+| Android build | `:app:assembleDebug -PreactNativeArchitectures=x86_64` đạt. |
+| Android UI | Pixel 4a emulator, Android 13. Render component thật bằng entry thử tạm với ảnh/thông tin giả, kiểm tra Light/Dark, font 1.0/1.3 và khả năng cuộn tới xác nhận ở 2.0. Camera emulator chụp và mở xem lại ảnh, chi tiết có thể mở và hai nút chính còn khả dụng ở 2.0. Entry thử đã xóa, entry app gốc đã khôi phục. |
+| Chưa kiểm chứng | Đăng ký đầy đủ với giấy tờ thật, OCR/QR và đối chiếu khuôn mặt trên dịch vụ triển khai, điện thoại thật, iOS, TalkBack/VoiceOver. Không gọi dịch vụ trả phí hoặc thanh toán thật. |
+
+Bằng chứng giao diện trên máy này nằm trong `C:/Users/quyennv/AppData/Local/Temp/ptitgo-ekyc-ux`, gồm `light-1.3-bottom.png`, `dark-1.3-confirmed.png`, `dark-2.0-bottom.png` và `preview-final.png`. Đây là dữ liệu mẫu kiểm tra bố cục, không phải kết quả xác minh danh tính thật.
+
+### Cập nhật môi trường
+
+Cần phát hành JavaScript mới của app Driver và deploy lại backend để nhận phản hồi document mới cùng snapshot QR GPLX. Không thêm biến môi trường, dependency hoặc migration. Chưa commit, push hoặc deploy trong tác vụ này.

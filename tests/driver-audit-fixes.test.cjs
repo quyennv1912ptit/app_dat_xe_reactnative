@@ -128,14 +128,14 @@ test("Stage 1-4 audit fixes keep recovery UI, scrollable dialogs, virtualized li
 
   const photo = read("apps/driver/src/components/DriverPhoto.tsx");
   assert.match(photo, /from "expo-image"/);
-  assert.match(photo, /sensitive \? "none" : "memory-disk"/);
+  assert.match(photo, /sensitive \? "memory" : "memory-disk"/);
 
   const verificationShared = read("apps/driver/src/features/verification/components/VerificationShared.tsx");
   assert.match(verificationShared, /<DriverPhoto[^>]*sensitive/);
 
   const guided = read("apps/driver/src/features/verification/GuidedCaptureScreen.tsx");
   assert.match(guided, /from 'expo-image'/);
-  assert.match(guided, /cachePolicy="none"/);
+  assert.match(guided, /cachePolicy="memory"/);
 });
 
 test("Stage 1 critique fixes: clean avatar initials, online vehicle badge, and separated skip action", () => {

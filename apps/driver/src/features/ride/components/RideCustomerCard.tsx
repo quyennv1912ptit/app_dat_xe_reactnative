@@ -157,7 +157,7 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
                   </View>
                 </View>
                 <Divider style={{ backgroundColor: colors.outlineVariant }} />
-                <CustomerReviews enabled={visible} />
+                <CustomerReviews rideId={ride.id} enabled={visible} />
                 {callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
               </ScrollView>
               <View style={s.sheetActions}>

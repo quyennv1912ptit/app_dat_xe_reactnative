@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -55,6 +56,7 @@ export function VerificationExtractionStep({
 }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
+  const [showReadingDetails, setShowReadingDetails] = useState(false);
 
   const qrEntries = [
     { docType: 'CCCD' as const, label: 'CCCD', decision: qrDecision, skipped: qrSkipped, hasPhotos: hasCccdPhotos },
@@ -96,9 +98,9 @@ export function VerificationExtractionStep({
 
           {cccdRevalidationNeeded || gplxRevalidationNeeded ? (
             <AlertBanner
-              tone="warning"
+              tone="info"
               icon="refresh"
-              message={`Ảnh ${[cccdRevalidationNeeded ? 'CCCD' : null, gplxRevalidationNeeded ? 'GPLX' : null].filter(Boolean).join(' và ')} vừa được thay đổi. Kết quả cũ đã được xóa — hãy đọc lại thông tin trước khi nộp.`}
+              message={`Ảnh ${[cccdRevalidationNeeded ? 'CCCD' : null, gplxRevalidationNeeded ? 'GPLX' : null].filter(Boolean).join(' và ')} vừa được thay đổi. Kiểm tra thông tin ở bước tiếp theo hoặc đọc lại tự động.`}
             />
           ) : null}
 
@@ -115,17 +117,8 @@ export function VerificationExtractionStep({
             }
             if (decision.mode === 'LIVE_SCANNED') {
               return (
-                <View key={'qr-state-' + docType} style={[styles.qrPromptBox, { backgroundColor: colors.successContainer }]}>
-                  <Text style={[styles.qrPromptText, { color: colors.onSuccessContainer }]}>
-                    {`Đã nhận mã QR ${label} từ máy quét trực tiếp. Sẽ đối chiếu cùng ảnh giấy tờ khi xét duyệt.`}
-                  </Text>
-                  <Button
-                    variant="secondary"
-                    label={`Quét lại mã QR ${label}`}
-                    disabled={locked}
-                    onPress={() => onOpenLiveQr(docType)}
-                  />
-                </View>
+                <AlertBanner key={'qr-state-' + docType} tone="success" icon="qr-code-2"
+                  message={`Đã quét mã QR ${label}. Tiếp tục kiểm tra thông tin đã điền.`} />
               );
             }
             if (decision.shouldOffer && !skipped) {
@@ -134,13 +127,12 @@ export function VerificationExtractionStep({
                   key={'qr-state-' + docType}
                   style={[
                     styles.qrPromptBox,
-                    { backgroundColor: decision.recommended ? colors.warningContainer : colors.surfaceContainerHigh },
+                    { backgroundColor: colors.surfaceContainerHigh },
                   ]}
                 >
                   <Text
                     style={[
                       styles.qrPromptTitle,
-                      decision.recommended ? { color: colors.onWarningContainer } : undefined,
                     ]}
                   >
                     {decision.mode === 'RECOMMEND_LIVE_SCAN'
@@ -152,11 +144,10 @@ export function VerificationExtractionStep({
                   <Text
                     style={[
                       styles.mutedText,
-                      decision.recommended ? { color: colors.onWarningContainer } : undefined,
                     ]}
                   >
                     {decision.mode === 'RECOMMEND_LIVE_SCAN'
-                      ? `Có mã QR trên ${label} nhưng ảnh chưa đủ rõ. Hãy quét QR trực tiếp để điền chính xác hơn.`
+                      ? `Chưa đọc được mã QR ${label} từ ảnh. Bạn có thể quét trực tiếp để điền nhanh hoặc tự nhập ở bước sau.`
                       : decision.mode === 'SERVER_FALLBACK'
                         ? 'Máy chủ chưa đọc xong tự động. Bạn có thể quét QR trực tiếp hoặc tự nhập tay ở bước sau.'
                         : docType === 'GPLX'
@@ -165,6 +156,7 @@ export function VerificationExtractionStep({
                   </Text>
                   <View style={styles.qrActions}>
                     <Button
+                      variant="secondary"
                       label={`Quét mã QR ${label} trực tiếp`}
                       icon="qr-code-scanner"
                       iconPosition="leading"
@@ -184,14 +176,18 @@ export function VerificationExtractionStep({
             return null;
           })}
 
-          {slotWarningEntries.map(entry => (
+          {slotWarningEntries.length > 0 ? (
+            <Button variant="ghost" label={showReadingDetails ? 'Ẩn chi tiết đọc tự động' : 'Xem chi tiết đọc tự động'}
+              onPress={() => setShowReadingDetails(value => !value)} />
+          ) : null}
+          {showReadingDetails ? slotWarningEntries.map(entry => (
             <AlertBanner
               key={entry.key}
-              tone="warning"
-              icon="warning-amber"
+              tone="info"
+              icon="info-outline"
               message={`${entry.label} · ${entry.text}`}
             />
-          ))}
+          )) : null}
 
           {ocrLockedCccdConflict ? (
             <AlertBanner

@@ -26,7 +26,7 @@ function load(file, mocks = {}, extraGlobals = {}) {
 }
 
 const theme = {
-  typography: { sectionTitle: {}, screenTitle: {}, bodySecondary: {}, caption: {} },
+  typography: { sectionTitle: {}, screenTitle: {}, bodySecondary: {}, caption: {}, label: {} },
 };
 
 function renderReceivedRatings(ReceivedRatings, props) {
@@ -52,7 +52,7 @@ test("ReceivedRatings shows the average score, total count and every comment", (
     "./Button": { Button: (props) => jsx("Button", props) },
     "./Typography": { Typography: (props) => jsx("Typography", props) },
     "../theme/colors": theme,
-    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111" }) },
+    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111", surfaceContainerHighest: "#eee" }) },
   });
 
   const tree = renderReceivedRatings(ReceivedRatings, {
@@ -93,7 +93,7 @@ test("ReceivedRatings explains the empty state and offers retry on failure", () 
     "./Button": { Button: (props) => jsx("Button", props) },
     "./Typography": { Typography: (props) => jsx("Typography", props) },
     "../theme/colors": theme,
-    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111" }) },
+    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111", surfaceContainerHighest: "#eee" }) },
   });
 
   const empty = renderReceivedRatings(ReceivedRatings, {
@@ -105,6 +105,118 @@ test("ReceivedRatings explains the empty state and offers retry on failure", () 
   const failed = renderReceivedRatings(ReceivedRatings, { error: true });
   assert.match(failed, /Chưa tải được đánh giá/);
   assert.match(failed, /Thử lại/);
+});
+
+test("compact ReceivedRatings keeps the summary but hides the title and comments", () => {
+  const { ReceivedRatings } = load("packages/ui/src/components/ReceivedRatings.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "react-native": { StyleSheet: { create: (styles) => styles }, View: "View" },
+    "react-native-paper": { ActivityIndicator: "ActivityIndicator" },
+    "@datxe/shared": {
+      getLocale: () => "vi-VN",
+      translate: (text, params) =>
+        params ? String(text).replace(/\{(\d)\}/g, (_, index) => String(params[index])) : text,
+    },
+    "./Button": { Button: (props) => jsx("Button", props) },
+    "./Typography": { Typography: (props) => jsx("Typography", props) },
+    "../theme/colors": theme,
+    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111", surfaceContainerHighest: "#eee" }) },
+  });
+
+  const tree = renderReceivedRatings(ReceivedRatings, {
+    compact: true,
+    hasMore: true,
+    data: {
+      averageRating: 4.8,
+      totalRatings: 12,
+      ratings: [{ stars: 5, comment: "Tài xế thân thiện", tags: ["Đúng giờ"], createdAt: "2026-11-18T10:00:00" }],
+      page: 0,
+      size: 20,
+      totalPages: 1,
+      hasNext: false,
+    },
+  });
+
+  assert.match(tree, /4,8 ★/);
+  assert.match(tree, /12 lượt đánh giá/);
+  // Biểu đồ phân bố 5★ → 1★ phải có ngay cả khi thu gọn (những "gạch ngang" trong ảnh 2).
+  assert.match(tree, /5 sao, 1 lượt/);
+  assert.match(tree, /4 sao, 0 lượt/);
+  assert.doesNotMatch(tree, /Đánh giá đã nhận/);
+  assert.doesNotMatch(tree, /Tài xế thân thiện/);
+  assert.doesNotMatch(tree, /Xem thêm đánh giá/);
+});
+
+test("ReceivedRatings prefers the server distribution when it is available", () => {
+  const { ReceivedRatings } = load("packages/ui/src/components/ReceivedRatings.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "react-native": { StyleSheet: { create: (styles) => styles }, View: "View" },
+    "react-native-paper": { ActivityIndicator: "ActivityIndicator" },
+    "@datxe/shared": {
+      getLocale: () => "vi-VN",
+      translate: (text, params) =>
+        params ? String(text).replace(/\{(\d)\}/g, (_, index) => String(params[index])) : text,
+    },
+    "./Button": { Button: (props) => jsx("Button", props) },
+    "./Typography": { Typography: (props) => jsx("Typography", props) },
+    "../theme/colors": theme,
+    "../theme/ThemeProvider": { useThemeColors: () => ({ primary: "#000", onSurfaceVariant: "#111", surfaceContainerHighest: "#eee" }) },
+  });
+
+  const tree = renderReceivedRatings(ReceivedRatings, {
+    compact: true,
+    data: {
+      averageRating: 5,
+      totalRatings: 6,
+      ratings: [],
+      page: 0,
+      size: 20,
+      totalPages: 1,
+      hasNext: false,
+      distribution: { 5: 6 },
+    },
+  });
+
+  assert.match(tree, /5 sao, 6 lượt/);
+  assert.match(tree, /1 sao, 0 lượt/);
+});
+
+test("collapsed customer ratings still load page one and show the summary", () => {
+  const page = { averageRating: 5, totalRatings: 6, ratings: [], page: 0, size: 20, totalPages: 1, hasNext: false };
+  let queryOptions;
+  const { MyCustomerRatings } = load("apps/customer/src/features/profile/components/MyCustomerRatings.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "react": { useState: (initial) => [initial, () => {}] },
+    "react-native": { StyleSheet: { create: (styles) => styles } },
+    "@tanstack/react-query": {
+      useInfiniteQuery: (options) => {
+        queryOptions = options;
+        return {
+          data: { pages: [page] },
+          isLoading: false,
+          isError: false,
+          hasNextPage: false,
+          isFetchingNextPage: false,
+          fetchNextPage: () => {},
+          refetch: () => {},
+        };
+      },
+    },
+    "@datxe/ui": {
+      Button: (props) => jsx("Button", props),
+      Card: (props) => jsx("Card", props),
+      ReceivedRatings: (props) => jsx("ReceivedRatings", props),
+      spacing: { spaceMd: 12, spaceSm: 8 },
+    },
+    "../api": { getReceivedRatings: async () => page },
+  });
+
+  const tree = JSON.stringify(MyCustomerRatings({ collapsible: true }));
+  assert.equal(queryOptions.enabled, undefined, "page one must load even while collapsed");
+  assert.match(tree, /Xem đánh giá của tôi/);
+  assert.match(tree, /"compact":true/);
+  assert.match(tree, /6/);
+  assert.doesNotMatch(tree, /"title":"Đánh giá từ tài xế"/);
 });
 
 test("customer rating history calls the shared received-ratings contract with paging", async () => {
@@ -131,15 +243,47 @@ test("customer rating history calls the shared received-ratings contract with pa
   await assert.rejects(failing.getReceivedRatings(0, 20), /Chưa tải được đánh giá/);
 });
 
-test("driver customer profile shows the same DriverReviews summary as the customer app without polluting trip history", () => {
+test("CustomerReviews queries the customer of the current ride and labels it correctly", async () => {
+  const paths = [];
+  let options;
+  const { CustomerReviews } = load("apps/driver/src/features/ride/components/CustomerReviews.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+    "@/lib/api": {
+      request: async (path) => {
+        paths.push(path);
+        return { averageRating: 5, total: 6, distribution: { 5: 6 }, recent: [] };
+      },
+    },
+    "@datxe/ui": {
+      DriverReviews: (props) => jsx("DriverReviews", props),
+    },
+    "@tanstack/react-query": {
+      useQuery: (value) => {
+        options = value;
+        return { data: null, isLoading: false, isError: false, refetch: () => {} };
+      },
+    },
+  });
+
+  const tree = JSON.stringify(CustomerReviews({ rideId: 42, enabled: true }));
+  await options.queryFn();
+  assert.deepEqual(paths, ["/driver/rides/42/customer-reviews"]);
+  assert.match(tree, /Đánh giá khách hàng/);
+  assert.match(tree, /Tài xế ẩn danh/);
+});
+
+test("driver customer profile shows the ride customer's reviews, not the driver's own", () => {
   const reviews = fs.readFileSync("apps/driver/src/features/ride/components/CustomerReviews.tsx", "utf8");
-  assert.match(reviews, /\/driver\/profile\/reviews/);
+  assert.match(reviews, /\/driver\/rides\/\$\{rideId\}\/customer-reviews/);
+  assert.doesNotMatch(reviews, /\/driver\/profile\/reviews/);
   assert.match(reviews, /<DriverReviews\b/);
   assert.match(reviews, /type DriverReviewSummary/);
+  assert.match(reviews, /title="Đánh giá khách hàng"/);
+  assert.match(reviews, /reviewerLabel="Tài xế ẩn danh"/);
   assert.doesNotMatch(reviews, /ReceivedRatings|\/driver\/ratings\/received|\/customer\/ratings\/received/);
 
   const card = fs.readFileSync("apps/driver/src/features/ride/components/RideCustomerCard.tsx", "utf8");
-  assert.match(card, /<CustomerReviews enabled=\{visible\} \/>/);
+  assert.match(card, /<CustomerReviews rideId=\{ride\.id\} enabled=\{visible\} \/>/);
   assert.match(card, /<Text accessibilityRole="header" style=\{s\.title\}>Hồ sơ khách hàng<\/Text>/);
   // Hồ sơ khách hàng là bottom sheet trượt lên từ đáy, không phải Dialog giữa màn hình.
   assert.match(card, /<Modal\s+visible=\{visible\}\s+transparent\s+animationType="slide"/);

@@ -3,6 +3,7 @@ export * from "./Card";
 export * from "./CustomDatePickerModal";
 export * from "./FilterChip";
 export * from "./Input";
+export * from "./ImageViewer";
 export * from "./KeyValueRow";
 export * from "./MoneyText";
 export * from "./ReceivedRatings";
