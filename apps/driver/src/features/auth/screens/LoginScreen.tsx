@@ -1,7 +1,8 @@
+import { DEFAULT_PHONE_COUNTRY } from "@datxe/shared";
 import {
   Button,
-  Input,
   MotionPressable as Pressable,
+  PhoneNumberInput,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
   useThemedStyles,
@@ -45,30 +46,25 @@ export default function DriverLoginScreen() {
             accessibilityLabel="PtitGo Tài Xế" accessibilityIgnoresInvertColors
             resizeMode="contain" style={themed_styles.brandLogo} />
           <Text accessibilityRole="header" style={themed_styles.heading}>
-            Đồng hành cùng PtitGo Tài Xế
+            Đồng hành cùng Tài Xế
           </Text>
           <Text style={themed_styles.subtitle}>
-            Đăng nhập để nhận chuyến và bắt đầu hành trình.
+            Đăng nhập PtitGoDriver để nhận chuyến và bắt đầu hành trình.
           </Text>
 
           <View style={themed_styles.form}>
-            <Input
+            <PhoneNumberInput
               accessibilityLabel="Số điện thoại"
-              autoComplete="tel"
-              editable={busy === null}
-              icon="call"
-              keyboardType="phone-pad"
-              label="Số điện thoại"
-              maxLength={16}
+              country={DEFAULT_PHONE_COUNTRY}
+              countries={[DEFAULT_PHONE_COUNTRY]}
+              disabled={busy !== null}
               onChangeText={(value) => {
                 setPhone(value);
                 setError("");
               }}
+              onSelectCountry={() => {}}
               placeholder="Nhập số điện thoại của bạn"
             />
-            <Text style={themed_styles.helperText}>
-              Xác thực bằng mã OTP gửi qua SMS.
-            </Text>
             {error ? (
               <Text accessibilityRole="alert" style={themed_styles.errorText}>
                 {error}

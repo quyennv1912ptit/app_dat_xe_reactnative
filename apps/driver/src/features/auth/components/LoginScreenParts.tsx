@@ -97,11 +97,6 @@ export const styles = (colors: ThemeColors) =>
     form: {
       gap: spacing.px3_5,
     },
-    helperText: {
-      ...typography.labelSm,
-      color: colors.onSurfaceVariant,
-      marginTop: spacing.gap1_5,
-    },
     errorText: {
       ...typography.bodyMd,
       color: colors.error,

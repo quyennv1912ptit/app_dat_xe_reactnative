@@ -58,6 +58,7 @@
   "Nhập mã xác thực 6 chữ số vừa được gửi qua SMS.": "Enter the 6-digit verification code sent by SMS.",
   "Liên kết số điện thoại đã xác thực với tài khoản khách hàng của bạn.": "Link your verified phone number to your customer account.",
   "Xác thực số điện thoại": "Verify phone number",
+  "Mã quốc gia {0}": "Country code {0}",
   "Thêm số điện thoại": "Add phone number",
   "Tài khoản": "Account",
   "đã kết nối": "connected",
