@@ -2,11 +2,14 @@ import { translate as i18nT , AuthApiError,authenticateWithBackend,getAuthFullNa
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useEffect,useRef,useState } from 'react';
 import { getCustomerProfile,updateCustomerProfile } from '../api';
-import { isPastIsoDate } from '../components/RegisterScreenParts';
+import { getSignInMethod,isPastIsoDate } from '../components/RegisterScreenParts';
 export function useRegister() {
 const router = useRouter();
 const [user] = useState(() => getFirebaseUser());
 const { phone: phoneParam } = useLocalSearchParams<{ phone?: string }>();
+// The sign-in method must come from the Firebase providers, never from the linked
+// phone number (social accounts can carry a test/stale phone).
+const signInMethod = getSignInMethod(user?.providerData.map((item) => item.providerId) ?? []);
 // Read raw editor text at submit time, after the keyboard has composed it.
 const nameDraft = useRef(user?.displayName ?? '');
 const setFullName = (text: string) => { nameDraft.current = text; };
@@ -73,5 +76,5 @@ const submit = async () => {
     }
   };
 
-return { user, router, phoneParam, initialName: user?.displayName ?? '', setFullName, initialEmail: user?.email ?? '', setEmail, dateOfBirth, setDateOfBirth, gender, setGender, loading, error, setError, submit };
+return { user, signInMethod, router, phoneParam, initialName: user?.displayName ?? '', setFullName, initialEmail: user?.email ?? '', setEmail, dateOfBirth, setDateOfBirth, gender, setGender, loading, error, setError, submit };
 }

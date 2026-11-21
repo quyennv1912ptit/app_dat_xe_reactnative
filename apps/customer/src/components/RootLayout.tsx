@@ -63,10 +63,15 @@ export default function RootLayout() {
 
 const HOME_PATHS = new Set(["/", "/home", "/(tabs)/home"]);
 const ACTIVE_RIDE_ROOT_PATHS = new Set(["/ride/find-driver", "/ride/tracking", "/ride/completed"]);
+// Các màn xác thực chưa có phiên khách hàng hoàn chỉnh. Không bao giờ đưa người
+// dùng về Trang chủ từ đây, vì Trang chủ sẽ gọi API không có phiên rồi đá ngược
+// về Login — tạo hiệu ứng "nháy" qua màn hình chính trước khi thoát.
+const AUTH_PATHS = new Set(["/login", "/register", "/add-phone-number", "/otp-verify"]);
 
 /**
  * Nút back cứng của Android:
  * - Ở màn tìm/theo dõi/hoàn tất chuyến -> luôn về Trang chủ, không quay lại luồng đặt chuyến cũ.
+ * - Ở luồng xác thực            -> quay lại/đi thẳng về màn Đăng nhập, không đi qua Trang chủ.
  * - Có lịch sử  -> pop màn hiện tại.
  * - Hết lịch sử -> về Trang chủ thay vì thoát app.
  * - Đang ở Trang chủ -> trả false để Android thoát app như bình thường.
@@ -88,6 +93,18 @@ function useHardwareBack() {
           if (current.canDismiss()) current.dismissAll();
           current.replace("/(tabs)/home");
           return true;
+        }
+        if (AUTH_PATHS.has(path)) {
+          if (current.canGoBack()) {
+            current.back();
+            return true;
+          }
+          if (path !== "/login") {
+            current.replace("/(auth)/login");
+            return true;
+          }
+          // Đang ở màn Đăng nhập và không còn lịch sử -> để Android thoát app.
+          return false;
         }
         if (current.canGoBack()) {
           current.back();

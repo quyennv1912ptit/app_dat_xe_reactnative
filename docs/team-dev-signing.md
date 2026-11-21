@@ -69,6 +69,34 @@ npm exec -w driver -- expo prebuild --platform android --no-install
 
 Nếu thiết bị đã cài bản dev ký bằng key cũ, Android có thể báo `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Gỡ bản dev cũ một lần rồi cài bản mới; việc gỡ sẽ xóa dữ liệu local của bản dev đó.
 
+## Key hash Facebook Login
+
+Cả hai app dùng chung Facebook App ID `1127438829808752`. Facebook kiểm tra key hash của chứng chỉ dùng để ký APK ngay lúc đăng nhập; nếu chưa khai báo, SDK trả về:
+
+```text
+Invalid key hash. The key hash ... does not match any stored key hashes.
+```
+
+Khai báo các hash dưới đây tại **Facebook App Dashboard → Settings → Basic → Android → Key hashes** (mỗi hash một dòng, sau đó bấm **Save changes**):
+
+```text
+# Customer - apps/customer/team-dev-customer.jks (alias team-dev-customer)
+Q9/iE/AIK7381I+bGR2bkZTPy/U=
+
+# Driver - apps/driver/team-dev-driver.jks (alias team-dev-driver)
+lrSRTULOziNI6gDbAgcbXs1MMFo=
+
+# Debug keystore mặc định của Android SDK (dự phòng khi build không dùng team key)
+Xo8WBi6jzSxKDVR4drqm84yr9iU=
+```
+
+Sau khi lưu, chờ khoảng 1-2 phút rồi thử đăng nhập lại; **không cần build lại APK** vì Facebook kiểm tra hash phía server. Khi đổi keystore, tính hash mới bằng:
+
+```powershell
+keytool -exportcert -alias <alias> -keystore <file>.jks -storepass <storePassword> -file cert.der
+[Convert]::ToBase64String([System.Security.Cryptography.SHA1]::Create().ComputeHash([System.IO.File]::ReadAllBytes("cert.der")))
+```
+
 ## Kiểm tra key đang được Gradle sử dụng
 
 ```powershell
