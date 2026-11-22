@@ -144,6 +144,7 @@ export default function NotificationsScreen() {
           />
         ) : null}
       </View>
+      <Button variant="ghost" label="Kiểm tra quyền thông báo" onPress={() => router.push("/settings/reception")} />
       {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert" style={typography.bodySecondary}>{notice}</Text></Card> : null}
     </View>
   );

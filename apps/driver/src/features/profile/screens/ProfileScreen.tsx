@@ -149,7 +149,7 @@ export default function DriverProfileScreen() {
         ) : null}
       </Card>
       <MyDriverReviews />
-      <GroupedList title="Hồ sơ & hỗ trợ">
+      <GroupedList title="Hồ sơ tài xế">
         <SettingsListItem
           title="Xác minh tài xế"
           icon="person"
@@ -165,6 +165,9 @@ export default function DriverProfileScreen() {
           onPress={() => router.push("/profile/verification")}
         />
         <SettingsListItem title="Loại xe nhận lái hộ" icon="tune" onPress={() => router.push("/profile/capabilities")} />
+      </GroupedList>
+      <GroupedList title="Cài đặt & hỗ trợ">
+        <SettingsListItem title="Kết nối, GPS & thông báo" icon="gps-fixed" description="Kiểm tra quyền vị trí nền và nhận thông báo" onPress={() => router.push("/settings/reception")} />
         <SettingsListItem title="Cài đặt" icon="settings" onPress={() => router.push("/settings")} />
         <SettingsListItem
           title="Trung tâm hỗ trợ"

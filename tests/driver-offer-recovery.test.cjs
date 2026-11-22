@@ -50,6 +50,8 @@ test('a live REST offer opens the driver screen without receiving a push', () =>
     '@/lib/store': { useSessionStore: select => select({ user: driver }) },
     '@/lib/realtime': {},
     '@datxe/shared': {},
+    '@datxe/ui': {},
+    'expo-notifications': {},
     '@tanstack/react-query': { useQueryClient: () => ({}) },
     'react-native': { AppState: appState },
     'expo-router': {

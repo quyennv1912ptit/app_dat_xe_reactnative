@@ -213,10 +213,10 @@ export function PhoneNumberInput({
             </View>
 
             <FlatList
-              keyboardShouldPersistTaps="always"
+              keyboardShouldPersistTaps="handled"
               data={filteredCountries}
               keyExtractor={(item) => item.iso2}
-              keyboardDismissMode="none"
+              keyboardDismissMode="on-drag"
               renderItem={({ item }) => (
                 <Pressable
                   accessibilityRole="button"

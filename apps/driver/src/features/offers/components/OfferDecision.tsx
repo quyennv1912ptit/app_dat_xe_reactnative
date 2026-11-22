@@ -61,7 +61,7 @@ export const OfferDecision = memo(function OfferDecision({ offer }: { offer: Dri
   const earning = offer.driverEarning;
   const roundedEarning = Math.round(earning / EARNING_DISPLAY_STEP_VND) * EARNING_DISPLAY_STEP_VND;
   const payment = offer.paymentMethod === 'CASH'
-    ? { icon: 'payments' as const, label: offer.fareEstimate === 0 ? 'Khách không cần trả tiền (0 đ)' : 'Thu tiền mặt' }
+    ? { icon: 'payments' as const, label: offer.fareEstimate === 0 ? 'Khách không cần trả tiền (0 đ)' : `Thu tiền mặt dự kiến: ${formatMoney(offer.fareEstimate)}` }
     : offer.paymentMethod === 'WALLET'
       ? {
           icon: 'account-balance-wallet' as const,
@@ -116,10 +116,10 @@ const styles = StyleSheet.create({
   transmission: { ...typography.caption, color: palette.muted },
   pickupTime: { ...typography.label, color: palette.text },
   paymentChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6,
     backgroundColor: palette.badge, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
   },
-  paymentText: { ...typography.badge, color: palette.text },
+  paymentText: { ...typography.badge, color: palette.text, flexShrink: 1, fontVariant: ['tabular-nums'] },
   summary: { ...typography.body, color: palette.muted, fontVariant: ['tabular-nums'] },
   timeline: { gap: 2 },
   stop: { flexDirection: 'row', gap: 12 },

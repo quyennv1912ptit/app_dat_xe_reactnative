@@ -18,16 +18,19 @@ const [code, setCode] = useState('');
 const [codeSent, setCodeSent] = useState(false);
 const [verifiedPhone, setVerifiedPhone] = useState(verifiedFirebasePhone);
 const [loading, setLoading] = useState(false);
+const submitting = useRef(false);
 const [error, setError] = useState('');
 useEffect(() => {
     if (!user) router.replace('/(auth)/login' as never);
   }, [router, user]);
 const sendCode = async () => {
+    if (submitting.current) return false;
     const phone = phoneDraft.current;
     if (!isValidVietnamPhoneNumber(phone)) {
       setError('Vui lòng nhập số điện thoại Việt Nam hợp lệ.');
       return false;
     }
+    submitting.current = true;
     setLoading(true);
     setError('');
     try {
@@ -45,10 +48,13 @@ const sendCode = async () => {
       setError(getErrorMessage(cause));
       return false;
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
 const verifyCode = async () => {
+    if (submitting.current) return;
+    submitting.current = true;
     setLoading(true);
     setError('');
     try {
@@ -58,10 +64,12 @@ const verifyCode = async () => {
     } catch (cause) {
       setError(getErrorMessage(cause));
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
 const submit = async () => {
+    if (submitting.current) return;
     const fullName = nameDraft.current;
     const nameError = getAuthFullNameValidationError(fullName);
     if (nameError) {
@@ -73,6 +81,7 @@ const submit = async () => {
       setError('Tài xế cần xác minh số điện thoại Việt Nam trước khi tạo tài khoản.');
       return;
     }
+    submitting.current = true;
     setLoading(true);
     setError('');
     try {
@@ -94,6 +103,7 @@ const submit = async () => {
     } catch (cause) {
       setError(getErrorMessage(cause));
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };

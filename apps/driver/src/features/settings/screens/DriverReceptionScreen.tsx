@@ -1,7 +1,7 @@
 import { DriverPage } from "@/components/DriverPage";
 import { DriverReceptionStatus } from "@/components/DriverReceptionStatus";
 import { useDriverHealth } from "@/lib/driverHealth";
-import { GroupedList, SettingsListItem } from "@datxe/ui";
+import { GroupedList, SettingsListItem, Typography as Text } from "@datxe/ui";
 import { getPermissionsAsync, IosAuthorizationStatus } from "expo-notifications";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
@@ -41,6 +41,9 @@ export default function DriverReceptionScreen() {
   return (
     <DriverPage title="Kết nối và GPS" error={error}>
       <DriverReceptionStatus detailed />
+      <Text>Vị trí giúp xác định điểm đón và chia sẻ hành trình. Khi đang có chuyến, quyền vị trí nền giúp cập nhật vị trí khi bạn chuyển sang ứng dụng khác.</Text>
+      <Text>Trong cài đặt thiết bị, mở Quyền → Vị trí và chọn Luôn cho phép nếu có. Bật vị trí chính xác. Nếu chưa cấp quyền nền, hãy giữ PtitGo Tài Xế mở khi thực hiện chuyến.</Text>
+      <Text>Bật quyền thông báo để nhận yêu cầu chuyến và cập nhật hỗ trợ. Kiểm tra thêm âm thanh thông báo nếu thiết bị đang để im lặng.</Text>
       <GroupedList title="Quyền trên thiết bị">
         <SettingsListItem title="Vị trí khi dùng ứng dụng" icon="gps-fixed"
           description={services === false ? "Dịch vụ vị trí đang tắt" : permissionLabel(location)} onPress={openSettings} />

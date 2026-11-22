@@ -7,8 +7,7 @@ import {
   useThemedStyles,
 } from '@datxe/ui';
 import { MaterialIcons } from '@expo/vector-icons';
-import { View } from 'react-native';
-import { placeTitle } from '../bookingUtils';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { useBookingDraft } from '../store';
 import type { BookingPlace } from '../types';
 import { checkoutStyles } from './checkoutStyles';
@@ -33,6 +32,7 @@ export function RideRouteBar({
   useLanguage();
   const colors = useThemeColors();
   const s = useThemedStyles(checkoutStyles);
+  const { height } = useWindowDimensions();
   const draft = useBookingDraft();
   const canSwap = Boolean(pickup && dropoff);
 
@@ -42,8 +42,8 @@ export function RideRouteBar({
     draft.setPlace('dropoff', pickup);
   };
 
-  const pickupText = pickup ? placeTitle(pickup.address) : t('Chọn điểm đón');
-  const dropoffText = dropoff ? placeTitle(dropoff.address) : t('Chọn điểm đến');
+  const pickupText = pickup?.address || pickup?.name || t('Chọn điểm đón');
+  const dropoffText = dropoff?.address || dropoff?.name || t('Chọn điểm đến');
 
   return (
     <View style={s.routeBar}>
@@ -63,14 +63,15 @@ export function RideRouteBar({
         <View style={[s.routeDot, { backgroundColor: colors.rideDropoff }]} />
       </View>
 
-      <View style={s.routeCopy}>
+      <ScrollView style={[s.routeCopy, { maxHeight: Math.min(120, height * 0.25) }]}
+        nestedScrollEnabled keyboardShouldPersistTaps="handled">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${t('Điểm đón')}, ${pickup?.address ?? pickupText}`}
           onPress={onPickup}
           style={s.routeRow}
         >
-          <Text numberOfLines={2} style={[s.routeText, !pickup && s.routePlaceholder]}>
+          <Text style={[s.routeText, !pickup && s.routePlaceholder]}>
             {pickupText}
           </Text>
         </Pressable>
@@ -80,11 +81,11 @@ export function RideRouteBar({
           onPress={onDropoff}
           style={s.routeRow}
         >
-          <Text numberOfLines={2} style={[s.routeText, !dropoff && s.routePlaceholder]}>
+          <Text style={[s.routeText, !dropoff && s.routePlaceholder]}>
             {dropoffText}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
 
       <View style={s.routeActions}>
         <Pressable

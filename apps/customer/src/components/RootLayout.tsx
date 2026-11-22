@@ -45,7 +45,8 @@ export default function RootLayout() {
   validateEnv();
   const [loaded, error] = useFonts(MaterialIcons.font);
   const foregroundLaunch = usePushForegroundLaunch();
-  useStartupLocationPermission(foregroundLaunch && Boolean(loaded || error), Location);
+  useStartupLocationPermission(foregroundLaunch && Boolean(loaded || error), Location,
+    'Vị trí giúp gợi ý điểm đón và tìm tài xế gần bạn. Bạn có thể để sau và chọn điểm đón trên bản đồ.');
   if (!foregroundLaunch || (!loaded && !error)) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

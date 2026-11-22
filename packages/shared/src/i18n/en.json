@@ -1034,7 +1034,7 @@
   "Ảnh đính kèm · {0}/{1}": "Attached photos · {0}/{1}",
   "Đã đính kèm {0} trên {1} ảnh": "{0} of {1} photos attached",
   "Đang tải…": "Uploading…",
-  "Đang tải ảnh…": "Uploading photo…",
+  "Đang tải ảnh…": "Loading image…",
   "Chụp ảnh": "Take photo",
   "Chụp lại": "Retake",
   "Bỏ ảnh": "Remove photo",
@@ -1144,7 +1144,6 @@
   "Chuyến đang diễn ra": "Ride in progress",
   "Tài xế gần bạn": "Drivers nearby",
   "Đặt chuyến hẹn giờ": "Schedule a ride",
-  "Đang tải ảnh…": "Loading image…",
   "Không tải được ảnh. Nhấn để thử lại.": "Could not load the image. Tap to retry.",
   "Thử tải lại ảnh": "Retry loading image",
   "{0}, {1} chưa đọc": "{0}, {1} unread",
@@ -1269,5 +1268,8 @@
   "Đang xử lý": "In progress",
   "Chờ bạn phản hồi": "Waiting for your reply",
   "Đã giải quyết": "Resolved",
-  "Đã đóng": "Closed"
+  "Đã đóng": "Closed",
+  "Đặt chuyến": "Book a ride",
+  "Tải thêm": "Load more",
+  "Không thể chọn ảnh. Vui lòng thử lại.": "Could not select the image. Please try again."
 }

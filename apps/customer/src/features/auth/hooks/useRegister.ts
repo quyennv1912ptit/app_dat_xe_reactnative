@@ -18,12 +18,14 @@ const setEmail = (text: string) => { emailDraft.current = text; };
 const [dateOfBirth, setDateOfBirth] = useState('');
 const [gender, setGender] = useState('');
 const [loading, setLoading] = useState(false);
+const submitting = useRef(false);
 const [error, setError] = useState('');
 useEffect(() => {
     if (!user) router.replace('/(auth)/login' as never);
     else if (!user.phoneNumber) router.replace('/(auth)/add-phone-number' as never);
   }, [router, user]);
 const submit = async () => {
+    if (submitting.current) return;
     const fullName = nameDraft.current;
     const email = emailDraft.current;
     const nameError = getAuthFullNameValidationError(fullName);
@@ -43,6 +45,7 @@ const submit = async () => {
       setError(i18nT("Ngày sinh cần đúng định dạng YYYY-MM-DD và nằm trong quá khứ."));
       return;
     }
+    submitting.current = true;
     setLoading(true);
     setError('');
     try {
@@ -72,6 +75,7 @@ const submit = async () => {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : i18nT("Không thể tạo tài khoản. Vui lòng thử lại."));
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };

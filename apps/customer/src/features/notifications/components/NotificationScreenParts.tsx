@@ -1,7 +1,7 @@
 import type { ThemeColors } from "@datxe/ui";
 import { spacing, typography } from "@datxe/ui";
 import { StyleSheet } from "react-native";
-export type NotificationFilter = "all" | "trip" | "promo" | "vehicle";
+export type NotificationFilter = "all" | "unread" | "trip" | "promo" | "vehicle";
 
 export const category = (type: string): NotificationFilter => {
   const key = type.toLowerCase();

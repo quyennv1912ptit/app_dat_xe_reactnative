@@ -166,8 +166,8 @@ export function OtpVerificationScreen({
 
         <ScrollView
           contentContainerStyle={styles.content}
-          keyboardDismissMode="none"
-          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Text accessibilityRole="header" style={styles.heading}>

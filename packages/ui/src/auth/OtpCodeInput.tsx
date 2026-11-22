@@ -97,7 +97,8 @@ const base_styles = (colors: ThemeColors) =>
     },
     codeBox: {
       width: 48,
-      height: 56,
+      minHeight: 56,
+      paddingVertical: spacing.spaceSm,
       flexGrow: 0,
       flexShrink: 1,
       minWidth: 32,
@@ -118,7 +119,7 @@ const base_styles = (colors: ThemeColors) =>
       borderWidth: 2,
     },
     codeBoxDisabled: { opacity: spacing.disabledOpacity },
-    codeDigit: { ...typography.headlineMd, color: colors.onSurface },
+    codeDigit: { ...typography.cardTitle, fontVariant: ['tabular-nums'], color: colors.onSurface },
     caret: {
       width: spacing.cursorWidth,
       height: spacing.cursorHeight,

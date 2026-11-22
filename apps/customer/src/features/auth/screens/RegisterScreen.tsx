@@ -107,10 +107,11 @@ export default function RegisterScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Input
+            editable={!loading}
             autoCapitalize="words"
             autoComplete="name"
             label={i18nT("Họ và tên")}
@@ -124,6 +125,7 @@ export default function RegisterScreen() {
             defaultValue={initialName}
           />
           <Input
+            editable={!loading}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -140,6 +142,8 @@ export default function RegisterScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>{i18nT("Ngày sinh")}</Text>
             <Pressable
+              disabled={loading}
+              accessibilityState={{ disabled: loading }}
               accessibilityLabel={i18nT("Ngày sinh")}
               accessibilityRole="button"
               onPress={() => setDatePickerVisible(true)}
@@ -167,7 +171,8 @@ export default function RegisterScreen() {
                 <Pressable
                   key={option.value}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: gender === option.value }}
+                  disabled={loading}
+                  accessibilityState={{ selected: gender === option.value, disabled: loading }}
                   onPress={() =>
                     setGender(gender === option.value ? "" : option.value)
                   }
@@ -254,7 +259,7 @@ export default function RegisterScreen() {
         }}
         title={i18nT("Chọn ngày sinh")}
         value={toDateValue(dateOfBirth)}
-        visible={datePickerVisible}
+        visible={datePickerVisible && !loading}
       />
     </SafeAreaView>
   );

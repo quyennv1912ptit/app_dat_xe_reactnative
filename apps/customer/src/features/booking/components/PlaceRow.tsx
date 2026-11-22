@@ -58,12 +58,12 @@ export function PlaceRow({
           <MaterialIcons name={icon} size={22} color={iconColor ?? colors.onSurfaceVariant} />
         </View>
         <View style={s.listCopy}>
-          <Text numberOfLines={1} style={[s.listTitle, selected && s.selectedTitle]}>{title}</Text>
-          <Text numberOfLines={2} style={[s.listAddress, selected && { color: colors.onWarningContainer }]}>
+          <Text style={[s.listTitle, selected && s.selectedTitle]}>{title}</Text>
+          <Text style={[s.listAddress, selected && { color: colors.onWarningContainer }]}>
             {address}
           </Text>
           {meta ? (
-            <Text numberOfLines={1} style={[s.listMeta, selected && { color: colors.onWarningContainer }]}>
+            <Text style={[s.listMeta, selected && { color: colors.onWarningContainer }]}>
               {meta}
             </Text>
           ) : null}

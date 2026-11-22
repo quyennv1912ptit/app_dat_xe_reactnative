@@ -38,8 +38,8 @@ export default function DriverLoginScreen() {
       >
         <ScrollView
           contentContainerStyle={themed_styles.scrollContent}
-          keyboardDismissMode="none"
-          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Image source={require("../../../../assets/images/brand-logo.png")}

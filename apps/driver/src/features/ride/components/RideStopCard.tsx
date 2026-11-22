@@ -30,14 +30,21 @@ export function RideStopCard({
         </>
       ) : null}
       {showDirections ? (
-        <Button
-          variant="secondary"
-          icon="directions"
-          iconPosition="leading"
-          disabled={point.lat == null || point.lng == null}
-          label={pickup ? "Mở chỉ đường tới điểm đón" : "Mở chỉ đường tới điểm trả"}
-          onPress={() => openRideDirections(ride, phase)}
-        />
+        <>
+          {point.lat == null || point.lng == null ? (
+            <Text style={styles.label} accessibilityLiveRegion="polite">
+              Chưa có tọa độ để mở chỉ đường. Hãy đối chiếu địa chỉ với khách hàng.
+            </Text>
+          ) : null}
+          <Button
+            variant="secondary"
+            icon="directions"
+            iconPosition="leading"
+            disabled={point.lat == null || point.lng == null}
+            label={pickup ? "Mở chỉ đường tới điểm đón" : "Mở chỉ đường tới điểm trả"}
+            onPress={() => openRideDirections(ride, phase)}
+          />
+        </>
       ) : null}
     </Card>
   );
