@@ -59,6 +59,55 @@ test('customer returns to the ride only after successful handover confirmation',
   assert.equal(alerts.length, 1);
 });
 
+test('customer correction sends with a reason and no photos and keeps the stale-revision guard', async () => {
+  const report = { phase: 'DROPOFF', revision: 2 };
+  let mutation;
+  let sent;
+  const { useVehicleInspection } = load('apps/customer/src/features/vehicles/hooks/useVehicleInspection.ts', {
+    '@datxe/ui': { localizedAlert: () => {} },
+    '@datxe/shared': { AuthApiError: class AuthApiError extends Error {}, translate: text => text },
+    '@/lib/customerRidePresentation': load('apps/customer/src/lib/customerRidePresentation.ts'),
+    '@tanstack/react-query': {
+      useQueryClient: () => ({ invalidateQueries: async () => {} }),
+      useQuery: () => ({ data: { id: 73, status: 'VEHICLE_RETURNED', handoverReports: [report] }, isError: false, refetch: async () => {} }),
+      useMutation: options => { mutation = options; return { isPending: false }; },
+    },
+    '@/lib/api': { request: async (path, options) => { sent = { path, body: options.body }; } },
+    '@/lib/supportImages': {},
+    'expo-router': { useRouter: () => ({}), useLocalSearchParams: () => ({ rideId: '73', phase: 'dropoff' }) },
+    react: { useState: initial => [initial === '' ? 'Số km chưa đúng' : initial, () => {}] },
+    '../api': { confirmCustomerHandover: async () => {} },
+  });
+  useVehicleInspection();
+  await mutation.mutationFn();
+  assert.equal(sent.path, '/customer/rides/73/handover/dropoff/corrections');
+  assert.equal(sent.body.revision, 2);
+  assert.equal(sent.body.reason, 'Số km chưa đúng');
+  assert.equal(sent.body.images.length, 0);
+
+  report.revision = 3;
+  await assert.rejects(() => mutation.mutationFn(), /cập nhật lên phiên bản/);
+});
+
+test('customer correction CTA requires a reason but not photos', () => {
+  const screen = fs.readFileSync('apps/customer/src/features/vehicles/screens/VehicleInspectionScreen.tsx', 'utf8');
+  const submit = screen.split('\n').find(line => line.includes("'Gửi yêu cầu điều chỉnh'"));
+  assert.ok(submit, 'missing correction submit button');
+  assert.match(submit, /reason\.trim\(\)\.length < 10/);
+  assert.doesNotMatch(submit, /h\.uploading/);
+  const hook = fs.readFileSync('apps/customer/src/features/vehicles/hooks/useVehicleInspection.ts', 'utf8');
+  assert.match(hook, /reason\.trim\(\)\.length < 10/);
+  assert.ok(screen.includes('CorrectionPhotoChecklist'));
+  assert.doesNotMatch(screen, /EvidenceEditor/);
+
+  const checklist = fs.readFileSync('apps/customer/src/features/vehicles/components/CorrectionPhotoChecklist.tsx', 'utf8');
+  for (const label of ['Đầu xe', 'Đuôi xe', 'Bên trái', 'Bên phải', 'Đồng hồ (tùy chọn)']) {
+    assert.ok(checklist.includes(`"${label}"`), `missing photo slot label: ${label}`);
+  }
+  assert.ok(checklist.includes('ProgressBar'), 'missing progress bar like the driver checklist');
+  assert.doesNotMatch(checklist, /Ảnh [1-5] · /);
+});
+
 test('driver returns to the active ride after sending a return report', async () => {
   const routes = [];
   let mutation;

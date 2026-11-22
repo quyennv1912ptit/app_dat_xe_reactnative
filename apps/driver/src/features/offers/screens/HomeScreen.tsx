@@ -14,6 +14,7 @@ import {
 } from "@datxe/ui";
 import { useState } from "react";
 import { useSessionStore } from "@/lib/store";
+import { serverErrorCopy } from "@/lib/errorCopy";
 import { useHome } from "../hooks/useHome";
 
 export default function DriverHomeScreen() {
@@ -63,14 +64,14 @@ export default function DriverHomeScreen() {
       title="Trang chủ tài xế"
       tabs
       loading={h.session.isLoading || h.active.isLoading}
-      error={
+      error={serverErrorCopy(
         h.session.error?.message ||
         h.verification.error?.message ||
         h.active.error?.message ||
         h.offer.error?.message ||
         h.capabilities.error?.message ||
         h.availability.error?.message
-      }
+      )}
       retry={() =>
         Promise.all([
           retryConditions(),

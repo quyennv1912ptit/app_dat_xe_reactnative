@@ -6,6 +6,7 @@ export * from "./Input";
 export * from "./ImageViewer";
 export * from "./KeyValueRow";
 export * from "./MoneyText";
+export * from "./ReceivedRatings";
 export * from "./PaperTextInput";
 export * from "./MotionPressable";
 export * from "./ScreenWrapper";

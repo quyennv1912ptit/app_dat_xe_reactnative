@@ -10,6 +10,7 @@ export * from "./types";
 export * from "./types/ticket";
 export * from "./utils";
 export * from "./utils/avatar";
+export * from "./utils/navigationMetrics";
 export * from "./ws";
 
 export * from "./i18n";

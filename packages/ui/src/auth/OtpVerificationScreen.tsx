@@ -1,5 +1,5 @@
 import { translate as i18nT } from "@datxe/shared";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   ScrollView,
@@ -54,29 +54,50 @@ export function OtpVerificationScreen({
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [sendReady, setSendReady] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const sendInFlight = useRef(false);
+  const autoSent = useRef(false);
 
-  // Gửi lại OTP qua Firebase (API thật), có timeout để không treo UI nếu SDK không phản hồi.
-  const handleResend = async () => {
-    if (resending) return false;
+  // Màn đăng nhập chỉ điều hướng sang đây. Màn này tự gửi mã Firebase ngay khi
+  // mount để người dùng thấy ô nhập OTP đầu tiên, không phải bước xác minh trung gian.
+  const sendCode = useCallback(async (): Promise<boolean> => {
+    if (sendInFlight.current) return false;
+    sendInFlight.current = true;
     setResending(true);
     setError("");
     setNotice("");
+    setSendReady(false);
+    setSendFailed(false);
     try {
       await withTimeout(sendPhoneCode(phone), RESEND_TIMEOUT_MS);
       setCode("");
-      setNotice(i18nT("Đã gửi lại mã OTP mới."));
+      setSendReady(true);
+      setNotice(i18nT("Đã gửi mã OTP. Vui lòng kiểm tra tin nhắn SMS."));
       return true;
     } catch (cause) {
+      setSendFailed(true);
       setError(getErrorMessage(cause));
       return false;
     } finally {
       setResending(false);
+      sendInFlight.current = false;
     }
-  };
+  }, [phone]);
+
+  useEffect(() => {
+    if (!phone || autoSent.current) return;
+    autoSent.current = true;
+    void sendCode();
+  }, [phone, sendCode]);
 
   const handleVerify = async () => {
+    if (!sendReady) {
+      setError(i18nT("Mã OTP đang được gửi. Vui lòng đợi vài giây."));
+      return;
+    }
     if (code.replace(/\D/g, "").length !== 6) {
       setError(i18nT("Vui lòng nhập đủ 6 chữ số OTP."));
       return;
@@ -163,7 +184,7 @@ export function OtpVerificationScreen({
           <View style={styles.codeBlock}>
             <OtpCodeInput
               autoFocus
-              disabled={loading}
+              disabled={loading || resending || !sendReady}
               onChange={(value) => {
                 setCode(value);
                 setError("");
@@ -172,13 +193,19 @@ export function OtpVerificationScreen({
             />
             <View style={styles.resend}>
               <ResendOtpButton
+                key={sendFailed ? "retry" : "default"}
+                delaySeconds={sendFailed ? 0 : 60}
                 disabled={loading || resending}
-                onResend={handleResend}
+                onResend={sendCode}
               />
             </View>
           </View>
 
-          {error ? (
+          {resending ? (
+            <Text accessibilityRole="alert" style={styles.noticeText}>
+              {i18nT("Đang gửi mã OTP qua SMS...")}
+            </Text>
+          ) : error ? (
             <Text accessibilityRole="alert" style={styles.errorText}>
               {i18nT(error)}
             </Text>
@@ -195,7 +222,7 @@ export function OtpVerificationScreen({
 
         <View style={styles.footer}>
           <Button
-            disabled={loading || resending || code.replace(/\D/g, "").length !== 6}
+            disabled={loading || resending || !sendReady || code.replace(/\D/g, "").length !== 6}
             label={i18nT("Xác nhận OTP")}
             loading={loading}
             loadingLabel={i18nT("Đang xác thực...")}

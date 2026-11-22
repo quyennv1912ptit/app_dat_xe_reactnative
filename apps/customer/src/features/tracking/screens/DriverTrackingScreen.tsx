@@ -4,7 +4,7 @@ import { HeaderIconButton } from "@/components/ScreenHeader";
 import { BookingMap } from "@/components/map/BookingMap";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
 import { navigateHomeClean } from "@/lib/rideNavigation";
-import { getLocale, translate as t } from "@datxe/shared";
+import { formatRemainingMeters, getLocale, translate as t } from "@datxe/shared";
 import { Button, Card, Typography as Text, typography, useLanguage, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Share, StyleSheet, View } from "react-native";
@@ -74,9 +74,7 @@ export default function DriverTrackingScreen() {
                   ? "Còn {0} · Dự kiến {1} phút đến điểm trả"
                   : "Còn {0} · Dự kiến {1} phút đến điểm đón",
                 {
-                  0: approach.route.distance < 1000
-                    ? `${Math.round(approach.route.distance)} m`
-                    : `${(approach.route.distance / 1000).toLocaleString(getLocale(), { maximumFractionDigits: 1 })} km`,
+                  0: formatRemainingMeters(approach.route.distance, getLocale()),
                   1: Math.max(1, Math.ceil(approach.route.duration / 60)),
                 },
               )}</Text>
