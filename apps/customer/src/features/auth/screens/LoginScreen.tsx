@@ -41,8 +41,8 @@ export default function LoginScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardDismissMode="none"
-          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Image source={require("../../../../assets/images/brand-logo.png")}

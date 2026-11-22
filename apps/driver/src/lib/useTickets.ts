@@ -25,6 +25,9 @@ export function useTickets() {
     loading: query.isLoading,
     refreshing: query.isRefetching,
     error: query.error?.message,
+    hasNext: query.hasNextPage,
+    loadingMore: query.isFetchingNextPage,
+    loadMore: () => { if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage(); },
     refresh: () => query.refetch(),
   };
 }

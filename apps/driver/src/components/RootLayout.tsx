@@ -44,7 +44,8 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
   const fontsSettled = Boolean(loaded || error || fontTimeout);
-  useStartupLocationPermission(foregroundLaunch && fontsSettled, Location);
+  useStartupLocationPermission(foregroundLaunch && fontsSettled, Location,
+    'Vị trí giúp tìm yêu cầu chuyến phù hợp và chia sẻ hành trình với khách. Bạn có thể xem hồ sơ trước; khi bật nhận chuyến, ứng dụng cần quyền vị trí.');
   if (!foregroundLaunch || !fontsSettled) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

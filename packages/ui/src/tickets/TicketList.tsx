@@ -23,13 +23,16 @@ type Props = {
   loading?: boolean;
   refreshing?: boolean;
   error?: string | null;
+  hasNext?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   onRefresh: () => void;
   onRetry?: () => void;
   onOpen: (id: number) => void;
   onCreate: () => void;
 };
 
-export function TicketList({ tickets, loading, refreshing, error, onRefresh, onRetry, onOpen, onCreate }: Props) {
+export function TicketList({ tickets, loading, refreshing, error, hasNext, loadingMore, onLoadMore, onRefresh, onRetry, onOpen, onCreate }: Props) {
   useLanguage();
   const s = useThemedStyles(makeStyles);
   return (
@@ -43,17 +46,21 @@ export function TicketList({ tickets, loading, refreshing, error, onRefresh, onR
       <FlatList
         data={tickets}
         keyExtractor={item => String(item.id)}
+        ListFooterComponent={hasNext && onLoadMore ? (
+          <Button variant="secondary" label={t('Tải thêm')} loading={loadingMore}
+            disabled={loadingMore} onPress={onLoadMore} />
+        ) : undefined}
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={s.refresh.tintColor} />}
         ListEmptyComponent={loading ? (
           <ActivityIndicator accessibilityLabel={t('Đang tải yêu cầu hỗ trợ')} style={s.loading} />
-        ) : (
+        ) : !error ? (
           <View style={s.empty}>
             <MaterialIcons name="support-agent" size={48} color={s.emptyIcon.color} />
             <Text style={s.emptyTitle}>{t('Chưa có yêu cầu hỗ trợ')}</Text>
             <Text style={s.emptyHint}>{t('Tạo yêu cầu mới để bộ phận hỗ trợ tiếp nhận.')}</Text>
           </View>
-        )}
+        ) : undefined}
         renderItem={({ item }) => (
           <Pressable accessibilityRole="button" accessibilityLabel={t('Mở yêu cầu {0}', { '0': item.code })} onPress={() => onOpen(item.id)}>
             <Card style={s.card}>
@@ -89,8 +96,8 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
   fill: { flex: 1 },
   content: { padding: spacing.spaceMd, gap: spacing.px3, paddingBottom: spacing.spaceLg },
   card: { padding: spacing.spaceMd, gap: spacing.spaceXs + spacing.xxs },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.spaceSm },
-  subject: { ...typography.cardTitle, flex: 1 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.spaceSm },
+  subject: { ...typography.cardTitle, flexGrow: 1, flexBasis: 120 },
   code: { ...typography.caption, color: c.onSurfaceVariant, fontVariant: ['tabular-nums'] },
   meta: { ...typography.bodySecondary, color: c.onSurfaceVariant },
   badge: { borderRadius: borderRadius.full, paddingHorizontal: spacing.px3, paddingVertical: spacing.spaceXs, color: c.onSurface },

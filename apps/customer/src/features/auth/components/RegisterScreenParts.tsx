@@ -7,6 +7,22 @@ export const genderOptions = [
   { value: "OTHER", label: "Khác" },
 ] as const;
 
+export type SignInMethod = "google" | "facebook" | "phone";
+
+/**
+ * Xác định phương thức đăng nhập thật của phiên Firebase hiện tại.
+ *
+ * Tài khoản Google/Facebook vẫn có thể đã liên kết thêm số điện thoại (kể cả
+ * số kiểm thử), nên tuyệt đối không lấy `user.phoneNumber` làm phương thức
+ * đăng nhập — nếu không màn Hoàn tất đăng ký sẽ hiển thị một số điện thoại
+ * không phải của người dùng dưới nhãn "Phương thức đăng nhập".
+ */
+export function getSignInMethod(providerIds: readonly string[]): SignInMethod {
+  if (providerIds.includes("google.com")) return "google";
+  if (providerIds.includes("facebook.com")) return "facebook";
+  return "phone";
+}
+
 export function formatIsoDateInput(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 4) return digits;

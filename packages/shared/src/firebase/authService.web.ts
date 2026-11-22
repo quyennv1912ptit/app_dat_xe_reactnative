@@ -70,6 +70,11 @@ export function isValidVietnamPhoneNumber(value: string): boolean {
   return digits.length === 9;
 }
 
+/** Firebase có thể còn số điện thoại cũ/không hợp lệ; chỉ coi là đã xác minh khi đúng định dạng Việt Nam. */
+export function resolveVerifiedPhoneNumber(value?: string | null): string {
+  if (!value) return '';
+  return isValidVietnamPhoneNumber(value) ? normalizeVietnamPhoneNumber(value) : '';
+}
 export function getFirebaseUser(): User | null {
   return null;
 }

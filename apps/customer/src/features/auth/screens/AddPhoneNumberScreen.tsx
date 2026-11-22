@@ -63,8 +63,8 @@ export default function AddPhoneNumberScreen() {
         </View>
         <ScrollView
           contentContainerStyle={styles.content}
-          keyboardDismissMode="none"
-          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <AuthHero

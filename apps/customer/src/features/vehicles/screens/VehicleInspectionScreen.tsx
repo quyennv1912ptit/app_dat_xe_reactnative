@@ -11,6 +11,7 @@ import {
   ScreenWrapper as SafeAreaView,
   Typography as Text,
   useLanguage,
+  useReducedMotion,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
@@ -26,6 +27,7 @@ import {
 import { useVehicleInspection } from "../hooks/useVehicleInspection";
 export default function VehicleInspectionScreen() {
   useLanguage();
+  const reducedMotion = useReducedMotion();
 
   const colors = useThemeColors();
 
@@ -36,10 +38,10 @@ export default function VehicleInspectionScreen() {
   const { router, phase, ride, loading, saving, error, report, presentation, confirm } = h;
   useEffect(() => {
     if (h.correctionOpen) {
-      const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+      const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: !reducedMotion }), 120);
       return () => clearTimeout(timer);
     }
-  }, [h.correctionOpen]);
+  }, [h.correctionOpen, reducedMotion]);
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -145,7 +147,7 @@ export default function VehicleInspectionScreen() {
               placeholder={i18nT("Thông tin nào chưa đúng? Ít nhất 10 ký tự")}
               draftValue={h.reason}
               onChangeText={h.setReason}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: !reducedMotion }), 120)}
               multiline
               maxLength={2000}
               editable={!h.correction.isPending}

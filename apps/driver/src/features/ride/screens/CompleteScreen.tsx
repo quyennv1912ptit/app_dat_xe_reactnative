@@ -93,6 +93,7 @@ export default function CompleteRideScreen() {
         !model.terminal ? (
           <>
             <RideStatusBanner banner={model.notice} />
+            <Button variant="ghost" label="Hỗ trợ về chuyến này" onPress={() => router.push({ pathname: "/support", params: { rideId: String(ride.id) } })} />
             <RideRouteCard ride={ride} />
           </>
         ) : (
@@ -220,6 +221,7 @@ export default function CompleteRideScreen() {
                 existingRating={myRating}
               />
             ) : null}
+            <Button variant="ghost" label="Hỗ trợ về chuyến này" onPress={() => router.push({ pathname: "/support", params: { rideId: String(ride.id) } })} />
             <RideRouteCard ride={ride} />
             {ride.handoverReports.map((report) => (
               <HandoverSummary key={report.id} report={report} collapsiblePhotos />

@@ -233,7 +233,8 @@ test("OTP keeps six rectangular cells and focus feedback while preserving digit 
   for (const box of boxes) {
     const style = flatten(box.props.style);
     assert.equal(style.width, 48);
-    assert.equal(style.height, 56);
+    assert.equal(style.minHeight, 56);
+    assert.equal(style.height, undefined);
     assert.equal(style.borderRadius, 8);
     assert.equal(style.flexGrow, 0);
   }

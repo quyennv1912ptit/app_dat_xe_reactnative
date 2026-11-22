@@ -51,7 +51,7 @@ export function VerificationPrepareStep({
       <View style={styles.intro}>
         <Text style={styles.title}>Chuẩn bị giấy tờ trước khi chụp</Text>
         <Text style={styles.subtitle}>
-          Chuẩn bị sẵn 3 mục dưới đây để hoàn thành trong khoảng 2 phút.
+          Bạn sẽ chụp 5 ảnh: hai mặt CCCD, hai mặt GPLX và một ảnh chân dung. Chuẩn bị giấy tờ gốc ở nơi đủ sáng.
         </Text>
       </View>
 
@@ -68,6 +68,14 @@ export function VerificationPrepareStep({
           </View>
         ))}
       </GroupedList>
+
+      <View style={styles.intro}>
+        <Text style={styles.itemTitle}>Các bước tiếp theo</Text>
+        <Text style={styles.itemDetail}>1. Chụp lần lượt từng ảnh theo khung hướng dẫn. Kiểm tra rõ chữ và đủ bốn góc trước khi dùng ảnh.</Text>
+        <Text style={styles.itemDetail}>2. Quét QR nếu có để điền nhanh. Nếu không đọc được QR, bạn vẫn có thể tự nhập thông tin theo giấy tờ.</Text>
+        <Text style={styles.itemDetail}>3. Kiểm tra thông tin, bổ sung mục còn thiếu rồi xác nhận gửi hồ sơ xét duyệt.</Text>
+        <Text style={styles.itemDetail}>4. Xem kết quả tại Xác minh tài xế. Sau khi được duyệt, mở Loại xe nhận lái hộ để bật nhóm xe đủ điều kiện.</Text>
+      </View>
 
       <MotionPressable
         accessible={false}

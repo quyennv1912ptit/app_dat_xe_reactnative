@@ -14,6 +14,7 @@ import {
   type ThemeColors,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { Linking, Modal, ScrollView, StyleSheet, View } from "react-native";
 import { Avatar, Divider } from "react-native-paper";
@@ -39,7 +40,9 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const hasAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatar);
 
   const avatar = (size: number) => hasAvatar && avatarUrl ? (
-    <Avatar.Image size={size} source={{ uri: avatarUrl }} onError={() => setFailedAvatar(avatarUrl)} />
+    <Image accessibilityLabel={`Ảnh đại diện của ${name}`} source={{ uri: avatarUrl }}
+      style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover"
+      cachePolicy="memory" onError={() => setFailedAvatar(avatarUrl)} />
   ) : (
     <Avatar.Icon size={size} icon="account" color={colors.onPrimaryContainer} style={{ backgroundColor: colors.primaryContainer }} />
   );

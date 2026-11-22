@@ -1,3 +1,5 @@
+import { localizedAlert } from '@datxe/ui';
+import { getPermissionsAsync } from 'expo-notifications';
 import { useDriverCredit } from '@/lib/useDriverCredit';
 import { pendingOfferKey, usePendingOffer } from '@/lib/driverOffer';
 import { offerRemainingMs } from '@/lib/offerTiming';
@@ -111,8 +113,23 @@ export function PushBridge() {
   }, [client]);
   useEffect(() => { void controller.current?.drain(); }, [userId, pathname, nav?.key, navigationReady]);
   useEffect(() => {
-    if (!userId) return;
-    void initializePushPresentation().then(requestPushPermission).then(() => syncPushToken(pushRegistration)).catch(logError);
-  }, [userId]);
+    if (!userId || !navigationReady) return;
+    let active = true;
+    void (async () => {
+      await initializePushPresentation();
+      const permission = await getPermissionsAsync();
+      if (!active) return;
+      if (permission.status === 'undetermined') {
+        const accepted = await new Promise<boolean>(resolve => localizedAlert('Bật thông báo?', 'Thông báo giúp bạn nhận yêu cầu chuyến, thay đổi hành trình và phản hồi hỗ trợ khi không nhìn màn hình. Bạn có thể bật lại trong Kết nối, GPS & thông báo.', [
+          { text: 'Để sau', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Tiếp tục', onPress: () => resolve(true) },
+        ], { cancelable: true, onDismiss: () => resolve(false) }));
+        if (!accepted || !active) return;
+      }
+      await requestPushPermission();
+      if (active) await syncPushToken(pushRegistration);
+    })().catch(logError);
+    return () => { active = false; };
+  }, [userId, navigationReady]);
   return null;
 }

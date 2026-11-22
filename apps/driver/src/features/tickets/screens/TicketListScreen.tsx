@@ -10,6 +10,9 @@ export default function TicketListScreen() {
     <DriverPage title="Hộp thư hỗ trợ" scroll={false} backFallback="/support">
       <TicketList
         tickets={tickets.items}
+        hasNext={tickets.hasNext}
+        loadingMore={tickets.loadingMore}
+        onLoadMore={tickets.loadMore}
         loading={tickets.loading}
         refreshing={tickets.refreshing}
         error={tickets.error}
