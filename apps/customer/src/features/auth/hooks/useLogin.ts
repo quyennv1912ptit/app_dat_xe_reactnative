@@ -1,11 +1,13 @@
-import { translate as i18nT , AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,sendPhoneCode,signInWithFacebook,signInWithGoogle,toInternationalPhoneNumber } from '@datxe/shared';
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { translate as i18nT , AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,signInWithFacebook,signInWithGoogle,toInternationalPhoneNumber } from '@datxe/shared';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { SignInMethod,getErrorMessage,isAccountNotFound } from '../components/LoginScreenParts';
 export function useLogin() {
 const router = useRouter();
 // Keep the latest phone for validation without controlling the input.
 const phoneDraft = useRef('');
+const phoneSubmitting = useRef(false);
+useFocusEffect(useCallback(() => { phoneSubmitting.current = false; }, []));
 const setPhone = (text: string) => { phoneDraft.current = text; };
 const [country, setCountry] = useState(DEFAULT_PHONE_COUNTRY);
 const [busy, setBusy] = useState<SignInMethod>(null);
@@ -16,16 +18,17 @@ const continueWithPhone = async () => {
       setError(i18nT("Vui lòng nhập số điện thoại {0} hợp lệ.", {"0": country.name}));
       return;
     }
-    setBusy('phone');
+    if (phoneSubmitting.current) return;
     setError('');
+    const internationalPhone = toInternationalPhoneNumber(phone, country);
+    // Chuyển thẳng vào màn nhập OTP; màn này tự gửi mã Firebase nên người dùng
+    // không bị dừng ở bước xác minh/trang reCAPTCHA trung gian.
+    phoneSubmitting.current = true;
     try {
-      const internationalPhone = toInternationalPhoneNumber(phone, country);
-      await sendPhoneCode(internationalPhone);
       router.push({ pathname: '/(auth)/otp-verify', params: { phone: internationalPhone } } as never);
     } catch (cause) {
+      phoneSubmitting.current = false;
       setError(getErrorMessage(cause));
-    } finally {
-      setBusy(null);
     }
   };
 const continueWithSocial = async (method: Exclude<SignInMethod, 'phone' | null>) => {

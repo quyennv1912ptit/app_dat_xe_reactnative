@@ -32,10 +32,15 @@ test("BookingMap passes driver vehicleType and GoongMap renders geometric naviga
   const MockGoongMap = () => null;
   const { BookingMap } = load("apps/customer/src/components/map/BookingMap.tsx", {
     "@/config/env": { env: { goongMapKey: "test-key" } },
+    "@datxe/ui": { useReducedMotion: () => false },
     "@datxe/ui/goong-map": {
       GoongMap: MockGoongMap,
       mapBounds: () => [0, 0, 1, 1],
+      routeCumulativeMeters: () => [0, 100],
+      trimRouteAtDistance: points => points,
+      useSmoothedRoutePosition: target => ({ position: target, alongMeters: null }),
     },
+    react: { useMemo: fn => fn() },
     "react/jsx-runtime": { jsx, jsxs: jsx },
   });
   const bookingTree = BookingMap({

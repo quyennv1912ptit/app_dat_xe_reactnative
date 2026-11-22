@@ -81,7 +81,7 @@ export const WalletEntryCard = memo(function WalletEntryCard({
         <View style={s.grow}>
           <Text style={typography.cardTitle}>{transactionLabel[item.transactionType] ?? item.transactionType}</Text>
           <Text style={[typography.bodySecondary, { color: c.onSurfaceVariant }]}>
-            {item.walletType === 'CREDIT' ? 'Ví tín dụng' : item.walletType === 'CASH' ? 'Ví tiền mặt' : 'Ví ứng dụng'}
+            {item.walletType === 'CREDIT' ? 'Ví tín dụng' : 'Ví ứng dụng'}
             {' · '}
             <Text style={{ color: item.status === 'FAILED' ? c.error : c.onSurfaceVariant }}>
               {walletStatusLabel[item.status]}
@@ -214,7 +214,7 @@ export function WalletMoneyForm({
         <Text>
           {mode === 'topup'
             ? 'Số dư đã được cập nhật.'
-            : 'Số tiền được tạm giữ để chờ duyệt. Nếu bị từ chối, tiền sẽ tự động hoàn về ví tiền mặt.'}
+            : 'Số tiền được tạm giữ để chờ duyệt. Nếu bị từ chối, tiền sẽ tự động hoàn về ví ứng dụng.'}
         </Text>
         <Button label="Hoàn tất" onPress={onDone} />
       </Card>
@@ -227,7 +227,7 @@ export function WalletMoneyForm({
       <Text style={{ color: c.onSurfaceVariant }}>
         {mode === 'topup'
           ? 'Chế độ thử nghiệm, không thu tiền thật.'
-          : 'Chỉ rút từ ví tiền mặt. Số tiền sẽ được giữ ngay khi gửi yêu cầu và chờ quản trị viên duyệt.'}
+          : 'Chỉ rút từ ví ứng dụng. Số tiền sẽ được giữ ngay khi gửi yêu cầu và chờ quản trị viên duyệt.'}
       </Text>
       <PaperTextInput
         label="Số tiền (đ)"
@@ -271,7 +271,7 @@ export function WalletMoneyForm({
       ) : null}
       <Text style={{ color: exceeds || (amount && value === null) ? c.error : c.onSurfaceVariant }}>
         {exceeds
-          ? 'Số dư ví tiền mặt không đủ.'
+          ? 'Số dư ví ứng dụng không đủ.'
           : mode === 'withdraw'
             ? `Số dư có thể rút: ${available === undefined ? 'Chưa xác định' : formatMoney(available)}. Nhập số nguyên đồng.`
             : `Nhập số nguyên từ 1 đến ${formatMoney(maxAmount)}.`}

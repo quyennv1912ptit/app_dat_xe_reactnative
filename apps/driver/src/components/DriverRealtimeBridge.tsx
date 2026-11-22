@@ -119,15 +119,21 @@ export function DriverRealtimeBridge() {
           );
           if (cancelled) { watcher.remove(); return; }
         }
-        // Android can open a settings activity for this permission. Do not await it here.
-        void startDriverBackgroundLocation().then(async backgroundRunning => {
-          const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
-          if (!cancelled) useDriverHealth.getState().update({
-            backgroundRunning, ...(permission ? { backgroundGranted: permission.granted } : {}),
+        // Background location chỉ chạy khi có chuyến; lúc ONLINE chỉ giữ GPS foreground
+        // để còn nhận offer, không dựng service nền báo "Đang chia sẻ vị trí" hoài.
+        if (!rideId) {
+          useDriverHealth.getState().update({ backgroundRunning: false });
+        } else {
+          // Android can open a settings activity for this permission. Do not await it here.
+          void startDriverBackgroundLocation().then(async backgroundRunning => {
+            const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
+            if (!cancelled) useDriverHealth.getState().update({
+              backgroundRunning, ...(permission ? { backgroundGranted: permission.granted } : {}),
+            });
+          }).catch(() => {
+            if (!cancelled) useDriverHealth.getState().update({ backgroundRunning: false });
           });
-        }).catch(() => {
-          if (!cancelled) useDriverHealth.getState().update({ backgroundRunning: false });
-        });
+        }
       } catch (error) {
         if (!cancelled) useDriverHealth.getState().update({ error: error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.' });
       } finally {
@@ -145,13 +151,15 @@ export function DriverRealtimeBridge() {
       watcher?.remove();
       void stopDriverBackgroundLocation().catch(() => {});
     };
-  }, [userId, tracking, retryVersion]);
+  }, [userId, rideId, tracking, retryVersion]);
   useEffect(() => {
-    if (!userId || tracking || !ride.isSuccess) return;
-    // Also cleans up a native task left behind by a previous process.
+    if (!userId || rideId) return;
+    // Dừng ngay khi hết chuyến, không đợi backend xóa chuyến hay status ONLINE/BUSY đổi.
     void stopDriverBackgroundLocation().catch(() => {});
-    useDriverHealth.getState().update({ foregroundGranted: null, servicesEnabled: null, backgroundGranted: null, error: '' });
-  }, [userId, tracking, ride.isSuccess]);
+    if (!tracking && ride.isSuccess) {
+      useDriverHealth.getState().update({ foregroundGranted: null, servicesEnabled: null, backgroundGranted: null, error: '' });
+    }
+  }, [userId, rideId, tracking, ride.isSuccess]);
   useEffect(() => {
     if (session.data?.id === userId && session.data) useSessionStore.getState().setUser(session.data);
   }, [session.data, userId]);

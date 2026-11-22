@@ -1,11 +1,13 @@
-import { AuthApiError,AuthCancelledError,authenticateWithBackend,isValidVietnamPhoneNumber,normalizeVietnamPhoneNumber,sendPhoneCode,signInWithFacebook,signInWithGoogle } from '@datxe/shared';
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { AuthApiError,AuthCancelledError,authenticateWithBackend,isValidVietnamPhoneNumber,normalizeVietnamPhoneNumber,signInWithFacebook,signInWithGoogle } from '@datxe/shared';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { SignInMethod,getErrorMessage,isAccountNotFound } from '../components/LoginScreenParts';
 export function useLogin() {
 const router = useRouter();
 // Keep the latest phone for validation without controlling the input.
 const phoneDraft = useRef('');
+const phoneSubmitting = useRef(false);
+useFocusEffect(useCallback(() => { phoneSubmitting.current = false; }, []));
 const setPhone = (text: string) => { phoneDraft.current = text; };
 const [busy, setBusy] = useState<SignInMethod>(null);
 const [error, setError] = useState('');
@@ -15,16 +17,17 @@ const continueWithPhone = async () => {
       setError('Vui lòng nhập số điện thoại Việt Nam hợp lệ.');
       return;
     }
-    setBusy('phone');
+    if (phoneSubmitting.current) return;
     setError('');
+    const normalizedPhone = normalizeVietnamPhoneNumber(phone);
+    // Chuyển thẳng vào màn nhập OTP; màn này tự gửi mã Firebase nên người dùng
+    // không bị dừng ở bước xác minh/trang reCAPTCHA trung gian.
+    phoneSubmitting.current = true;
     try {
-      const normalizedPhone = normalizeVietnamPhoneNumber(phone);
-      await sendPhoneCode(normalizedPhone);
       router.push({ pathname: '/(auth)/otp-verify', params: { phone: normalizedPhone } } as never);
     } catch (cause) {
+      phoneSubmitting.current = false;
       setError(getErrorMessage(cause));
-    } finally {
-      setBusy(null);
     }
   };
 const continueWithSocial = async (method: Exclude<SignInMethod, 'phone' | null>) => {

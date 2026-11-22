@@ -1,4 +1,4 @@
-import type { AuthProfile, CustomerRideDetail, DriverLocationUpdate } from '@datxe/shared';
+import type { CustomerRideDetail, DriverLocationUpdate } from '@datxe/shared';
 import { shouldPublishLocation, validLocationUpdate } from '@datxe/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -188,9 +188,10 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(DRIVER_LOCATION_TASK)) T
   try {
     // A cold background launch verifies that a ride is still assigned; never sends cached trip samples indefinitely.
     if (active === null || Date.now() - lastRideCheck > 30000) {
-      const [ride, profile] = await Promise.all([request<CustomerRideDetail>('/driver/rides/active', { allowNull: true }), request<AuthProfile>('/auth/me')]);
+      const ride = await request<CustomerRideDetail>('/driver/rides/active', { allowNull: true });
       if (epoch !== locationEpoch) return;
-      active = Boolean(ride || profile?.status === 'ONLINE' || profile?.status === 'BUSY'); lastRideCheck = Date.now();
+      // Chỉ giữ task nền khi vẫn có chuyến; ONLINE/BUSY không còn là lý do phát GPS nền.
+      active = Boolean(ride); lastRideCheck = Date.now();
       if (!active) { void stopDriverBackgroundLocation().catch(() => {}); return; }
     }
     if (epoch !== locationEpoch) return;

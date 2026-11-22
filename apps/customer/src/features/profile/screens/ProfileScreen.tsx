@@ -36,6 +36,7 @@ import {
   getApiErrorMessage,
   makeStyles,
 } from "../components/ProfileScreenParts";
+import { MyCustomerRatings } from "../components/MyCustomerRatings";
 import { useProfile } from "../hooks/useProfile";
 export default function ProfileScreen() {
   useLanguage();
@@ -226,6 +227,11 @@ export default function ProfileScreen() {
             ))}
           </View>
         </Card>
+
+        <View style={styles.section}>
+          <SectionHeading title="Đánh giá của tôi" />
+          <MyCustomerRatings collapsible />
+        </View>
 
         <View style={styles.section}>
           <SectionHeading title="Dịch vụ & Xe" />

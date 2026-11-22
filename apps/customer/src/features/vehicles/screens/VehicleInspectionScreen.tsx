@@ -6,7 +6,6 @@ import { getLocale, translate as i18nT } from "@datxe/shared";
 import {
   Card,
   Button,
-  EvidenceEditor,
   HandoverHistory,
   PaperTextInput as TextInput,
   ScreenWrapper as SafeAreaView,
@@ -19,6 +18,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useRef, type ComponentRef } from "react";
 import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 
+import { CorrectionPhotoChecklist } from "../components/CorrectionPhotoChecklist";
 import {
   Metric,
   styles as base_styles,
@@ -142,7 +142,7 @@ export default function VehicleInspectionScreen() {
               label={i18nT("Lý do yêu cầu điều chỉnh")}
               style={{ backgroundColor: colors.inputSurface }}
               accessibilityLabel="Lý do yêu cầu điều chỉnh"
-              placeholder="Thông tin nào chưa đúng? Ít nhất 10 ký tự"
+              placeholder={i18nT("Thông tin nào chưa đúng? Ít nhất 10 ký tự")}
               draftValue={h.reason}
               onChangeText={h.setReason}
               onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
@@ -150,9 +150,15 @@ export default function VehicleInspectionScreen() {
               maxLength={2000}
               editable={!h.correction.isPending}
             />
-            <EvidenceEditor images={h.images} onChange={h.setImages} pick={h.pickSupportImage} disabled={h.correction.isPending} onBusyChange={h.setUploading} />
+            <CorrectionPhotoChecklist
+              photos={h.photos}
+              uploadingAngle={h.uploadingAngle}
+              error={h.photoError}
+              saving={saving || h.correction.isPending}
+              onCapture={angle => void h.capturePhoto(angle)}
+            />
             {h.correction.error ? <Text style={styles.error}>{h.correction.error.message}</Text> : null}
-            <Button label={h.correction.isPending ? 'Đang gửi…' : 'Gửi yêu cầu điều chỉnh'} disabled={saving || h.uploading || h.correction.isPending || h.reason.trim().length < 10} onPress={() => h.correction.mutate()} />
+            <Button label={h.correction.isPending ? 'Đang gửi…' : 'Gửi yêu cầu điều chỉnh'} disabled={saving || h.correction.isPending || h.reason.trim().length < 10} onPress={() => h.correction.mutate()} />
           </Card> : null}
           {h.revisions.error ? <Button label="Chưa tải được phiên bản cũ · Thử lại" variant="secondary" onPress={() => void h.revisions.refetch()} /> : null}
           <HandoverHistory revisions={h.revisions.data ?? []} />
@@ -169,10 +175,10 @@ export default function VehicleInspectionScreen() {
           <View style={styles.footer}>
             {!h.correctionOpen ? (
               <Button label="Xác nhận tình trạng xe" loading={saving}
-                disabled={h.correction.isPending || h.uploading} onPress={() => void confirm()} />
+                disabled={h.correction.isPending} onPress={() => void confirm()} />
             ) : null}
             <Button label={h.correctionOpen ? "Đóng yêu cầu điều chỉnh" : "Yêu cầu điều chỉnh"} variant="secondary"
-              disabled={saving || h.correction.isPending || h.uploading}
+              disabled={saving || h.correction.isPending}
               onPress={() => h.setCorrectionOpen(!h.correctionOpen)} />
           </View>
         ) : !h.synchronized && report ? (
