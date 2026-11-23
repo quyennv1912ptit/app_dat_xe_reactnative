@@ -22,3 +22,4 @@ export * from './api/wallet';
 
 export * from './api/support';
 export * from "./api/tickets";
+export * from "./navigation/nativeIntent";

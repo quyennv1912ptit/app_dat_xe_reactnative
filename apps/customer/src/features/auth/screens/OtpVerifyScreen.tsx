@@ -1,3 +1,4 @@
+import { signOutFirebase } from "@datxe/shared";
 import { OtpVerificationScreen, useLanguage } from "@datxe/ui";
 import { useOtpVerify } from "../hooks/useOtpVerify";
 export default function CustomerOtpVerifyScreen() {
@@ -10,6 +11,10 @@ export default function CustomerOtpVerifyScreen() {
       phone={phone}
       onHome={() => router.replace("/(tabs)/home" as never)}
       onLogin={() => router.replace("/(auth)/login" as never)}
+      onAccountLocked={(reason) => {
+        void signOutFirebase().catch(() => {});
+        router.replace({ pathname: "/(auth)/account-locked", params: { reason } } as never);
+      }}
       onRegister={(verifiedPhone) =>
         router.replace({
           pathname: "/(auth)/register",

@@ -421,9 +421,9 @@ export default function ProfileScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
+                  setLogoutVisible(false);
                   void signOutFirebase()
                     .then(() => {
-                      setLogoutVisible(false);
                       router.replace("/(auth)/login" as never);
                     })
                     .catch((error: unknown) =>

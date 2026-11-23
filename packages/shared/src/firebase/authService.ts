@@ -337,9 +337,17 @@ export async function registerWithBackend(
 export async function signOutFirebase(): Promise<void> {
   pendingPhoneConfirmation = null;
   pendingPhoneLink = null;
-  // Gỡ FCM token trước khi mất phiên đăng nhập, để thiết bị không nhận thông báo của tài khoản cũ.
-  await runPushSignOutCleanup();
-  await signOut(getAuth());
+  const auth = getAuth();
+  if (auth.currentUser) {
+    // Gỡ FCM token trước khi mất phiên đăng nhập, để thiết bị không nhận thông báo của tài khoản cũ.
+    await runPushSignOutCleanup();
+    try {
+      await signOut(auth);
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+      if (code !== 'auth/no-current-user') throw error;
+    }
+  }
   getAuthConfig().onSignedOut?.();
 }
 

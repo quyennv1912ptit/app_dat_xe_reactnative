@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ComponentRef, type ComponentType } from "react";
-import { Platform, TextInput, type TextInputProps } from "react-native";
+import { Platform, StyleSheet, TextInput, type TextInputProps } from "react-native";
 
 export type DraftTextInputProps = TextInputProps & {
   /** Mirror a draft for validation and intentional resets without controlling the native editor. */
@@ -8,8 +8,20 @@ export type DraftTextInputProps = TextInputProps & {
   inputComponent?: ComponentType<ComponentPropsWithRef<typeof TextInput>>;
 };
 
+/**
+ * On iOS, setting lineHeight on a single-line UITextField shifts the text baseline
+ * downward instead of vertically centering it inside the input box.
+ */
+function normalizeIosSingleLineStyle(style: TextInputProps["style"]): TextInputProps["style"] {
+  const flat = StyleSheet.flatten(style);
+  if (!flat || !("lineHeight" in flat)) return style;
+  const normalized = { ...flat };
+  delete normalized.lineHeight;
+  return normalized;
+}
+
 export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, DraftTextInputProps>(
-  function NativeDraftTextInput({ draftValue, defaultValue, onChangeText, inputComponent: Input = TextInput, ...props }, ref) {
+  function NativeDraftTextInput({ draftValue, defaultValue, onChangeText, inputComponent: Input = TextInput, style, ...props }, ref) {
     const input = useRef<ComponentRef<typeof TextInput>>(null);
     const [initial] = useState(() => draftValue ?? defaultValue);
     const nativeText = useRef(initial);
@@ -27,9 +39,13 @@ export const NativeDraftTextInput = forwardRef<ComponentRef<typeof TextInput>, D
       } else editor.setNativeProps({ text: draftValue });
     }, [draftValue]);
 
+    const resolvedStyle =
+      Platform.OS === "ios" && !props.multiline ? normalizeIosSingleLineStyle(style) : style;
+
     return (
       <Input
         {...props}
+        style={resolvedStyle}
         ref={input}
         defaultValue={initial}
         onChangeText={(text) => {
