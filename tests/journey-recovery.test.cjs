@@ -8,7 +8,7 @@ function load(file, requireMock) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: {module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX},
-  }).outputText, {exports, require: requireMock});
+  }).outputText, {exports, require: requireMock, URLSearchParams});
   return exports;
 }
 for (const app of ['customer', 'driver']) {
@@ -34,6 +34,18 @@ for (const app of ['customer', 'driver']) {
     assert.equal(calls, 1);
   });
 }
+test('support history sends the oldest visible message as a cursor and retains the array contract', async () => {
+  const {createTicketApi} = load('packages/shared/src/api/tickets.ts', () => {});
+  const received = [{id: 4}, {id: 5}];
+  const paths = [];
+  const api = createTicketApi(async path => {
+    paths.push(path);
+    return received;
+  });
+  assert.equal(await api.messages(42), received);
+  assert.equal(await api.messages(42, 6), received);
+  assert.deepEqual(paths, ['/tickets/42/messages', '/tickets/42/messages?beforeId=6']);
+});
 for (const accept of [true, false]) {
   test(`startup location explanation requests OS permission only after acceptance=${accept}`, async () => {
     let effect, buttons, requests = 0;
@@ -154,6 +166,7 @@ for (const ticketId of [17, -1]) {
 test('support chat retains unsent content while request is pending and allows retry after failure', async () => {
   let cursor = 0, calls = 0, rejectRequest;
   const changes = [];
+  const keys = [];
   const values = ['Tôi cần kiểm tra khoản thanh toán', null, false, '', null];
   const {TicketChat} = load('packages/ui/src/tickets/TicketChat.tsx', id => {
     if (id === 'react') return {
@@ -161,12 +174,17 @@ test('support chat retains unsent content while request is pending and allows re
       useState: () => {const i = cursor++; return [values[i], value => changes.push([i, value])];},
     };
     if (id === '../motion') return {useReducedMotion: () => true};
+    if (id === '@datxe/shared') return {...uiMocks(id), createTicketMessageId: () => `message-${keys.length + 1}`};
     if (id === 'expo-image') return {Image: 'Image'};
     if (id === 'react-native-paper') return {Appbar: {Header: 'Header', BackAction: 'Back'}, IconButton: 'IconButton'};
     return uiMocks(id);
   });
   const tree = TicketChat({messages: [], currentRole: 'CUSTOMER', ticket: null,
-    onSend: () => {calls++; return new Promise((_resolve, reject) => {rejectRequest = reject;});}});
+    onSend: ({clientMessageId}) => {
+      calls++;
+      keys.push(clientMessageId);
+      return new Promise((_resolve, reject) => {rejectRequest = reject;});
+    }});
   const send = all(tree).find(n => n.type === 'IconButton' && n.props.icon === 'send');
   send.props.onPress();
   send.props.onPress();
@@ -177,6 +195,7 @@ test('support chat retains unsent content while request is pending and allows re
   assert.ok(changes.some(([i, value]) => i === 0 && value === values[0]));
   send.props.onPress();
   assert.equal(calls, 2);
+  assert.deepEqual(keys, ['message-1', 'message-1']);
   rejectRequest(Error('Mất mạng'));
   await tick();
 });

@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
+import { createTicketMessageId, translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
@@ -31,11 +31,16 @@ type Props = {
   error?: string | null;
   onBack: () => void;
   onRefresh?: () => void;
+  hasOlderMessages?: boolean;
+  onLoadOlder?: (beforeId: number) => Promise<TicketMessage[]>;
   onPickImage?: () => Promise<CustomerImageFile | null>;
-  onSend: (input: { body: string; image?: CustomerImageFile | null }) => Promise<unknown> | void;
+  onSend: (input: { body: string; image?: CustomerImageFile | null; clientMessageId: string }) => Promise<unknown> | void;
 };
 
-export function TicketChat({ ticket, messages, currentRole, loading, sending, error, onBack, onRefresh, onPickImage, onSend }: Props) {
+export function TicketChat({
+  ticket, messages, currentRole, loading, sending, error, onBack, onRefresh,
+  hasOlderMessages, onLoadOlder, onPickImage, onSend,
+}: Props) {
   useLanguage();
   const reducedMotion = useReducedMotion();
   const s = useThemedStyles(makeStyles);
@@ -44,9 +49,37 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
   const [picking, setPicking] = useState(false);
   const [pickError, setPickError] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
+  const [history, setHistory] = useState<{ ticketId: number; messages: TicketMessage[]; hasMore: boolean }>();
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const sendInFlight = useRef(false);
+  const olderInFlight = useRef(false);
+  const pending = useRef<{ ticketId?: number; body: string; image: CustomerImageFile | null; key: string } | null>(null);
   const list = useRef<FlatList<TicketMessage>>(null);
-  const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
+  const older = history?.ticketId === ticket?.id ? history : undefined;
+  const timeline = useMemo(() => {
+    if (!older) return messages;
+    return Array.from(new Map([...older.messages, ...messages].map(message => [message.id, message])).values());
+  }, [messages, older]);
+  const newestFirst = useMemo(() => [...timeline].reverse(), [timeline]);
+  const loadOlder = async () => {
+    const first = timeline[0];
+    if (!ticket || !first || !onLoadOlder || olderInFlight.current) return;
+    olderInFlight.current = true;
+    setLoadingOlder(true);
+    setHistoryError('');
+    try {
+      const page = await onLoadOlder(first.id);
+      const visibleIds = new Set(timeline.map(message => message.id));
+      const previous = page.filter(message => !visibleIds.has(message.id));
+      setHistory({ ticketId: ticket.id, messages: [...previous, ...timeline], hasMore: previous.length === 100 });
+    } catch {
+      setHistoryError(t('Không tải được tin nhắn cũ. Vui lòng thử lại.'));
+    } finally {
+      olderInFlight.current = false;
+      setLoadingOlder(false);
+    }
+  };
   const canSend = Boolean(draft.trim() || image) && !sending && !picking;
   const attach = async () => {
     if (!onPickImage || sending || picking) return;
@@ -67,8 +100,14 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
     if ((!body && !picked) || sending || picking) return;
     if (sendInFlight.current) return;
     sendInFlight.current = true;
+    const previous = pending.current;
+    const key = previous && previous.ticketId === ticket?.id && previous.body === body && previous.image === picked
+      ? previous.key
+      : createTicketMessageId();
+    pending.current = { ticketId: ticket?.id, body, image: picked, key };
     try {
-      await onSend({ body, image: picked });
+      await onSend({ body, image: picked, clientMessageId: key });
+      pending.current = null;
       setDraft('');
       setImage(null);
       list.current?.scrollToOffset({ offset: 0, animated: !reducedMotion });
@@ -121,6 +160,17 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
             contentContainerStyle={s.list}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            ListFooterComponent={onLoadOlder && (older?.hasMore ?? hasOlderMessages) ? (
+              <View style={s.notice}>
+                {historyError ? <Text accessibilityRole="alert" style={s.error}>{historyError}</Text> : null}
+                <Button
+                  variant="secondary"
+                  label={t('Tải tin nhắn cũ hơn')}
+                  loading={loadingOlder}
+                  onPress={() => void loadOlder()}
+                />
+              </View>
+            ) : undefined}
             renderItem={({ item }) => (
               <MessageRow message={item} mine={item.senderRole === currentRole} onImage={setPreview} />
             )}
