@@ -121,12 +121,14 @@ export function VerifiedBaselineView({
   showHistory,
   onToggleHistory,
   onStartReverify,
+  onOpenCapabilities,
 }: {
   app: Application;
   busy: string;
   showHistory: boolean;
   onToggleHistory: () => void;
   onStartReverify: () => void;
+  onOpenCapabilities?: () => void;
 }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
@@ -202,6 +204,13 @@ export function VerifiedBaselineView({
             message={app.identityHold
               ? `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'}`
               : `Lần cập nhật gần nhất chưa được duyệt${app.reason ? ': ' + app.reason : '.'} Hồ sơ đã xác minh trước đó vẫn còn hiệu lực.`}
+          />
+        ) : null}
+
+        {app.status === 'APPROVED' && !app.identityHold && onOpenCapabilities ? (
+          <Button
+            label="Bật loại xe nhận lái hộ"
+            onPress={onOpenCapabilities}
           />
         ) : null}
       </Card>

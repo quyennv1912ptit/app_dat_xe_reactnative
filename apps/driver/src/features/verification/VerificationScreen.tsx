@@ -12,7 +12,7 @@ import {
 import { useSessionStore } from '@/lib/store';
 import { jsonBody, verificationClient, verificationUrl, type Application, type ProposalResponse, type QrScanResponse, type VerificationWarning } from './api';
 import { VerificationError } from './transport';
-import { driverWarningMessage } from './warningPresentation';
+import { captureSlotWarnings, driverWarningMessage } from './warningPresentation';
 import { GuidedCaptureScreen, type CapturedPhoto, type ServerInspectionResult } from './GuidedCaptureScreen';
 import QrScannerScreen, { type QrScanSubmissionResult } from './QrScannerScreen';
 import { cacheFileSize, removeCacheFile } from './captureFiles';
@@ -55,6 +55,7 @@ import {
 type DraftFaceQuality = {
   revision: number;
   status: 'QUALITY_CHECKED' | 'NOT_EVALUATED';
+  quality?: Record<string, string>;
   verificationWarnings: VerificationWarning[];
 };
 
@@ -126,6 +127,8 @@ function Workflow({ uid }: { uid: string }) {
   const [faceNotice, setFaceNotice] = useState<string>();
   const [faceConsent, setFaceConsent] = useState(false);
   const [draftFace, setDraftFace] = useState<DraftFaceQuality>();
+  const [checkingFace, setCheckingFace] = useState(false);
+  const autoFaceCheckedRef = useRef<string | null>(null);
   const [confirm, setConfirmed] = useState(false);
   const [warningReview, setWarningReview] = useState<{ revision: number; acknowledged: boolean }>();
   const setConfirm = useCallback((value: boolean) => {
@@ -344,6 +347,7 @@ function Workflow({ uid }: { uid: string }) {
       .then(result => {
         if (!notice.signal.aborted && result.faceConsentVersion === 'face-comparison-v1') {
           setFaceNotice(result.faceConsentVersion);
+          setFaceConsent(true);
         }
       })
       .catch(() => { /* Experimental consent stays unavailable. */ });
@@ -619,7 +623,8 @@ function Workflow({ uid }: { uid: string }) {
     setPreviews({});
     setAck({});
     setConsent(false);
-    setFaceConsent(false);
+    setFaceConsent(Boolean(faceNotice));
+    autoFaceCheckedRef.current = null;
     setConfirm(false);
     setCompareGroup(null);
     setShowHistory(false);
@@ -691,6 +696,36 @@ function Workflow({ uid }: { uid: string }) {
     if (current.current?.id !== base.id || current.current.revision !== result.revision) return;
     setDraftFace(result);
   }
+
+  useEffect(() => {
+    if (!canEdit || stage !== 'SUMMARY' || !faceConsent || !faceNotice || !app || liveFace || busy || reading) return;
+    if (!faceSlots.every(key => Boolean(app.document?.captures[key]))) return;
+    const key = `${app.id}:${app.revision}`;
+    if (autoFaceCheckedRef.current === key) return;
+    autoFaceCheckedRef.current = key;
+    const controller = new AbortController();
+    setCheckingFace(true);
+    void api.json<DraftFaceQuality>(appPath(app.id) + '/face-quality', {
+      method: 'POST',
+      ...jsonBody({ revision: app.revision, faceConsentVersion: faceNotice }),
+      signal: controller.signal,
+      timeoutMs: FACE_QUALITY_TIMEOUT_MS,
+    })
+      .then(result => {
+        if (controller.signal.aborted) return;
+        if (current.current?.id === app.id && current.current.revision === result.revision) {
+          setDraftFace(result);
+        }
+      })
+      .catch(() => { /* Keep manual submission and manual retry available. */ })
+      .finally(() => {
+        if (!controller.signal.aborted) setCheckingFace(false);
+      });
+    return () => {
+      controller.abort();
+      setCheckingFace(false);
+    };
+  }, [canEdit, stage, faceConsent, faceNotice, app, liveFace, busy, reading, api]);
 
   function applyChoice(key: FieldKey, choice: Choice, user: boolean) {
     const form = currentValues.current;
@@ -1202,8 +1237,11 @@ function Workflow({ uid }: { uid: string }) {
   const currentHasPhoto = Boolean(slot && (photos[slot[0]] || app?.document?.captures[slot[0]]));
   const currentSlotAllowed = Boolean(slot && slotAllowed(app, slot[0]));
   const currentSlotWarnings = slot
-    ? warnings.filter(warning =>
-        warning.slot === slot[0] && !warning.fieldKey && (!photos[slot[0]] || uploadedPhotos[slot[0]] === photos[slot[0]]?.uri))
+    ? captureSlotWarnings(warnings, slot[0], {
+        hasLocalPhoto: Boolean(photos[slot[0]]),
+        hasSavedCapture: Boolean(app?.document?.captures[slot[0]]),
+        localPhotoUploaded: Boolean(photos[slot[0]] && uploadedPhotos[slot[0]] === photos[slot[0]]?.uri),
+      })
     : [];
 
   const smallBlocked = Boolean(slot && photo && isSmall(photo) && !ack[slot[0]]);
@@ -1310,6 +1348,7 @@ function Workflow({ uid }: { uid: string }) {
             showHistory={showHistory}
             onToggleHistory={() => setShowHistory(v => !v)}
             onStartReverify={() => void run('Đang mở cập nhật giấy tờ…', startReverify)}
+            onOpenCapabilities={() => router.push('/profile/capabilities')}
           />
         ) : null}
 
@@ -1455,6 +1494,7 @@ function Workflow({ uid }: { uid: string }) {
             faceNotice={faceNotice}
             faceConsent={faceConsent}
             liveFace={liveFace}
+            checkingFace={checkingFace}
             confirm={confirm}
             currentWarningReview={currentWarningReview}
             onEditPhoto={idx => { setStep(idx); setStage('CAPTURE'); setConfirm(false); }}

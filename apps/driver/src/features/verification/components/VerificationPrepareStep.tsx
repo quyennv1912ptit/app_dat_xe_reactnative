@@ -30,6 +30,29 @@ const items = [
   },
 ];
 
+const nextSteps = [
+  {
+    num: '1',
+    title: 'Chụp 5 ảnh theo khung',
+    detail: 'Giữ rõ chữ, đủ 4 góc và không chói lóa.',
+  },
+  {
+    num: '2',
+    title: 'Quét QR điền nhanh',
+    detail: 'Tự động điền từ QR; vẫn nhập tay được nếu QR mờ.',
+  },
+  {
+    num: '3',
+    title: 'Kiểm tra & gửi hồ sơ',
+    detail: 'Rà lại CCCD, GPLX rồi xác nhận gửi xét duyệt.',
+  },
+  {
+    num: '4',
+    title: 'Bật loại xe nhận lái hộ',
+    detail: 'Sau khi duyệt, bật nhóm xe đủ điều kiện để bắt đầu nhận chuyến.',
+  },
+];
+
 /** Calm single-scroll preparation step using a borderless GroupedList instead of stacked boxes. */
 export function VerificationPrepareStep({
   consent,
@@ -69,13 +92,19 @@ export function VerificationPrepareStep({
         ))}
       </GroupedList>
 
-      <View style={styles.intro}>
-        <Text style={styles.itemTitle}>Các bước tiếp theo</Text>
-        <Text style={styles.itemDetail}>1. Chụp lần lượt từng ảnh theo khung hướng dẫn. Kiểm tra rõ chữ và đủ bốn góc trước khi dùng ảnh.</Text>
-        <Text style={styles.itemDetail}>2. Quét QR nếu có để điền nhanh. Nếu không đọc được QR, bạn vẫn có thể tự nhập thông tin theo giấy tờ.</Text>
-        <Text style={styles.itemDetail}>3. Kiểm tra thông tin, bổ sung mục còn thiếu rồi xác nhận gửi hồ sơ xét duyệt.</Text>
-        <Text style={styles.itemDetail}>4. Xem kết quả tại Xác minh tài xế. Sau khi được duyệt, mở Loại xe nhận lái hộ để bật nhóm xe đủ điều kiện.</Text>
-      </View>
+      <GroupedList title="Quy trình 4 bước">
+        {nextSteps.map(step => (
+          <View key={step.num} style={styles.row}>
+            <View style={[styles.stepBadge, { backgroundColor: colors.surfaceContainerHigh }]}>
+              <Text style={[styles.stepBadgeText, { color: colors.primary }]}>{step.num}</Text>
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={styles.itemTitle}>{step.title}</Text>
+              <Text style={styles.itemDetail}>{step.detail}</Text>
+            </View>
+          </View>
+        ))}
+      </GroupedList>
 
       <MotionPressable
         accessible={false}
@@ -119,6 +148,18 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
+    },
+    stepBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: borderRadius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    stepBadgeText: {
+      ...typography.label,
+      fontVariant: ['tabular-nums'],
     },
     textWrap: { flex: 1, gap: 2 },
     itemTitle: { ...typography.cardTitle, color: colors.onSurface },

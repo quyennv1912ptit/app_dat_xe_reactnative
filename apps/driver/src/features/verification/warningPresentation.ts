@@ -22,6 +22,26 @@ export function isPhotoQualityWarning(warning: { code: string }): boolean {
     'FACE_INSUFFICIENT_QUALITY'].includes(warning.code);
 }
 
+/**
+ * Filters server warnings relevant to a single slot on the Capture step.
+ * Never shows `DOCUMENT_REQUIRED` on the capture step (where the driver is actively taking that photo),
+ * and hides stale server warnings when no photo exists yet or a newly taken local photo has not been uploaded.
+ */
+export function captureSlotWarnings(
+  warnings: readonly VerificationWarning[],
+  slot: string,
+  options: { hasLocalPhoto: boolean; hasSavedCapture: boolean; localPhotoUploaded: boolean },
+): VerificationWarning[] {
+  if (!options.hasSavedCapture && !options.hasLocalPhoto) return [];
+  if (options.hasLocalPhoto && !options.localPhotoUploaded) return [];
+  return warnings.filter(
+    warning =>
+      warning.slot === slot
+      && !warning.fieldKey
+      && warning.code !== 'DOCUMENT_REQUIRED',
+  );
+}
+
 export function groupVerificationWarnings(warnings: readonly VerificationWarning[]) {
   const groups = new Map<string, { key: string; warning: VerificationWarning; slots: string[] }>();
   for (const warning of warnings) {

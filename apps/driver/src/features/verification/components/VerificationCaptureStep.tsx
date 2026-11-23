@@ -104,6 +104,20 @@ export function VerificationCaptureStep({
 
       <WarningBannerList items={slotWarnings} />
 
+      {!allowed ? (
+        <AlertBanner
+          tone="info"
+          icon="check-circle-outline"
+          message="Ảnh này đã đạt yêu cầu, không cần chụp lại — hãy chuyển sang ảnh cần bổ sung."
+        />
+      ) : hasAnyPhoto && !slotWarnings.length && !(photo && isSmall(photo)) ? (
+        <AlertBanner
+          tone="success"
+          icon="check-circle-outline"
+          message="Ảnh đã sẵn sàng. Kiểm tra rõ chữ, đủ 4 góc rồi bấm tiếp tục ở bên dưới."
+        />
+      ) : null}
+
       {photo && isSmall(photo) ? (
         <MotionPressable
           accessible={false}
