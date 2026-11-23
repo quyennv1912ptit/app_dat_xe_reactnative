@@ -25,7 +25,7 @@ export type TicketMessage = {
   createdAt: string;
 };
 
-export type TicketDetail = { ticket: TicketSummary; messages: TicketMessage[] };
+export type TicketDetail = { ticket: TicketSummary; messages: TicketMessage[]; hasOlderMessages?: boolean };
 
 export type CreateTicketInput = {
   category: string;
@@ -34,4 +34,4 @@ export type CreateTicketInput = {
   clientRequestId?: string;
 };
 
-export type SendTicketMessageInput = { body: string; status?: TicketStatus; imageUrl?: string };
+export type SendTicketMessageInput = { body: string; status?: TicketStatus; imageUrl?: string; clientMessageId?: string };

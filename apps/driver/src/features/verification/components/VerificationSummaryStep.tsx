@@ -29,7 +29,14 @@ import { AlertBanner, SlotPhotoFrame, WarningBannerList } from './VerificationSh
 type DraftFaceQuality = {
   revision: number;
   status: 'QUALITY_CHECKED' | 'NOT_EVALUATED';
+  quality?: Record<string, string>;
   verificationWarnings: VerificationWarning[];
+};
+
+const faceSlotLabels: Record<string, string> = {
+  cccd_front: 'CCCD mặt trước',
+  gplx_front: 'GPLX mặt trước',
+  selfie: 'Ảnh chân dung',
 };
 
 /** Compact final review view: 2-column thumbnail grid + KeyValueRow list + single confirmation checklist. */
@@ -46,6 +53,7 @@ export function VerificationSummaryStep({
   faceNotice,
   faceConsent,
   liveFace,
+  checkingFace = false,
   confirm,
   currentWarningReview,
   onEditPhoto,
@@ -67,6 +75,7 @@ export function VerificationSummaryStep({
   faceNotice?: string;
   faceConsent: boolean;
   liveFace?: DraftFaceQuality;
+  checkingFace?: boolean;
   confirm: boolean;
   currentWarningReview?: { revision: number; acknowledged: boolean };
   onEditPhoto: (index: number) => void;
@@ -167,7 +176,7 @@ export function VerificationSummaryStep({
 
       {faceNotice ? (
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Kiểm tra ảnh chân dung (tùy chọn)</Text>
+          <Text style={styles.cardTitle}>Đối chiếu & kiểm tra khuôn mặt</Text>
           <MotionPressable
             accessible={false}
             disabled={locked || reading}
@@ -181,27 +190,57 @@ export function VerificationSummaryStep({
               onValueChange={onToggleFaceConsent}
             />
             <Text style={styles.switchText}>
-              Cho phép kiểm tra chất lượng ảnh chân dung và để admin đối chiếu với ảnh giấy tờ. Không bắt buộc để nộp hồ sơ.
+              Cho phép kiểm tra khuôn mặt và đối chiếu ảnh chân dung với CCCD, GPLX khi xét duyệt.
             </Text>
           </MotionPressable>
           {faceConsent ? (
             <View style={styles.faceCheckBlock}>
-              <Button
-                variant="secondary"
-                label="Kiểm tra chất lượng ảnh chân dung"
-                disabled={locked || reading}
-                onPress={onCheckFaceQuality}
-              />
-              {liveFace ? (
+              {checkingFace ? (
                 <AlertBanner
                   tone="info"
-                  icon="info-outline"
+                  icon="face"
                   live
-                  message={liveFace.status === 'NOT_EVALUATED'
-                    ? 'Chưa đánh giá được ảnh. Bạn vẫn có thể gửi để admin xem thủ công.'
-                    : 'Đã kiểm tra chất lượng ảnh. Bạn có thể chụp lại theo cảnh báo hoặc gửi để admin xem thủ công.'}
+                  message="Đang tự động kiểm tra khuôn mặt trên CCCD, GPLX và ảnh chân dung…"
                 />
+              ) : liveFace ? (
+                <>
+                  {liveFace.status === 'QUALITY_CHECKED' && liveFace.verificationWarnings.length === 0 ? (
+                    <AlertBanner
+                      tone="success"
+                      icon="check-circle-outline"
+                      live
+                      message="Khuôn mặt trên CCCD, GPLX và ảnh chân dung đã rõ nét, sẵn sàng đối chiếu khi xét duyệt."
+                    />
+                  ) : (
+                    <AlertBanner
+                      tone="info"
+                      icon="info-outline"
+                      live
+                      message={liveFace.status === 'NOT_EVALUATED'
+                        ? 'Chưa đánh giá được ảnh. Bạn vẫn có thể gửi để admin xem thủ công.'
+                        : 'Đã kiểm tra chất lượng ảnh. Bạn có thể chụp lại theo cảnh báo hoặc gửi để admin xem thủ công.'}
+                    />
+                  )}
+                  {liveFace.quality && Object.keys(liveFace.quality).length > 0 ? (
+                    <View style={styles.rowsContainer}>
+                      {Object.entries(liveFace.quality).map(([slot, status]) => (
+                        <KeyValueRow
+                          key={slot}
+                          label={faceSlotLabels[slot] ?? slot}
+                          value={status === 'READY' ? 'Khuôn mặt rõ nét' : 'Cần kiểm tra lại'}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                </>
               ) : null}
+              <Button
+                variant="secondary"
+                label={liveFace ? 'Kiểm tra lại ảnh chân dung' : 'Kiểm tra chất lượng ảnh chân dung'}
+                loading={checkingFace}
+                disabled={locked || reading || checkingFace}
+                onPress={onCheckFaceQuality}
+              />
             </View>
           ) : null}
         </Card>

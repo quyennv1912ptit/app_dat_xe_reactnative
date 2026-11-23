@@ -277,3 +277,59 @@ test("pending submit keeps the failure reason visible and offers a single retry 
   const retryButtons = nodes.filter(node => node.type === "Button" && (node.props.label === "Thử lại" || node.props.label === "Thử nộp lại"));
   assert.equal(retryButtons.length, 1);
 });
+
+test("capture step hides premature DOCUMENT_REQUIRED red banner before a photo is taken while preserving real photo warnings", () => {
+  const missingFront = {
+    code: "DOCUMENT_REQUIRED", severity: "BLOCKING", slot: "cccd_front", fieldKey: null,
+    humanReadableMessage: "Thiếu ảnh giấy tờ bắt buộc.", recommendedAction: "Chụp lại ảnh theo khung hướng dẫn.",
+    blocksSubmission: true, blocksActivation: true,
+  };
+  const blurryFront = {
+    code: "IMAGE_BLURRY", severity: "WARNING", slot: "cccd_front", fieldKey: null,
+    humanReadableMessage: "Ảnh bị mờ.", recommendedAction: "Chụp lại ảnh rõ nét.",
+    blocksSubmission: false, blocksActivation: false,
+  };
+  const fieldMismatch = {
+    code: "QR_OCR_FIELD_MISMATCH", severity: "CRITICAL", slot: "cccd_front", fieldKey: "cccd_id",
+    humanReadableMessage: "Số CCCD chưa khớp.", recommendedAction: "Kiểm tra lại.",
+    blocksSubmission: false, blocksActivation: false,
+  };
+  const otherSlot = {
+    code: "IMAGE_GLARE", severity: "WARNING", slot: "gplx_front", fieldKey: null,
+    humanReadableMessage: "Ảnh bị lóa.", recommendedAction: "Chụp lại.",
+    blocksSubmission: false, blocksActivation: false,
+  };
+  const all = [missingFront, blurryFront, fieldMismatch, otherSlot];
+
+  // Brand-new DRAFT with no photo captured yet: must NOT show red DOCUMENT_REQUIRED banner.
+  assert.deepEqual(
+    Array.from(grouping.captureSlotWarnings(all, "cccd_front", {
+      hasLocalPhoto: false, hasSavedCapture: false, localPhotoUploaded: false,
+    })),
+    [],
+  );
+
+  // Driver just took a new local photo not yet uploaded: hide stale server warnings until uploaded.
+  assert.deepEqual(
+    Array.from(grouping.captureSlotWarnings(all, "cccd_front", {
+      hasLocalPhoto: true, hasSavedCapture: true, localPhotoUploaded: false,
+    })),
+    [],
+  );
+
+  // Uploaded photo with real quality warning: show IMAGE_BLURRY, still exclude DOCUMENT_REQUIRED, field-level, and other slots.
+  assert.deepEqual(
+    Array.from(grouping.captureSlotWarnings(all, "cccd_front", {
+      hasLocalPhoto: true, hasSavedCapture: true, localPhotoUploaded: true,
+    })),
+    [blurryFront],
+  );
+
+  // Saved server capture (e.g. NEEDS_MORE_INFO before retaking): show real photo warning for that slot.
+  assert.deepEqual(
+    Array.from(grouping.captureSlotWarnings(all, "cccd_front", {
+      hasLocalPhoto: false, hasSavedCapture: true, localPhotoUploaded: false,
+    })),
+    [blurryFront],
+  );
+});
