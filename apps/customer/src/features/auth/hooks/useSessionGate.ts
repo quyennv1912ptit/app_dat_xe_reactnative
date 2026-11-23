@@ -1,10 +1,12 @@
 import { useSessionStore } from "@/lib/store";
-import { authenticateWithBackend } from "@datxe/shared";
+import { authenticateWithBackend, signOutFirebase } from "@datxe/shared";
 import { getAuth, onAuthStateChanged, type User } from "@react-native-firebase/auth";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { classifyCustomerSessionFailure } from "../sessionGateHelpers";
 
 export function useSessionGate() {
+  const router = useRouter();
   const [destination, setDestination] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [shouldSuggestLogin, setShouldSuggestLogin] = useState(false);
@@ -47,6 +49,15 @@ export function useSessionGate() {
             setDestination(outcome.destination);
             return;
           }
+          if (outcome.kind === "locked") {
+            useSessionStore.getState().reset();
+            void signOutFirebase().catch(() => {});
+            router.replace({
+              pathname: "/(auth)/account-locked",
+              params: { reason: outcome.message },
+            } as never);
+            return;
+          }
           setError(outcome.message);
           setShouldSuggestLogin(outcome.shouldSuggestLogin);
         });
@@ -57,7 +68,7 @@ export function useSessionGate() {
       clearTimeout(timer);
       unsubscribe();
     };
-  }, [attempt]);
+  }, [attempt, router]);
 
   const retry = () => {
     setError("");

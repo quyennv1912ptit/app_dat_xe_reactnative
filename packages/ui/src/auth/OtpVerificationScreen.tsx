@@ -36,6 +36,7 @@ type Props = {
   onLogin: () => void;
   onRegister: (phone: string) => void;
   onHome: () => void;
+  onAccountLocked?: (message: string) => void;
   onHelp?: () => void;
 };
 
@@ -45,6 +46,7 @@ export function OtpVerificationScreen({
   onLogin,
   onRegister,
   onHome,
+  onAccountLocked,
   onHelp,
 }: Props) {
   useLanguage();
@@ -120,6 +122,11 @@ export function OtpVerificationScreen({
       } catch (cause) {
         if (isAccountNotFound(cause)) {
           onRegister(normalizeVietnamPhoneNumber(phone));
+          navigated = true;
+          return;
+        }
+        if (cause instanceof AuthApiError && cause.code === "ACCOUNT_LOCKED" && onAccountLocked) {
+          onAccountLocked(cause.message);
           navigated = true;
           return;
         }

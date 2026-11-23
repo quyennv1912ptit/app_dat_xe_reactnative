@@ -2,6 +2,7 @@ import { AuthApiError } from "@datxe/shared";
 
 export type SessionGateOutcome =
   | { kind: "navigate"; destination: string }
+  | { kind: "locked"; message: string }
   | { kind: "error"; message: string; shouldSuggestLogin: boolean };
 
 const NETWORK_CODES = new Set([
@@ -32,6 +33,12 @@ export function classifyCustomerSessionFailure(cause: unknown): SessionGateOutco
   const code = cause && typeof cause === "object" && "code" in cause ? String(cause.code) : "";
   if (cause instanceof AuthApiError && code === "ACCOUNT_NOT_FOUND") {
     return { kind: "navigate", destination: "/(auth)/register" };
+  }
+  if (cause instanceof AuthApiError && code === "ACCOUNT_LOCKED") {
+    return {
+      kind: "locked",
+      message: cause.message || "Tài khoản đã bị khóa.",
+    };
   }
   if (NETWORK_CODES.has(code)) {
     return {

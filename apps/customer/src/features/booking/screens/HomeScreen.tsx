@@ -6,16 +6,22 @@ import { useWalletOverview } from "@/lib/useWallet";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
 import { walletBalance, translate as t } from "@datxe/shared";
 import {
+  borderRadius,
+  Button,
+  Card,
   MotionPressable as Pressable,
   ScreenWrapper,
+  spacing,
+  type ThemeColors,
   Typography as Text,
+  typography,
   useLanguage,
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { ActivityIndicator } from "react-native-paper";
 import { HomeBookingCard } from "../components/HomeBookingCard";
 import { HomeGreeting } from "../components/HomeGreeting";
@@ -28,6 +34,7 @@ export default function HomeScreen() {
   useLanguage();
   const colors = useThemeColors();
   const s = useThemedStyles(homeStyles);
+  const suspendedStyles = useThemedStyles(createSuspendedStyles);
   const [recenterToken, setRecenterToken] = useState(0);
   const h = useHome();
   const wallet = useWalletOverview();
@@ -84,6 +91,37 @@ export default function HomeScreen() {
             </View>
             <MaterialIcons name="chevron-right" size={22} color={colors.onPrimaryContainer} />
           </Pressable>
+        ) : h.isSuspended ? (
+          <Card style={suspendedStyles.card}>
+            <View style={suspendedStyles.header}>
+              <View style={suspendedStyles.iconWrap} accessible={false}>
+                <MaterialIcons name="pause-circle-outline" size={22} color={colors.onErrorContainer} />
+              </View>
+              <Text accessibilityRole="alert" style={suspendedStyles.title}>
+                {t("Tài khoản đang tạm ngưng đặt chuyến")}
+              </Text>
+            </View>
+            <Text style={suspendedStyles.body}>
+              {t(
+                "Tính năng đặt xe và đặt lịch mới đang bị tạm khóa. Bạn vẫn có thể xem lịch sử chuyến đi, kiểm tra ví, thanh toán cước nợ và gửi yêu cầu hỗ trợ CSKH.",
+              )}
+            </Text>
+            <View style={suspendedStyles.actions}>
+              <Button
+                icon="support-agent"
+                label={t("Liên hệ CSKH")}
+                onPress={() => h.router.push("/support")}
+                style={suspendedStyles.actionButton}
+              />
+              <Button
+                variant="secondary"
+                icon="account-balance-wallet"
+                label={t("Mở ví")}
+                onPress={() => h.router.push("/wallet")}
+                style={suspendedStyles.actionButton}
+              />
+            </View>
+          </Card>
         ) : (
           <HomeBookingCard
             pickupAddress={h.currentLocation}
@@ -94,7 +132,7 @@ export default function HomeScreen() {
           />
         )}
 
-        {!h.activeRide && h.recentDestinations.length ? (
+        {!h.activeRide && !h.isSuspended && h.recentDestinations.length ? (
           <View style={s.recentSection}>
             <Text style={s.recentHeading}>{t("Điểm đến gần đây")}</Text>
             <View style={s.recentCard}>
@@ -139,3 +177,42 @@ export default function HomeScreen() {
     </ScreenWrapper>
   );
 }
+
+const createSuspendedStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      padding: spacing.spaceMd,
+      gap: spacing.spaceSm,
+      backgroundColor: colors.surfaceContainerLow,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.spaceSm,
+    },
+    iconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.errorContainer,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: {
+      ...typography.cardTitle,
+      color: colors.onSurface,
+      flex: 1,
+    },
+    body: {
+      ...typography.bodySecondary,
+      color: colors.onSurfaceVariant,
+    },
+    actions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.spaceSm,
+    },
+    actionButton: {
+      flexGrow: 1,
+    },
+  });

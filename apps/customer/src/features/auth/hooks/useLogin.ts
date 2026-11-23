@@ -1,4 +1,4 @@
-import { translate as i18nT , AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,signInWithFacebook,signInWithGoogle,toInternationalPhoneNumber } from '@datxe/shared';
+import { translate as i18nT , AuthApiError,AuthCancelledError,DEFAULT_PHONE_COUNTRY,authenticateWithBackend,isValidInternationalPhoneNumber,signInWithFacebook,signInWithGoogle,signOutFirebase,toInternationalPhoneNumber } from '@datxe/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { SignInMethod,getErrorMessage,isAccountNotFound } from '../components/LoginScreenParts';
@@ -53,6 +53,11 @@ const continueWithSocial = async (method: Exclude<SignInMethod, 'phone' | null>)
       } catch (cause) {
         if (isAccountNotFound(cause)) {
           router.replace('/(auth)/register' as never);
+          return;
+        }
+        if (cause instanceof AuthApiError && cause.code === 'ACCOUNT_LOCKED') {
+          void signOutFirebase().catch(() => {});
+          router.replace({ pathname: '/(auth)/account-locked', params: { reason: cause.message } } as never);
           return;
         }
         throw cause;
