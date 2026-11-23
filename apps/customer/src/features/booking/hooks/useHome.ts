@@ -134,6 +134,7 @@ useFocusEffect(useCallback(() => {
   };
 }, [refreshLocation]));
 const profile=profileQuery.data;
+const isSuspended = profile?.status === 'INACTIVE';
 const activeRide=activeQuery.data;
 const vouchers=voucherQuery.data ?? [];
 const unreadCount=unreadQuery.data ?? 0;
@@ -151,6 +152,9 @@ const activeVoucher = vouchers[0];
 const openBooking = (destination?: string, intent?: "destination" | "schedule", dropoffPlace?: BookingPlace | null) => {
     if (activeRide) {
       router.push(activeRideDestination(activeRide));
+      return;
+    }
+    if (isSuspended) {
       return;
     }
     const pickup: BookingPlace | null = currentCoordinates && !locationLoading
@@ -178,5 +182,5 @@ const openRecentDestination = (recent: RecentDestination) => {
     }
     openBooking(recent.address, 'destination');
   };
-return { router, profile, activeRide, recentDestinations, unreadCount, loading, loadError, retryData, currentHour, currentLocation, currentCoordinates, nearbyDrivers, nearbyStatus, retryNearby, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking, openRecentDestination };
+return { router, profile, isSuspended, activeRide, recentDestinations, unreadCount, loading, loadError, retryData, currentHour, currentLocation, currentCoordinates, nearbyDrivers, nearbyStatus, retryNearby, locationLoading, refreshLocation, greetingName, activeVoucher, openBooking, openRecentDestination };
 }

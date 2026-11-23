@@ -1,7 +1,8 @@
+import { DEFAULT_PHONE_COUNTRY } from "@datxe/shared";
 import {
   Button,
-  Card,
-  Input,
+  MotionPressable as Pressable,
+  PhoneNumberInput,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
   useThemedStyles,
@@ -9,8 +10,14 @@ import {
 import { useRouter } from "expo-router";
 import { Image, KeyboardAvoidingView, ScrollView, View } from "react-native";
 
-import { SocialButton, styles } from "../components/LoginScreenParts";
+import {
+  SocialButton,
+  facebookLogo,
+  googleLogo,
+  styles,
+} from "../components/LoginScreenParts";
 import { useLogin } from "../hooks/useLogin";
+
 export default function DriverLoginScreen() {
   const router = useRouter();
   const themed_styles = useThemedStyles(styles);
@@ -31,37 +38,33 @@ export default function DriverLoginScreen() {
       >
         <ScrollView
           contentContainerStyle={themed_styles.scrollContent}
-          keyboardDismissMode="none"
-          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Image source={require("../../../../assets/images/brand-logo.png")}
             accessibilityLabel="PtitGo Tài Xế" accessibilityIgnoresInvertColors
-            resizeMode="contain" style={themed_styles.brandIcon} />
-          <Text style={themed_styles.brandName}>PtitGo Tài Xế</Text>
-          <Text style={themed_styles.title}>Chào mừng đối tác</Text>
+            resizeMode="contain" style={themed_styles.brandLogo} />
+          <Text accessibilityRole="header" style={themed_styles.heading}>
+            Đồng hành cùng Tài Xế
+          </Text>
           <Text style={themed_styles.subtitle}>
-            Đăng nhập để nhận chuyến và bắt đầu hành trình.
+            Đăng nhập PtitGoDriver để nhận chuyến và bắt đầu hành trình.
           </Text>
 
-          <Card style={themed_styles.formCard}>
-            <Input
+          <View style={themed_styles.form}>
+            <PhoneNumberInput
               accessibilityLabel="Số điện thoại"
-              autoComplete="tel"
-              editable={busy === null}
-              icon="call"
-              keyboardType="phone-pad"
-              label="Số điện thoại"
-              maxLength={16}
+              country={DEFAULT_PHONE_COUNTRY}
+              countries={[DEFAULT_PHONE_COUNTRY]}
+              disabled={busy !== null}
               onChangeText={(value) => {
                 setPhone(value);
                 setError("");
               }}
-              placeholder="0912 345 678"
+              onSelectCountry={() => {}}
+              placeholder="Nhập số điện thoại của bạn"
             />
-            <Text style={themed_styles.helperText}>
-              Xác thực bằng mã OTP gửi qua SMS.
-            </Text>
             {error ? (
               <Text accessibilityRole="alert" style={themed_styles.errorText}>
                 {error}
@@ -69,39 +72,58 @@ export default function DriverLoginScreen() {
             ) : null}
             <Button
               disabled={busy !== null && busy !== "phone"}
-              icon="arrow-forward"
-              label="Tiếp tục bằng số điện thoại"
+              label="Tiếp tục"
               loading={busy === "phone"}
               loadingLabel="Đang gửi mã OTP..."
               onPress={continueWithPhone}
-              style={themed_styles.phoneButton}
-              textStyle={themed_styles.phoneButtonText}
+              style={themed_styles.submitButton}
             />
+          </View>
 
-            <View style={themed_styles.divider}>
-              <View style={themed_styles.dividerLine} />
-              <Text style={themed_styles.dividerLabel}>Hoặc tiếp tục với</Text>
-              <View style={themed_styles.dividerLine} />
-            </View>
+          <View style={themed_styles.divider}>
+            <View style={themed_styles.dividerLine} />
+            <Text style={themed_styles.dividerLabel}>HOẶC</Text>
+            <View style={themed_styles.dividerLine} />
+          </View>
+
+          <View style={themed_styles.form}>
             <SocialButton
               disabled={busy !== null}
-              label="Tiếp tục với Google"
+              icon={googleLogo}
+              label="Đăng nhập bằng Google"
               loading={busy === "google"}
-              mark="G"
               onPress={() => void continueWithSocial("google")}
             />
             <SocialButton
               disabled={busy !== null}
-              label="Tiếp tục với Facebook"
+              icon={facebookLogo}
+              label="Đăng nhập bằng Facebook"
               loading={busy === "facebook"}
-              mark="f"
               onPress={() => void continueWithSocial("facebook")}
             />
-          </Card>
+          </View>
 
-          <Button variant="ghost" icon="help-outline" iconPosition="leading" label="Trợ giúp đăng nhập"
-            onPress={() => router.push("/(auth)/login-help")} />
-          <Button variant="ghost" label="Quyền riêng tư trên ứng dụng" onPress={() => router.push("/settings/privacy")} />
+          <View style={themed_styles.footer}>
+            <Text style={themed_styles.terms}>
+              Bằng việc tiếp tục, bạn đồng ý với quy định sử dụng và chính sách quyền riêng tư của PtitGo.
+            </Text>
+            <View style={themed_styles.termsActions}>
+              <Pressable
+                accessibilityRole="link"
+                style={themed_styles.termsTarget}
+                onPress={() => router.push("/(auth)/login-help")}
+              >
+                <Text style={themed_styles.termsLink}>Trợ giúp đăng nhập</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="link"
+                style={themed_styles.termsTarget}
+                onPress={() => router.push("/settings/privacy")}
+              >
+                <Text style={themed_styles.termsLink}>Quyền riêng tư</Text>
+              </Pressable>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

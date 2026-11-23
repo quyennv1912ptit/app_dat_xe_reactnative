@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const metrics = {};
 vm.runInNewContext(
   ts.transpileModule(
-    fs.readFileSync(path.join(__dirname, '../apps/driver/src/lib/navigationMetrics.ts'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '../packages/shared/src/utils/navigationMetrics.ts'), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
   ).outputText,
   { exports: metrics },
@@ -53,4 +53,25 @@ test('remaining distance text switches to kilometres with the app locale', () =>
   assert.equal(metrics.formatRemainingMeters(126), '150 m');
   assert.equal(metrics.formatRemainingMeters(999), '1 km');
   assert.equal(metrics.formatRemainingMeters(2450, 'vi-VN'), '2,5 km');
+  assert.equal(metrics.formatRemainingMeters(2450, 'en-US'), '2.5 km');
+});
+
+test('both customer and driver apps consume the shared navigation metrics', () => {
+  const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+
+  const driverMap = read('apps/driver/src/components/DriverDirectionsMap.native.tsx');
+  assert.match(driverMap, /formatRemainingMeters, normalizeStepDistances, providerScale/);
+  assert.match(driverMap, /progress \* providerScale\(/);
+  assert.match(driverMap, /normalizeStepDistances\(steps, directions\?\.distance\)/);
+  assert.match(driverMap, /formatRemainingMeters\(stepRemaining\)/);
+  assert.doesNotMatch(driverMap, /function formatDistance\(/);
+
+  const driverScreen = read('apps/driver/src/features/ride/screens/RideDirectionsScreen.tsx');
+  assert.match(driverScreen, /formatRemainingMeters/);
+  assert.doesNotMatch(driverScreen, /const distance = \(/);
+
+  const customerScreen = read('apps/customer/src/features/tracking/screens/DriverTrackingScreen.tsx');
+  assert.match(customerScreen, /formatRemainingMeters, getLocale/);
+  assert.match(customerScreen, /formatRemainingMeters\(approach\.route\.distance, getLocale\(\)\)/);
+  assert.doesNotMatch(customerScreen, /Math\.round\(approach\.route\.distance\)/);
 });

@@ -16,7 +16,7 @@ export function MyCustomerRatings({ collapsible = false }: { collapsible?: boole
     initialPageParam: 0,
     queryFn: ({ pageParam }) => getReceivedRatings(pageParam, 20),
     getNextPageParam: page => (page.hasNext ? page.page + 1 : undefined),
-    enabled: expanded,
+    // Luôn tải trang đầu để trạng thái thu gọn cũng có điểm trung bình và số lượt đánh giá.
     staleTime: 30_000,
   });
   const pages = query.data?.pages ?? [];
@@ -32,6 +32,15 @@ export function MyCustomerRatings({ collapsible = false }: { collapsible?: boole
           variant="secondary"
           label={expanded ? "Thu gọn đánh giá" : "Xem đánh giá của tôi"}
           onPress={() => setExpanded(value => !value)}
+        />
+      ) : null}
+      {collapsible && !expanded ? (
+        <ReceivedRatings
+          compact
+          data={data}
+          loading={query.isLoading}
+          error={query.isError}
+          onRetry={() => void query.refetch()}
         />
       ) : null}
       {expanded ? (

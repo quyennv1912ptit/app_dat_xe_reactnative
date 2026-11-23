@@ -11,6 +11,7 @@ import {
 } from "@/components/ScreenHeader";
 import { getLocale, translate as i18nT, type CustomerNotification } from "@datxe/shared";
 import {
+  Button,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
   Typography as Text,
@@ -104,6 +105,7 @@ export default function NotificationScreen() {
         {(
           [
             ["all", i18nT("Tất cả")],
+            ["unread", i18nT("Chưa đọc")],
             ["trip", i18nT("Chuyến đi")],
             ["promo", i18nT("Ưu đãi")],
             ["vehicle", "Xe"],
@@ -128,6 +130,7 @@ export default function NotificationScreen() {
           </Pressable>
         ))}
       </View>
+      <Button variant="ghost" label="Kiểm tra quyền thông báo" onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "notifications" } })} />
       {loading ? <ActivityIndicator color={colors.primary} /> : null}
       {error ? <CustomerNotice onRetry={() => void refresh()}>{i18nT(error)}</CustomerNotice> : null}
       {!loading && !error && !visible.length ? (
@@ -145,7 +148,7 @@ export default function NotificationScreen() {
           )}
           actionLabel={
             items.length === 0
-              ? i18nT("Đặt chuyến đầu tiên")
+              ? i18nT("Đặt chuyến")
               : i18nT("Xem tất cả thông báo")
           }
           onAction={() =>

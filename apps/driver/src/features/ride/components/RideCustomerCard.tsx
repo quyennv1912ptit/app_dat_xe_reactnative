@@ -1,14 +1,28 @@
 import { DriverChatButton } from "@/components/DriverChatButton";
 import { canDriverChat } from "@/lib/chatAvailability";
 import type { CustomerRideDetail } from "@datxe/shared";
-import { Button, Card, MotionPressable, Typography as Text, spacing, typography, useThemeColors } from "@datxe/ui";
+import {
+  Button,
+  Card,
+  MotionPressable,
+  ScreenWrapper,
+  Typography as Text,
+  spacing,
+  typography,
+  useThemeColors,
+  useThemedStyles,
+  type ThemeColors,
+} from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
-import { Avatar, Dialog, Divider, Portal } from "react-native-paper";
+import { Linking, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Avatar, Divider } from "react-native-paper";
+import { CustomerReviews } from "./CustomerReviews";
 
 export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const colors = useThemeColors();
+  const s = useThemedStyles(makeStyles);
   const [visible, setVisible] = useState(false);
   const [callError, setCallError] = useState("");
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
@@ -24,12 +38,13 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
   const canChat = canDriverChat(ride);
   const avatarUrl = customer?.avatarUrl;
   const hasAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatar);
-  const avatarColors = { backgroundColor: colors.primaryContainer };
 
   const avatar = (size: number) => hasAvatar && avatarUrl ? (
-    <Avatar.Image size={size} source={{ uri: avatarUrl }} onError={() => setFailedAvatar(avatarUrl)} />
+    <Image accessibilityLabel={`Ảnh đại diện của ${name}`} source={{ uri: avatarUrl }}
+      style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover"
+      cachePolicy="memory" onError={() => setFailedAvatar(avatarUrl)} />
   ) : (
-    <Avatar.Icon size={size} icon="account" color={colors.onPrimaryContainer} style={avatarColors} />
+    <Avatar.Icon size={size} icon="account" color={colors.onPrimaryContainer} style={{ backgroundColor: colors.primaryContainer }} />
   );
 
   const close = () => {
@@ -49,19 +64,19 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
 
   return (
     <>
-      <Card style={[styles.card, { backgroundColor: colors.rideSurface }]}>
+      <Card style={[s.card, { backgroundColor: colors.rideSurface }]}>
         <MotionPressable
           accessibilityRole="button"
           accessibilityLabel={`Xem thông tin khách hàng, ${name}`}
           onPress={() => setVisible(true)}
-          style={styles.summary}
+          style={s.summary}
         >
           {avatar(48)}
-          <View style={styles.identity}>
+          <View style={s.identity}>
             <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>Khách hàng</Text>
-            <Text style={[styles.name, { color: colors.onSurface }]}>{name}</Text>
+            <Text style={[s.name, { color: colors.onSurface }]}>{name}</Text>
             {ratingText ? (
-              <View style={styles.ratingRow}>
+              <View style={s.ratingRow}>
                 <MaterialIcons name="star" size={16} color={colors.onSurfaceVariant} importantForAccessibility="no" />
                 <Text style={[typography.label, { color: colors.onSurfaceVariant }]}>{ratingText}</Text>
               </View>
@@ -72,15 +87,15 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
         {canChat || canCall ? (
           <>
             <Divider style={{ backgroundColor: colors.outlineVariant }} />
-            <View style={styles.actions}>
-              {canChat ? <DriverChatButton ride={ride} labelText="Nhắn tin" style={styles.actionButton} /> : null}
+            <View style={s.actions}>
+              {canChat ? <DriverChatButton ride={ride} labelText="Nhắn tin" style={s.actionButton} /> : null}
               {canCall ? (
                 <Button
                   label="Gọi khách"
                   variant="secondary"
                   icon="call"
                   iconPosition="leading"
-                  style={styles.actionButton}
+                  style={s.actionButton}
                   onPress={() => void call()}
                 />
               ) : null}
@@ -89,39 +104,79 @@ export function RideCustomerCard({ ride }: { ride: CustomerRideDetail }) {
         ) : null}
       </Card>
       {!visible && callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
-      <Portal>
-        <Dialog visible={visible} onDismiss={close} style={{ backgroundColor: colors.surfaceContainerHigh, borderRadius: 28 }}>
-          <Dialog.Title>Thông tin khách hàng</Dialog.Title>
-          <Dialog.ScrollArea style={styles.scrollArea}>
-            <ScrollView contentContainerStyle={styles.details}>
-              {avatar(64)}
-              <Text style={styles.name}>{name}</Text>
-              <View style={styles.contact}>
-                <Text style={{ color: colors.onSurfaceVariant }}>Số điện thoại</Text>
-                <Text selectable>{phone || "Chưa có số điện thoại"}</Text>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={close}
+      >
+        <View style={[s.overlay, { backgroundColor: colors.inverseSurface40 }]}>
+          <MotionPressable
+            accessibilityRole="button"
+            accessibilityLabel="Đóng hồ sơ khách hàng"
+            style={StyleSheet.absoluteFill}
+            onPress={close}
+          />
+          <ScreenWrapper edges={["bottom"]} style={s.sheet}>
+            <View accessibilityViewIsModal style={s.modalContent}>
+              <View style={s.header}>
+                <Text accessibilityRole="header" style={s.title}>Hồ sơ khách hàng</Text>
+                <MotionPressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Đóng hồ sơ khách hàng"
+                  style={s.close}
+                  onPress={close}
+                >
+                  <MaterialIcons name="close" size={24} color={colors.onSurface} />
+                </MotionPressable>
               </View>
-              <View style={styles.contact}>
-                <Text style={{ color: colors.onSurfaceVariant }}>Email</Text>
-                <Text selectable>{customer?.email?.trim() || "Chưa có email"}</Text>
+              <ScrollView contentContainerStyle={s.details}>
+                <View style={[s.sheetIdentity, s.sheetIdentityLarge]}>
+                  {avatar(80)}
+                  <View style={s.copy}>
+                    <Text style={s.sheetName}>{name}</Text>
+                    <View style={s.rating}>
+                      <MaterialIcons name="star" size={18} color={colors.onSurface} importantForAccessibility="no" />
+                      <Text style={s.body}>{ratingText ?? "Chưa có đánh giá"}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={s.detailRow}>
+                  <MaterialIcons name="badge" size={22} color={colors.onSurface} importantForAccessibility="no" />
+                  <Text style={s.body}>{`Mã khách hàng #${ride.customerId}`}</Text>
+                </View>
+                <View style={s.detailRow}>
+                  <MaterialIcons name="phone" size={22} color={colors.onSurface} importantForAccessibility="no" />
+                  <View style={s.copy}>
+                    <Text style={s.meta}>Số điện thoại khách hàng</Text>
+                    <Text selectable style={s.body}>{phone || "Chưa có số điện thoại"}</Text>
+                  </View>
+                </View>
+                <View style={s.detailRow}>
+                  <MaterialIcons name="email" size={22} color={colors.onSurface} importantForAccessibility="no" />
+                  <View style={s.copy}>
+                    <Text style={s.meta}>Email</Text>
+                    <Text selectable style={s.body}>{customer?.email?.trim() || "Chưa có email"}</Text>
+                  </View>
+                </View>
+                <Divider style={{ backgroundColor: colors.outlineVariant }} />
+                <CustomerReviews rideId={ride.id} enabled={visible} />
+                {callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
+              </ScrollView>
+              <View style={s.sheetActions}>
+                <Button label="Gọi điện" icon="call" iconPosition="leading" disabled={!canCall} onPress={() => void call()} />
+                <DriverChatButton ride={ride} onOpen={close} />
+                <Text style={s.hint}>Bạn có thể gửi tin nhắn văn bản và hình ảnh.</Text>
               </View>
-              {customer?.averageRating != null ? (
-                <Text>Đánh giá · {customer.averageRating.toLocaleString("vi-VN")} / 5</Text>
-              ) : null}
-              <Button label="Gọi điện" icon="call" iconPosition="leading" disabled={!canCall} onPress={() => void call()} />
-              <DriverChatButton ride={ride} onOpen={close} />
-              {callError ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{callError}</Text> : null}
-            </ScrollView>
-          </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button label="Đóng" variant="ghost" onPress={close} />
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+            </View>
+          </ScreenWrapper>
+        </View>
+      </Modal>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   card: { padding: spacing.spaceMd, gap: spacing.px3 },
   summary: { flexDirection: "row", alignItems: "center", gap: spacing.px3, minHeight: 48 },
   identity: { flex: 1, minWidth: 0, gap: spacing.xxs },
@@ -129,7 +184,41 @@ const styles = StyleSheet.create({
   name: { ...typography.cardTitle },
   actions: { flexDirection: "row", gap: spacing.spaceSm },
   actionButton: { flex: 1, flexBasis: 0, minWidth: 0 },
-  scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0 },
-  details: { paddingHorizontal: 24, paddingVertical: 8, gap: 12 },
-  contact: { gap: 4 },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    paddingTop: 32,
+  },
+  sheet: {
+    flex: 0,
+    maxHeight: "92%",
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+    backgroundColor: colors.surfaceContainerLowest,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: "hidden",
+  },
+  modalContent: { flexShrink: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.spaceMd,
+    paddingTop: spacing.px3,
+    gap: spacing.px3,
+  },
+  title: { ...typography.screenTitle, flex: 1, color: colors.onSurface },
+  close: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  sheetIdentity: { flexDirection: "row", alignItems: "center", gap: spacing.spaceMd },
+  sheetIdentityLarge: { alignItems: "flex-start" },
+  copy: { flex: 1, minWidth: 0, gap: spacing.spaceSm },
+  sheetName: { ...typography.sectionTitle, color: colors.onSurface, flexShrink: 1 },
+  rating: { flexDirection: "row", alignItems: "center", gap: spacing.spaceSm },
+  body: { ...typography.body, color: colors.onSurface, flexShrink: 1 },
+  meta: { ...typography.bodySecondary, color: colors.onSurfaceVariant },
+  detailRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.px3 },
+  details: { padding: spacing.spaceMd, gap: spacing.spaceMd },
+  sheetActions: { padding: spacing.spaceMd, gap: spacing.spaceSm },
+  hint: { ...typography.bodySecondary, color: colors.onSurfaceVariant, textAlign: "center" },
 });

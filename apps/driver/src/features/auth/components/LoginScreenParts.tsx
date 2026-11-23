@@ -7,21 +7,25 @@ import {
   typography,
   useThemedStyles,
 } from "@datxe/ui";
-import { StyleSheet } from "react-native";
+import { Image, StyleSheet } from "react-native";
+
+export const googleLogo = require("../../../../assets/1._ng_nh_p/google.png");
+
+export const facebookLogo = require("../../../../assets/1._ng_nh_p/facebook.png");
 
 export type SignInMethod = "phone" | "google" | "facebook" | null;
 
 export function SocialButton({
   disabled,
+  icon,
   label,
   loading,
-  mark,
   onPress,
 }: {
   disabled: boolean;
+  icon: number;
   label: string;
   loading: boolean;
-  mark: string;
   onPress: () => void;
 }) {
   const themed_styles = useThemedStyles(styles);
@@ -31,19 +35,13 @@ export function SocialButton({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         themed_styles.socialButton,
+        pressed && !disabled && themed_styles.socialButtonPressed,
         disabled && themed_styles.disabledButton,
       ]}
     >
-      <Text
-        style={[
-          themed_styles.socialMark,
-          mark === "f" && themed_styles.facebookMark,
-        ]}
-      >
-        {mark}
-      </Text>
+      <Image source={icon} style={themed_styles.socialIcon} />
       <Text style={themed_styles.socialLabel}>
         {loading ? "Đang kết nối..." : label}
       </Text>
@@ -81,53 +79,48 @@ export const styles = (colors: ThemeColors) =>
       width: "100%",
       maxWidth: spacing.formMaxWidth + spacing.margin * 2,
       alignSelf: "center",
-      justifyContent: "center",
       paddingHorizontal: spacing.margin,
-      paddingVertical: spacing.spaceXl,
+      paddingTop: spacing.spaceXl,
+      paddingBottom: spacing.spaceLg,
     },
-    brandIcon: { width: 80, height: 80, alignSelf: "center" },
-    brandName: {
-      ...typography.label,
-      color: colors.primary,
-      textAlign: "center",
-      marginTop: spacing.spaceSm,
-    },
-    title: {
-      ...typography.display,
+    brandLogo: { width: 80, height: 80, marginBottom: spacing.spaceLg },
+    heading: {
+      ...typography.headlineXlMobile,
       color: colors.onSurface,
-      textAlign: "center",
-      marginTop: spacing.spaceXl,
     },
     subtitle: {
-      ...typography.bodySecondary,
+      ...typography.bodyMd,
       color: colors.onSurfaceVariant,
-      textAlign: "center",
-      marginTop: spacing.spaceXs,
-      marginBottom: spacing.spaceLg,
+      marginTop: spacing.spaceSm,
+      marginBottom: spacing.spaceLg + spacing.spaceSm,
     },
-    formCard: { gap: spacing.spaceMd, padding: 16 },
-    helperText: {
-      ...typography.caption,
-      color: colors.onSurfaceVariant,
-      marginTop: -spacing.spaceSm,
+    form: {
+      gap: spacing.px3_5,
     },
-    errorText: { ...typography.bodySecondary, color: colors.error },
-    phoneButton: {
-      marginTop: spacing.spaceXs,
-      backgroundColor: colors.primary,
+    errorText: {
+      ...typography.bodyMd,
+      color: colors.error,
     },
-    phoneButtonText: { color: colors.onPrimary },
+    submitButton: { marginTop: spacing.spaceXs },
     divider: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.spaceSm,
-      marginVertical: spacing.spaceXs,
+      gap: spacing.gap1_5,
+      marginVertical: spacing.spaceXl,
     },
-    dividerLine: { height: 1, flex: 1, backgroundColor: colors.outlineVariant },
-    dividerLabel: { ...typography.caption, color: colors.onSurfaceVariant },
+    dividerLine: {
+      height: StyleSheet.hairlineWidth,
+      flex: 1,
+      backgroundColor: colors.outlineVariant,
+    },
+    dividerLabel: {
+      ...typography.labelMd,
+      color: colors.onSurfaceVariant,
+      letterSpacing: spacing.letterSpacingWide,
+    },
     socialButton: {
-      minHeight: 52,
-
+      width: "100%",
+      minHeight: spacing.buttonPillHeight,
       borderRadius: 999,
       backgroundColor: colors.surfaceContainerHigh,
       flexDirection: "row",
@@ -135,22 +128,33 @@ export const styles = (colors: ThemeColors) =>
       justifyContent: "center",
       gap: spacing.spaceSm,
       paddingHorizontal: spacing.spaceMd,
+      paddingVertical: spacing.spaceSm,
     },
-    disabledButton: { opacity: 0.6 },
-    socialMark: {
-      ...typography.sectionTitle,
-      width: 24,
+    socialButtonPressed: {
+      backgroundColor: colors.surfaceContainerLow,
+    },
+    disabledButton: { opacity: spacing.disabledOpacity },
+    socialIcon: { width: 20, height: 20, resizeMode: "contain", flexShrink: 0 },
+    socialLabel: {
+      ...typography.titleMd,
+      color: colors.onSurface,
+      flexShrink: 1,
       textAlign: "center",
-      color: colors.googleBlue,
+      paddingHorizontal: 2,
     },
-    facebookMark: { color: colors.facebook },
-    socialLabel: { ...typography.button, color: colors.onSurface },
     footer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: spacing.spaceXs,
-      marginTop: spacing.spaceLg,
+      marginTop: "auto",
+      paddingTop: spacing.spaceXl,
     },
-    footerText: { ...typography.caption, color: colors.onSurfaceVariant },
+    terms: {
+      ...typography.caption,
+      color: colors.onSurfaceVariant,
+      textAlign: "center",
+    },
+    termsActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: 8 },
+    termsTarget: { minHeight: 48, minWidth: 48, paddingHorizontal: 8, justifyContent: "center" },
+    termsLink: {
+      ...typography.label,
+      color: colors.primary,
+    },
   });

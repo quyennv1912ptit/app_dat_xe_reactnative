@@ -1,3 +1,4 @@
+import { getPermissionsAsync } from 'expo-notifications';
 import { logError } from '@/lib/logger';
 import { customerApi } from '@/lib/customerApi';
 import { pushRegistration } from '@/lib/push';
@@ -77,8 +78,23 @@ export function PushBridge() {
   }, [client, verifyCompletion]);
   useEffect(() => { void controller.current?.drain(); }, [userId, pathname, nav?.key, navigationReady]);
   useEffect(() => {
-    if (!userId) return;
-    void initializePushPresentation().then(requestPushPermission).then(() => syncPushToken(pushRegistration)).catch(logError);
-  }, [userId]);
+    if (!userId || !navigationReady) return;
+    let active = true;
+    void (async () => {
+      await initializePushPresentation();
+      const permission = await getPermissionsAsync();
+      if (!active) return;
+      if (permission.status === 'undetermined') {
+        const accepted = await new Promise<boolean>(resolve => localizedAlert('Bật thông báo?', 'Thông báo giúp bạn theo dõi tài xế, thanh toán và phản hồi hỗ trợ. Bạn vẫn có thể xem cập nhật trong ứng dụng nếu chọn Để sau.', [
+          { text: 'Để sau', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Tiếp tục', onPress: () => resolve(true) },
+        ], { cancelable: true, onDismiss: () => resolve(false) }));
+        if (!accepted || !active) return;
+      }
+      await requestPushPermission();
+      if (active) await syncPushToken(pushRegistration);
+    })().catch(logError);
+    return () => { active = false; };
+  }, [userId, navigationReady]);
   return null;
 }

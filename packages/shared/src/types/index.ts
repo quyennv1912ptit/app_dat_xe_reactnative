@@ -7,6 +7,7 @@ export type CustomerProfile = {
   gender: string | null;
   default_payment_method: PaymentMethod | null;
   avatar_url: string | null;
+  status?: 'ACTIVE' | 'INACTIVE' | 'BANNED' | string;
 };
 
 export type PaymentMethod = 'CASH' | 'WALLET' | 'VNPAY' | 'MOMO';

@@ -25,6 +25,9 @@ export function useTickets() {
     loading: query.isLoading,
     refreshing: query.isRefetching,
     error: query.error?.message,
+    hasNext: query.hasNextPage,
+    loadingMore: query.isFetchingNextPage,
+    loadMore: () => { if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage(); },
     refresh: () => query.refetch(),
   };
 }
@@ -50,6 +53,8 @@ export function useTicketMessages(id: number, enabled: boolean) {
   });
 }
 
+export const loadOlderTicketMessages = (id: number, beforeId: number) => api.messages(id, beforeId);
+
 export function useCreateTicket() {
   const client = useQueryClient();
   const userId = useSessionStore(state => state.user?.id);
@@ -71,7 +76,10 @@ export function useSendTicketMessage(id: number) {
         return [...current, message];
       });
       client.setQueryData<TicketDetail>(detailKey(userId, id), current =>
-        current ? { ...current, messages: [...current.messages.filter(item => item.id !== message.id), message] } : current);
+        current && !current.messages.some(item => item.id === message.id)
+          ? { ...current, messages: [...current.messages, message] }
+          : current);
+      void client.invalidateQueries({ queryKey: detailKey(userId, id) });
       void client.invalidateQueries({ queryKey: ['driver', 'tickets', userId] });
     },
   });

@@ -1,9 +1,10 @@
 import { StyleSheet, Switch, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
-  Card,
   GroupedList,
+  MotionPressable,
   Typography as Text,
+  borderRadius,
   spacing,
   typography,
   useThemeColors,
@@ -29,6 +30,29 @@ const items = [
   },
 ];
 
+const nextSteps = [
+  {
+    num: '1',
+    title: 'Chụp 5 ảnh theo khung',
+    detail: 'Giữ rõ chữ, đủ 4 góc và không chói lóa.',
+  },
+  {
+    num: '2',
+    title: 'Quét QR điền nhanh',
+    detail: 'Tự động điền từ QR; vẫn nhập tay được nếu QR mờ.',
+  },
+  {
+    num: '3',
+    title: 'Kiểm tra & gửi hồ sơ',
+    detail: 'Rà lại CCCD, GPLX rồi xác nhận gửi xét duyệt.',
+  },
+  {
+    num: '4',
+    title: 'Bật loại xe nhận lái hộ',
+    detail: 'Sau khi duyệt, bật nhóm xe đủ điều kiện để bắt đầu nhận chuyến.',
+  },
+];
+
 /** Calm single-scroll preparation step using a borderless GroupedList instead of stacked boxes. */
 export function VerificationPrepareStep({
   consent,
@@ -43,13 +67,14 @@ export function VerificationPrepareStep({
 }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(makeStyles);
+  const toggleDisabled = locked || reading;
 
   return (
     <View style={styles.root}>
       <View style={styles.intro}>
         <Text style={styles.title}>Chuẩn bị giấy tờ trước khi chụp</Text>
         <Text style={styles.subtitle}>
-          Chuẩn bị sẵn 3 mục dưới đây để hoàn thành trong khoảng 2 phút.
+          Bạn sẽ chụp 5 ảnh: hai mặt CCCD, hai mặt GPLX và một ảnh chân dung. Chuẩn bị giấy tờ gốc ở nơi đủ sáng.
         </Text>
       </View>
 
@@ -67,17 +92,39 @@ export function VerificationPrepareStep({
         ))}
       </GroupedList>
 
-      <Card style={styles.consentCard}>
+      <GroupedList title="Quy trình 4 bước">
+        {nextSteps.map(step => (
+          <View key={step.num} style={styles.row}>
+            <View style={[styles.stepBadge, { backgroundColor: colors.surfaceContainerHigh }]}>
+              <Text style={[styles.stepBadgeText, { color: colors.primary }]}>{step.num}</Text>
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={styles.itemTitle}>{step.title}</Text>
+              <Text style={styles.itemDetail}>{step.detail}</Text>
+            </View>
+          </View>
+        ))}
+      </GroupedList>
+
+      <MotionPressable
+        accessible={false}
+        disabled={toggleDisabled}
+        onPress={() => onToggleConsent(!consent)}
+        style={[
+          styles.consentCard,
+          { backgroundColor: consent ? colors.primaryContainer : colors.cardSurface },
+        ]}
+      >
         <Switch
-          accessibilityLabel="Đồng ý tải ảnh để xác minh"
+          accessibilityLabel="Đồng ý gửi ảnh giấy tờ và ảnh chân dung để xác minh"
           value={consent}
-          disabled={locked || reading}
+          disabled={toggleDisabled}
           onValueChange={onToggleConsent}
         />
-        <Text style={styles.consentText}>
+        <Text style={[styles.consentText, { color: consent ? colors.onPrimaryContainer : colors.onSurface }]}>
           Tôi đồng ý gửi ảnh giấy tờ và ảnh chân dung để đối chiếu thông tin và xét duyệt hồ sơ tài xế.
         </Text>
-      </Card>
+      </MotionPressable>
     </View>
   );
 }
@@ -92,7 +139,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.px3,
-      padding: spacing.spaceMd,
+      paddingVertical: spacing.spaceSm,
     },
     iconCircle: {
       width: 44,
@@ -102,6 +149,18 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       flexShrink: 0,
     },
+    stepBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: borderRadius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    stepBadgeText: {
+      ...typography.label,
+      fontVariant: ['tabular-nums'],
+    },
     textWrap: { flex: 1, gap: 2 },
     itemTitle: { ...typography.cardTitle, color: colors.onSurface },
     itemDetail: { ...typography.bodySecondary, color: colors.onSurfaceVariant },
@@ -109,10 +168,12 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.px3,
+      padding: spacing.spaceMd,
+      minHeight: 56,
+      borderRadius: borderRadius.default,
     },
     consentText: {
       ...typography.bodySecondary,
-      color: colors.onSurface,
       flex: 1,
     },
   });

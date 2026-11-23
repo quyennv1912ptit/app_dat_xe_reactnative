@@ -1,5 +1,5 @@
 import { localizedAlert } from '@datxe/ui';
-import { translate as i18nT } from '@datxe/shared';
+import { translate as i18nT, positiveId } from '@datxe/shared';
 import { useRefreshOnFocus } from '@/lib/useRefreshOnFocus';
 import { useScreenFocused } from '@/lib/useScreenFocused';
 import type { CustomerNotification } from '@datxe/shared';
@@ -48,6 +48,12 @@ const openNotification = async (item: CustomerNotification) => {
       router.push('/vouchers');
       return;
     }
+    if (item.type.toUpperCase() === 'TICKET_REPLY') {
+      const ticketId = positiveId(payload.ticketId);
+      if (ticketId) router.push({ pathname: '/tickets/[id]', params: { id: String(ticketId) } });
+      else router.push('/tickets');
+      return;
+    }
     const rawRideId = payload.rideId ?? payload.ride_id;
     const rideId = typeof rawRideId === 'number' ? rawRideId : typeof rawRideId === 'string' ? Number(rawRideId) : NaN;
     if (Number.isSafeInteger(rideId) && rideId > 0) {
@@ -58,6 +64,6 @@ const openNotification = async (item: CustomerNotification) => {
       router.push('/vouchers');
     }
   };
-const visible = items.filter((item) => filter === 'all' || category(item.type) === filter);
+const visible = items.filter((item) => filter === 'all' || (filter === 'unread' ? !item.readAt : category(item.type) === filter));
 return { router, filter, setFilter, items, unreadCount, loading, error, refreshing, refresh, markAll, openNotification, visible };
 }

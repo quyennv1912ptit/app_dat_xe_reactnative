@@ -9,6 +9,17 @@ export async function pickSupportImage(): Promise<SupportImage | null> {
   return { fileUrl: uploaded.secureUrl, publicId: uploaded.publicId };
 }
 
+/** Mở camera để chụp ảnh đính kèm, dùng cho các nút "Chụp ảnh / Chụp lại". */
+export async function captureSupportImage(): Promise<SupportImage | null> {
+  if (!(await ImagePicker.requestCameraPermissionsAsync()).granted) {
+    throw new Error('Cần quyền camera để chụp ảnh.');
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
+  if (result.canceled || !result.assets[0]) return null;
+  const uploaded = await uploadCustomerImage(result.assets[0], 'SUPPORT');
+  return { fileUrl: uploaded.secureUrl, publicId: uploaded.publicId };
+}
+
 /** Chỉ chọn ảnh và trả file local; upload diễn ra lúc bấm Gửi trong ticket chat. */
 export async function pickTicketImage(): Promise<CustomerImageFile | null> {
   const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });

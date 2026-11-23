@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Typography as Text, borderRadius, spacing, type ThemeColors, typography, useThemeColors, useThemedStyles } from '@datxe/ui';
+import { Button, Typography as Text, borderRadius, spacing, type ThemeColors, typography, useReducedMotion, useThemeColors, useThemedStyles } from '@datxe/ui';
 import {
   DEFAULT_QR_ZOOM_CCCD,
   DEFAULT_QR_ZOOM_GPLX,
@@ -45,19 +45,21 @@ export interface QrScannerScreenProps {
     signal: AbortSignal,
   ) => Promise<QrScanSubmissionResult>;
   onSkip: () => void;
+  onClose: () => void;
   onDone: () => void;
 }
 
 type ScanPhase = 'scanning' | 'submitting' | 'success' | 'error';
 
 export default function QrScannerScreen(props: QrScannerScreenProps) {
+  const reduced = useReducedMotion();
   return (
     <Modal
       visible={props.visible}
-      animationType="slide"
+      animationType={reduced ? 'none' : 'slide'}
       presentationStyle="fullScreen"
       statusBarTranslucent
-      onRequestClose={props.onSkip}
+      onRequestClose={props.onClose}
     >
       {props.visible ? <QrScannerSession {...props} /> : null}
     </Modal>
@@ -70,6 +72,7 @@ function QrScannerSession({
   expectedVariant,
   onScanPayload,
   onSkip,
+  onClose,
   onDone,
 }: QrScannerScreenProps) {
   const isGplx = documentType === 'GPLX';
@@ -249,7 +252,7 @@ function QrScannerSession({
                 }
               />
             )}
-            <Button variant="secondary" label="Bỏ qua · Dùng OCR / nhập tay" onPress={handleCloseSkip} />
+            <Button variant="secondary" label="Bỏ qua · Tự nhập thông tin" onPress={handleCloseSkip} />
           </View>
         </>
       )}
@@ -261,7 +264,7 @@ function QrScannerSession({
       <MaterialIcons name="error-outline" size={44} color={colors.onScrim} importantForAccessibility="no" />
       <Text style={styles.onDarkTitle}>Không khởi tạo được camera</Text>
       <Text style={styles.onDarkText}>
-        Hãy kiểm tra ứng dụng khác đang dùng camera hoặc bỏ qua để đối chiếu bằng OCR và nhập tay.
+        Hãy kiểm tra ứng dụng khác đang dùng camera hoặc bỏ qua để tự nhập thông tin bằng tay.
       </Text>
       <View style={styles.permissionActions}>
         <Button
@@ -281,8 +284,8 @@ function QrScannerSession({
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Đóng và bỏ qua quét QR"
-          onPress={handleCloseSkip}
+          accessibilityLabel="Đóng máy quét"
+          onPress={onClose}
           hitSlop={12}
           style={styles.iconButton}
         >
@@ -292,7 +295,7 @@ function QrScannerSession({
           <Text style={styles.topTitle} accessibilityRole="header">
             {isGplx ? 'Quét mã QR GPLX' : 'Quét mã QR CCCD'}
           </Text>
-          <Text style={styles.topSubtitle}>Camera sau · Chỉ đọc chuỗi QR gửi máy chủ</Text>
+          <Text style={styles.topSubtitle}>Đưa mã QR trên giấy tờ vào giữa khung</Text>
         </View>
         {showCamera ? (
           <Pressable
@@ -301,9 +304,13 @@ function QrScannerSession({
             accessibilityLabel={torch ? 'Tắt đèn flash' : 'Bật đèn flash'}
             onPress={() => setTorch(v => !v)}
             hitSlop={12}
-            style={styles.iconButton}
+            style={[styles.iconButton, torch && { backgroundColor: colors.primaryContainer, borderRadius: 24 }]}
           >
-            <MaterialIcons name={torch ? 'flash-on' : 'flash-off'} size={26} color={colors.onScrim} />
+            <MaterialIcons
+              name={torch ? 'flash-on' : 'flash-off'}
+              size={26}
+              color={torch ? colors.onPrimaryContainer : colors.onScrim}
+            />
           </Pressable>
         ) : (
           <View style={styles.iconButton} />
@@ -334,7 +341,12 @@ function QrScannerSession({
               />
             ) : null}
 
-            <SquareQrOverlay width={preview.width} height={preview.height} size={squareSize} />
+            <SquareQrOverlay
+              width={preview.width}
+              height={preview.height}
+              size={squareSize}
+              activeColor={phase === 'success' ? colors.primary : undefined}
+            />
 
             {phase === 'scanning' && showCamera && !ready ? (
               <View style={styles.centerOverlay}>
@@ -353,7 +365,7 @@ function QrScannerSession({
       </View>
 
       <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.spaceMd) }]}>
-        <ScrollView contentContainerStyle={styles.panelContent} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.panelContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.sideToggleRow}>
             <View style={styles.sideButtonWrap}>
               <Button
@@ -486,21 +498,22 @@ function QrScannerSession({
             {phase !== 'scanning' ? (
               <Button variant={phase === 'success' ? 'secondary' : 'primary'} label="Quét lại" onPress={resetScanner} />
             ) : null}
-            <Button variant="ghost" label="Bỏ qua" onPress={handleCloseSkip} />
           </View>
         </ScrollView>
+        <Button variant="ghost" label="Bỏ qua quét QR · Nhập tay" onPress={handleCloseSkip} />
       </View>
     </View>
   );
 }
 
-function SquareQrOverlay({ width, height, size }: { width: number; height: number; size: number }) {
+function SquareQrOverlay({ width, height, size, activeColor }: { width: number; height: number; size: number; activeColor?: string }) {
   const styles = useThemedStyles(makeStyles);
   if (width <= 0 || height <= 0 || size <= 0) return null;
   const left = (width - size) / 2;
   const top = (height - size) / 2;
   const arm = size * 0.18;
   const thickness = 4;
+  const cornerTint = activeColor ? { backgroundColor: activeColor } : undefined;
 
   return (
     <View
@@ -514,14 +527,14 @@ function SquareQrOverlay({ width, height, size }: { width: number; height: numbe
       <View style={[styles.mask, { left: 0, top, width: left, height: size }]} />
       <View style={[styles.mask, { left: left + size, top, width: Math.max(0, width - left - size), height: size }]} />
       <View style={{ position: 'absolute', left, top, width: size, height: size }}>
-        <View style={[styles.cornerBar, { left: 0, top: 0, width: arm, height: thickness }]} />
-        <View style={[styles.cornerBar, { left: 0, top: 0, width: thickness, height: arm }]} />
-        <View style={[styles.cornerBar, { right: 0, top: 0, width: arm, height: thickness }]} />
-        <View style={[styles.cornerBar, { right: 0, top: 0, width: thickness, height: arm }]} />
-        <View style={[styles.cornerBar, { left: 0, bottom: 0, width: arm, height: thickness }]} />
-        <View style={[styles.cornerBar, { left: 0, bottom: 0, width: thickness, height: arm }]} />
-        <View style={[styles.cornerBar, { right: 0, bottom: 0, width: arm, height: thickness }]} />
-        <View style={[styles.cornerBar, { right: 0, bottom: 0, width: thickness, height: arm }]} />
+        <View style={[styles.cornerBar, cornerTint, { left: 0, top: 0, width: arm, height: thickness }]} />
+        <View style={[styles.cornerBar, cornerTint, { left: 0, top: 0, width: thickness, height: arm }]} />
+        <View style={[styles.cornerBar, cornerTint, { right: 0, top: 0, width: arm, height: thickness }]} />
+        <View style={[styles.cornerBar, cornerTint, { right: 0, top: 0, width: thickness, height: arm }]} />
+        <View style={[styles.cornerBar, cornerTint, { left: 0, bottom: 0, width: arm, height: thickness }]} />
+        <View style={[styles.cornerBar, cornerTint, { left: 0, bottom: 0, width: thickness, height: arm }]} />
+        <View style={[styles.cornerBar, cornerTint, { right: 0, bottom: 0, width: arm, height: thickness }]} />
+        <View style={[styles.cornerBar, cornerTint, { right: 0, bottom: 0, width: thickness, height: arm }]} />
       </View>
     </View>
   );

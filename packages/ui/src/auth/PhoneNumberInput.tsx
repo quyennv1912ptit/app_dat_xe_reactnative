@@ -31,6 +31,8 @@ type Props = {
   disabled?: boolean;
   invalid?: boolean;
   accessibilityLabel?: string;
+  /** Giới hạn danh sách quốc gia; truyền đúng 1 phần tử để khoá quốc gia (ví dụ app tài xế chỉ nhận số Việt Nam). */
+  countries?: readonly PhoneCountry[];
 };
 
 export function PhoneNumberInput({
@@ -43,6 +45,7 @@ export function PhoneNumberInput({
   disabled = false,
   invalid = false,
   accessibilityLabel = i18nT("Số điện thoại"),
+  countries = PHONE_COUNTRIES,
 }: Props) {
   const language = useLanguage();
 
@@ -54,17 +57,18 @@ export function PhoneNumberInput({
   const [pickerVisible, setPickerVisible] = useState(false);
   const [search, setSearch] = useState("");
   const searchInput = useDebouncedTextChange(setSearch);
+  const countryLocked = countries.length <= 1;
 
   const filteredCountries = useMemo(() => {
     const query = normalizeSearch(search);
-    if (!query) return PHONE_COUNTRIES;
-    return PHONE_COUNTRIES.filter(
+    if (!query) return countries;
+    return countries.filter(
       (item) =>
         normalizeSearch(i18nT(item.name)).includes(query) ||
         item.iso2.toLowerCase().includes(query) ||
         item.dialCode.includes(query),
     );
-  }, [search, language]);
+  }, [search, language, countries]);
 
   const changeNumber = (digits: string) => {
     setValue(digits);
@@ -88,30 +92,41 @@ export function PhoneNumberInput({
     <>
       {label ? <Text style={styles.label}>{i18nT(label)}</Text> : null}
       <View style={[styles.inputRow, invalid && styles.inputRowInvalid]}>
-        <Pressable
-          accessibilityLabel={i18nT(
-            i18nT("Chọn quốc gia, hiện tại {0} {1}", {
-              "0": country.name,
-              "1": country.dialCode,
-            }),
-          )}
-          accessibilityRole="button"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={() => {
-            Keyboard.dismiss();
-            setPickerVisible(true);
-          }}
-          style={styles.countryButton}
-        >
-          <Text style={styles.flag}>{i18nT(country.flag)}</Text>
-          <Text style={styles.dialCode}>{i18nT(country.dialCode)}</Text>
-          <MaterialIcons
-            color={colors.onSurfaceVariant}
-            name="arrow-drop-down"
-            size={fontSize.iconXl}
-          />
-        </Pressable>
+        {countryLocked ? (
+          <View
+            accessible
+            accessibilityLabel={i18nT("Mã quốc gia {0}", { "0": country.dialCode })}
+            style={styles.countryButton}
+          >
+            <Text style={styles.flag}>{i18nT(country.flag)}</Text>
+            <Text style={styles.dialCode}>{i18nT(country.dialCode)}</Text>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityLabel={i18nT(
+              i18nT("Chọn quốc gia, hiện tại {0} {1}", {
+                "0": country.name,
+                "1": country.dialCode,
+              }),
+            )}
+            accessibilityRole="button"
+            accessibilityState={{ disabled }}
+            disabled={disabled}
+            onPress={() => {
+              Keyboard.dismiss();
+              setPickerVisible(true);
+            }}
+            style={styles.countryButton}
+          >
+            <Text style={styles.flag}>{i18nT(country.flag)}</Text>
+            <Text style={styles.dialCode}>{i18nT(country.dialCode)}</Text>
+            <MaterialIcons
+              color={colors.onSurfaceVariant}
+              name="arrow-drop-down"
+              size={fontSize.iconXl}
+            />
+          </Pressable>
+        )}
         <View style={styles.divider} />
         <TextInput
           accessibilityLabel={i18nT(accessibilityLabel)}
@@ -198,10 +213,10 @@ export function PhoneNumberInput({
             </View>
 
             <FlatList
-              keyboardShouldPersistTaps="always"
+              keyboardShouldPersistTaps="handled"
               data={filteredCountries}
               keyExtractor={(item) => item.iso2}
-              keyboardDismissMode="none"
+              keyboardDismissMode="on-drag"
               renderItem={({ item }) => (
                 <Pressable
                   accessibilityRole="button"

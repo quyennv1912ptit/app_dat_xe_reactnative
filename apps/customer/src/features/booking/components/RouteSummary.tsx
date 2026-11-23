@@ -4,14 +4,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import type { BookingPlace } from "../types";
 
-function shortAddress(place: BookingPlace) {
-  const parts = place.address.split(",").map(part => part.trim()).filter(Boolean);
-  const street = parts.find(part =>
-    /^(?:\d+[\p{L}\d/.-]*\s+)?(?:đường\s|đ\.\s*|phố\s|ngõ\s|ngách\s|quốc lộ\s|ql\.?\s*)/iu.test(part),
-  );
-  return street ?? parts[0] ?? place.name;
-}
-
 export function RouteSummary({
   pickup,
   dropoff,
@@ -33,7 +25,7 @@ export function RouteSummary({
   return (
     <View>
       {stops.map(({ place, label, color, onPress }, index) => {
-        const address = place ? shortAddress(place) : t("Chưa chọn địa điểm");
+        const address = place ? (place.address || place.name) : t("Chưa chọn địa điểm");
         return (
           <Pressable
             key={label}

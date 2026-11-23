@@ -1,17 +1,17 @@
-import { Button, MotionPressable, ScreenWrapper, Typography, typography, useThemeColors } from "@datxe/ui";
+import { ImageViewer, MotionPressable, Typography, typography, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useState } from "react";
-import { Modal, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 export function DriverPhoto({
-  uri, label, tile = false, portrait = false, sensitive = false,
-}: { uri: string; label: string; tile?: boolean; portrait?: boolean; sensitive?: boolean }) {
+  uri, label, tile = false, portrait = false, sensitive = false, showCaption = true,
+}: { uri: string; label: string; tile?: boolean; portrait?: boolean; sensitive?: boolean; showCaption?: boolean }) {
   const [open, setOpen] = useState(false);
   const colors = useThemeColors();
   const close = () => setOpen(false);
-  const cachePolicy = sensitive ? "none" : "memory-disk";
+  const cachePolicy = sensitive ? "memory" : "memory-disk";
   const frameStyle = tile
     ? [styles.tile, { backgroundColor: colors.rideInset }]
     : portrait
@@ -23,28 +23,20 @@ export function DriverPhoto({
         style={frameStyle}>
         <Image accessibilityLabel={label} contentFit="contain" cachePolicy={cachePolicy} recyclingKey={uri}
           source={{ uri }} style={tile ? styles.tileImage : styles.thumbnailImage} />
-        {tile ? (
+        {tile && showCaption ? (
           <LinearGradient colors={[colors.transparent, colors.photoCaptionScrim]} style={styles.caption}>
             <Typography style={[styles.captionText, { color: colors.onScrim }]}>{label}</Typography>
           </LinearGradient>
-        ) : (
+        ) : !tile ? (
           <View style={[styles.zoomHint, { backgroundColor: colors.photoCaptionScrim }]} pointerEvents="none">
             <MaterialIcons name="zoom-in" size={16} color={colors.onScrim} importantForAccessibility="no" />
             <Typography style={[styles.zoomHintText, { color: colors.onScrim }]}>Chạm để phóng to</Typography>
           </View>
-        )}
+        ) : null}
       </MotionPressable>
-      <Modal visible={open} animationType="fade" onRequestClose={close}>
-        <ScreenWrapper>
-          <View style={[styles.preview, { backgroundColor: colors.background }]}>
-            <Typography accessibilityRole="header" style={[styles.previewTitle, { color: colors.onSurface }]}>{label}</Typography>
-            <View style={[styles.previewImageWrap, { backgroundColor: colors.mediaViewerBackground }]}>
-              {open ? <Image accessibilityLabel={label} source={{ uri }} contentFit="contain" cachePolicy={cachePolicy} style={styles.full} /> : null}
-            </View>
-            <Button variant="secondary" label="Đóng ảnh" onPress={close} />
-          </View>
-        </ScreenWrapper>
-      </Modal>
+      {open ? (
+        <ImageViewer uri={uri} title={label} cachePolicy={cachePolicy} onClose={close} />
+      ) : null}
     </>
   );
 }
@@ -87,8 +79,4 @@ const styles = StyleSheet.create({
   tileImage: { width: "100%", height: "100%" },
   caption: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 8, paddingTop: 24 },
   captionText: { ...typography.label },
-  preview: { flex: 1, padding: 16, gap: 16 },
-  previewTitle: { ...typography.screenTitle },
-  previewImageWrap: { flex: 1, borderRadius: 16, overflow: "hidden", padding: 8 },
-  full: { flex: 1, width: "100%" },
 });

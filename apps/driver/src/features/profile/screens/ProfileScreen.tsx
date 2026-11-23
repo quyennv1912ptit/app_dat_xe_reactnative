@@ -11,6 +11,7 @@ import {
   GroupedList,
   SettingsListItem,
   Typography as Text,
+  fontSize,
   spacing,
   typography,
   useThemeColors,
@@ -19,7 +20,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Divider, IconButton } from "react-native-paper";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -68,20 +69,35 @@ export default function DriverProfileScreen() {
     >
       <Card style={themed_s.card}>
         <View style={layout.identity}>
-          {p.data?.avatar_url && failedAvatar !== p.data.avatar_url ? (
-            <Image
-              source={{ uri: p.data.avatar_url }}
-              style={layout.avatarImage}
-              contentFit="cover"
-              cachePolicy="memory"
-              accessibilityIgnoresInvertColors
-              onError={() => setFailedAvatar(p.data?.avatar_url ?? null)}
-            />
-          ) : (
-            <View accessible={false} style={[layout.avatarCircle, { backgroundColor: colors.primaryContainer }]}>
-              <Text style={[layout.avatarInitials, { color: colors.onPrimaryContainer }]}>{initials}</Text>
+          <Pressable
+            style={layout.avatarWrap}
+            accessibilityRole="button"
+            accessibilityLabel="Chụp ảnh chân dung làm ảnh đại diện"
+            accessibilityHint="Chạm để chụp ảnh chân dung mới"
+            onPress={() => router.push("/profile/avatar-capture")}
+          >
+            {p.data?.avatar_url && failedAvatar !== p.data.avatar_url ? (
+              <Image
+                source={{ uri: p.data.avatar_url }}
+                style={layout.avatarImage}
+                contentFit="cover"
+                cachePolicy="memory"
+                accessibilityIgnoresInvertColors
+                onError={() => setFailedAvatar(p.data?.avatar_url ?? null)}
+              />
+            ) : (
+              <View accessible={false} style={[layout.avatarCircle, { backgroundColor: colors.primaryContainer }]}>
+                <Text style={[layout.avatarInitials, { color: colors.onPrimaryContainer }]}>{initials}</Text>
+              </View>
+            )}
+            <View
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={[layout.cameraBadge, { backgroundColor: colors.primary }]}
+            >
+              <MaterialIcons name="photo-camera" size={fontSize.iconSm} color={colors.onPrimary} />
             </View>
-          )}
+          </Pressable>
           <Text style={[themed_s.title, layout.name]}>{user?.fullName ?? "Tài xế"}</Text>
           <IconButton
             icon="pencil"
@@ -133,7 +149,7 @@ export default function DriverProfileScreen() {
         ) : null}
       </Card>
       <MyDriverReviews />
-      <GroupedList title="Hồ sơ & hỗ trợ">
+      <GroupedList title="Hồ sơ tài xế">
         <SettingsListItem
           title="Xác minh tài xế"
           icon="person"
@@ -149,6 +165,9 @@ export default function DriverProfileScreen() {
           onPress={() => router.push("/profile/verification")}
         />
         <SettingsListItem title="Loại xe nhận lái hộ" icon="tune" onPress={() => router.push("/profile/capabilities")} />
+      </GroupedList>
+      <GroupedList title="Cài đặt & hỗ trợ">
+        <SettingsListItem title="Kết nối, GPS & thông báo" icon="gps-fixed" description="Kiểm tra quyền vị trí nền và nhận thông báo" onPress={() => router.push("/settings/reception")} />
         <SettingsListItem title="Cài đặt" icon="settings" onPress={() => router.push("/settings")} />
         <SettingsListItem
           title="Trung tâm hỗ trợ"
@@ -185,6 +204,18 @@ export default function DriverProfileScreen() {
 
 const layout = StyleSheet.create({
   identity: { flexDirection: "row", alignItems: "flex-start", gap: spacing.spaceSm },
+  // Toàn bộ avatar là vùng chạm (>= 48dp); badge chỉ là chỉ thị nhỏ góc dưới bên phải.
+  avatarWrap: { position: "relative", flexShrink: 0, minWidth: 48, minHeight: 48 },
+  cameraBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   avatarCircle: { minWidth: 52, minHeight: 52, paddingHorizontal: 10, paddingVertical: 10, aspectRatio: 1, borderRadius: 999, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   avatarImage: { width: 52, height: 52, borderRadius: 999, flexShrink: 0 },
   avatarInitials: { ...typography.cardTitle },

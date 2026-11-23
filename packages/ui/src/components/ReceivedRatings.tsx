@@ -21,6 +21,8 @@ export type ReceivedRatingsPage = {
   size: number;
   totalPages: number;
   hasNext: boolean;
+  /** Khi backend cung cấp thì dùng số liệu này; nếu không, tính từ các đánh giá đã tải. */
+  distribution?: Partial<Record<number, number>>;
 };
 
 /**
@@ -37,6 +39,7 @@ export function ReceivedRatings({
   onRetry,
   title = "Đánh giá đã nhận",
   emptyLabel = "Chưa có đánh giá nào. Đánh giá sau mỗi chuyến đi sẽ hiển thị tại đây.",
+  compact = false,
 }: {
   data?: ReceivedRatingsPage | null;
   loading: boolean;
@@ -47,13 +50,21 @@ export function ReceivedRatings({
   onRetry: () => void;
   title?: string;
   emptyLabel?: string;
+  /** Chỉ hiện phần tóm tắt điểm/trung bình, dùng cho trạng thái thu gọn trong hồ sơ. */
+  compact?: boolean;
 }) {
   const colors = useThemeColors();
   const locale = getLocale();
   const ratings = data?.ratings ?? [];
+  const distribution = data?.distribution ?? ratings.reduce<Partial<Record<number, number>>>((acc, item) => {
+    const stars = Math.max(1, Math.min(5, Math.round(item.stars)));
+    acc[stars] = (acc[stars] ?? 0) + 1;
+    return acc;
+  }, {});
+  const maxCount = Math.max(1, ...Object.values(distribution).filter((value): value is number => typeof value === "number"));
   return (
     <View style={styles.section}>
-      <Text accessibilityRole="header" style={typography.sectionTitle}>{t(title)}</Text>
+      {!compact ? <Text accessibilityRole="header" style={typography.sectionTitle}>{t(title)}</Text> : null}
       {loading && !data ? <ActivityIndicator accessibilityLabel={t("Đang tải đánh giá")} /> : null}
       {error ? (
         <View style={styles.section}>
@@ -64,18 +75,40 @@ export function ReceivedRatings({
       {!error && data && data.totalRatings === 0 ? <Text>{t(emptyLabel)}</Text> : null}
       {!error && data && data.totalRatings > 0 ? (
         <>
-          <View style={styles.score}>
-            <Text style={[typography.screenTitle, { color: colors.primary, fontVariant: ["tabular-nums"] }]}>
-              {data.averageRating == null
-                ? "—"
-                : `${data.averageRating.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ★`}
-            </Text>
-            <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>{t("Đánh giá trung bình")}</Text>
-            <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }]}>
-              {t("{0} lượt đánh giá", { 0: data.totalRatings.toLocaleString(locale) })}
-            </Text>
+          <View style={styles.summary}>
+            <View style={styles.score}>
+              <Text style={[typography.screenTitle, { color: colors.primary, fontVariant: ["tabular-nums"] }]}>
+                {data.averageRating == null
+                  ? "—"
+                  : `${data.averageRating.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ★`}
+              </Text>
+              <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>{t("Đánh giá trung bình")}</Text>
+              <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }]}>
+                {t("{0} lượt đánh giá", { 0: data.totalRatings.toLocaleString(locale) })}
+              </Text>
+            </View>
+            <View style={styles.bars}>
+              {[5, 4, 3, 2, 1].map(stars => {
+                const count = distribution[stars] ?? 0;
+                return (
+                  <View
+                    key={stars}
+                    accessible
+                    accessibilityLabel={t("{0} sao, {1} lượt", { 0: stars, 1: count })}
+                    style={styles.barRow}
+                  >
+                    <Text style={[typography.label, { color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }]}>
+                      {stars} ★
+                    </Text>
+                    <View style={[styles.bar, { backgroundColor: colors.surfaceContainerHighest }]}>
+                      <View style={[styles.fill, { width: `${(100 * count) / maxCount}%`, backgroundColor: colors.primary }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-          {ratings.map((review, index) => {
+          {!compact ? ratings.map((review, index) => {
             const stars = Math.max(0, Math.min(5, Math.round(review.stars)));
             const tags = review.tags?.filter(Boolean) ?? [];
             return (
@@ -94,8 +127,8 @@ export function ReceivedRatings({
                 ) : null}
               </View>
             );
-          })}
-          {hasMore ? (
+          }) : null}
+          {!compact && hasMore ? (
             <Button
               variant="secondary"
               label={t("Xem thêm đánh giá")}
@@ -111,7 +144,12 @@ export function ReceivedRatings({
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
-  score: { gap: 4 },
+  summary: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 },
+  score: { minWidth: 104, gap: 4 },
+  bars: { flex: 1, minWidth: 120, gap: 4 },
+  barRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  bar: { flex: 1, height: 8, borderRadius: 4, overflow: "hidden" },
+  fill: { height: "100%", borderRadius: 4 },
   review: { gap: 6, paddingTop: 12 },
   reviewHeader: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 },
 });

@@ -144,8 +144,8 @@ test('handover directions use the address and coordinates of the current phase',
   assert.equal(dropoff[1].props.children, ride.dropoffAddress);
   assert.ok(pickup[2]);
   assert.equal(dropoff[2], null);
-  pickup[3].props.onPress();
-  dropoff[3].props.onPress();
+  pickup[3].props.children.find(child => child?.type === 'Button').props.onPress();
+  dropoff[3].props.children.find(child => child?.type === 'Button').props.onPress();
   assert.deepEqual(directions, [ride.pickup, ride.dropoff]);
 });
 

@@ -96,10 +96,10 @@ export default function HistoryScreen() {
   const [searchInputKey, setSearchInputKey] = useState(0);
   const searchInput = useDebouncedTextChange(setSearch);
   const weekCreatedFrom = useMemo(() => {
-    if (period !== "week") return undefined;
+    if (period !== "week" && period !== "month") return undefined;
     const value = new Date();
     value.setHours(0, 0, 0, 0);
-    value.setDate(value.getDate() - 6);
+    value.setDate(value.getDate() - (period === "month" ? 29 : 6));
     return value.toISOString();
   }, [period]);
   const queryFilters = useMemo(
@@ -148,10 +148,12 @@ export default function HistoryScreen() {
           selected={period === "week"}
           onPress={() => setPeriod((current) => (current === "week" ? "all" : "week"))}
         />
+        <FilterChip label="30 ngày qua" selected={period === "month"}
+          onPress={() => setPeriod(current => current === "month" ? "all" : "month")} />
       </View>
-      {period === "week" ? (
+      {period === "week" || period === "month" ? (
         <Text style={[typography.bodySecondary, { color: colors.onSurfaceVariant }]}>
-          Hiển thị các chuyến trong 7 ngày qua.
+          {period === "month" ? "Hiển thị các chuyến trong 30 ngày qua." : "Hiển thị các chuyến trong 7 ngày qua."}
         </Text>
       ) : null}
       <View style={styles.filters}>

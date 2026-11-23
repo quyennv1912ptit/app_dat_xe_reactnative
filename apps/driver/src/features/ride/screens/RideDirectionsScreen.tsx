@@ -1,13 +1,12 @@
 import { DriverDirectionsMap } from '@/components/DriverDirectionsMap';
 import { DriverPage } from '@/components/DriverPage';
+import { formatRemainingMeters } from '@datxe/shared';
 import { Button, Card, Typography as Text, spacing, typography, useThemeColors } from '@datxe/ui';
 import { MapSheetLayout } from '@datxe/ui/goong-map';
 import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useRideDirections } from '../hooks/useRideDirections';
-
-const distance = (meters: number) => meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km`;
 
 export default function RideDirectionsScreen() {
   const h = useRideDirections();
@@ -46,7 +45,7 @@ export default function RideDirectionsScreen() {
         <>
           {h.directions ? (
             <Text style={[styles.metric, { color: colors.onSurface }]}>
-              {distance(h.directions.distance)} · {Math.max(1, Math.ceil(h.directions.duration / 60))} phút
+              {formatRemainingMeters(h.directions.distance)} · {Math.max(1, Math.ceil(h.directions.duration / 60))} phút
             </Text>
           ) : null}
           <Button
@@ -78,7 +77,7 @@ export default function RideDirectionsScreen() {
             <View key={index} style={styles.step}>
               <MaterialIcons name="navigation" size={18} color={colors.primary} importantForAccessibility="no" />
               <Text style={styles.instruction}>{index + 1}. {step.instruction}</Text>
-              <Text style={[styles.stepDistance, { color: colors.onSurfaceVariant }]}>{distance(step.distanceMeters)}</Text>
+              <Text style={[styles.stepDistance, { color: colors.onSurfaceVariant }]}>{formatRemainingMeters(step.distanceMeters)}</Text>
             </View>
           ))}
         </Card>

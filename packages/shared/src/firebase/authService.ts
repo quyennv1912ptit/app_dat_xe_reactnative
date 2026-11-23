@@ -2,11 +2,13 @@ import {
 FacebookAuthProvider,
 GoogleAuthProvider,
 PhoneAuthProvider,
+fetchSignInMethodsForEmail,
 getAuth,
 linkWithCredential,
 signInWithCredential,
 signInWithPhoneNumber,
 signOut,
+unlink,
 verifyPhoneNumber,
 type ConfirmationResult,
 type PhoneAuthSnapshot,
@@ -84,6 +86,11 @@ export function isValidVietnamPhoneNumber(value: string): boolean {
   return digits.length === 9;
 }
 
+/** Firebase có thể còn số điện thoại cũ/không hợp lệ; chỉ coi là đã xác minh khi đúng định dạng Việt Nam. */
+export function resolveVerifiedPhoneNumber(value?: string | null): string {
+  if (!value) return '';
+  return isValidVietnamPhoneNumber(value) ? normalizeVietnamPhoneNumber(value) : '';
+}
 export function getFirebaseUser(): User | null {
   return getAuth().currentUser;
 }
@@ -98,8 +105,16 @@ export async function sendPhoneCode(
   pendingPhoneLink = null;
 
   if (options.linkToCurrentAccount) {
-    const user = auth.currentUser;
+    let user = auth.currentUser;
     if (!user) throw new AuthApiError('Vui lòng đăng nhập lại rồi thử tiếp.', 'NO_AUTH_USER');
+    // Số cũ không đúng định dạng Việt Nam (dữ liệu thử/placeholder) sẽ chặn liên kết số mới: gỡ trước.
+    if (user.phoneNumber && !isValidVietnamPhoneNumber(user.phoneNumber)) {
+      try {
+        user = await unlink(user, 'phone');
+      } catch {
+        // Không gỡ được thì để Firebase báo lỗi liên kết ở bước sau.
+      }
+    }
     const listener = verifyPhoneNumber(auth, formattedPhone);
     const snapshot = await new Promise<PhoneAuthSnapshot>((resolve, reject) => {
       listener.on(
@@ -149,7 +164,96 @@ export async function confirmPhoneCode(code: string): Promise<User> {
   return result.user;
 }
 
-export async function signInWithGoogle(): Promise<User> {
+type SocialProvider = 'google' | 'facebook';
+type SocialCredential = Parameters<typeof signInWithCredential>[1];
+
+const PENDING_LINK_TTL_MS = 10 * 60 * 1000;
+let pendingSocialLink: { credential: SocialCredential; attempted: SocialProvider; at: number } | null = null;
+
+type ProviderKey = 'google' | 'facebook' | 'phone' | 'password';
+
+/** Email đã thuộc phương thức đăng nhập khác: xác định phương thức gốc để chuyển hướng. */
+function otherProviderHint(methods: readonly string[] | null): { provider: ProviderKey | null; message: string } {
+  const available = new Set(methods ?? []);
+  if (available.has('google.com')) {
+    return {
+      provider: 'google',
+      message: 'Email này đã được đăng ký bằng Google. Hãy chọn “Đăng nhập bằng Google” bên dưới để tiếp tục.',
+    };
+  }
+  if (available.has('facebook.com')) {
+    return {
+      provider: 'facebook',
+      message: 'Email này đã được đăng ký bằng Facebook. Hãy chọn “Đăng nhập bằng Facebook” bên dưới để tiếp tục.',
+    };
+  }
+  if (available.has('phone')) {
+    return {
+      provider: 'phone',
+      message: 'Email này đã được đăng ký bằng số điện thoại. Hãy đăng nhập bằng số điện thoại.',
+    };
+  }
+  if (available.has('password')) {
+    return {
+      provider: 'password',
+      message: 'Email này đã được đăng ký bằng email và mật khẩu. Hãy đăng nhập bằng email.',
+    };
+  }
+  return {
+    provider: null,
+    message: 'Email này đã được đăng ký bằng phương thức đăng nhập khác. Hãy dùng đúng phương thức đó.',
+  };
+}
+
+/**
+ * Firebase chỉ cho một tài khoản cho mỗi email. Khi đăng nhập bằng provider A nhưng email
+ * đã thuộc provider B, ta ghi nhớ credential A rồi **tự chuyển sang provider B** (nếu là
+ * Google/Facebook) để người dùng đăng nhập tiếp; sau khi thành công sẽ tự liên kết A vào
+ * tài khoản đó để lần sau đăng nhập A cũng được.
+ */
+async function finishSocialSignIn(
+  credential: SocialCredential,
+  attempted: SocialProvider,
+  autoSwitched = false,
+): Promise<User> {
+  try {
+    const user = (await signInWithCredential(getAuth(), credential)).user;
+    await settlePendingSocialLink(user, attempted);
+    return user;
+  } catch (error) {
+    if ((error as { code?: string }).code !== 'auth/account-exists-with-different-credential') throw error;
+    const email = (error as { email?: string }).email;
+    let methods: string[] | null = null;
+    if (email) {
+      try {
+        methods = await fetchSignInMethodsForEmail(getAuth(), email);
+      } catch {
+        methods = null;
+      }
+    }
+    const hint = otherProviderHint(methods);
+    pendingSocialLink = { credential, attempted, at: Date.now() };
+    const switchTo = hint.provider === 'google' || hint.provider === 'facebook' ? hint.provider : null;
+    if (!autoSwitched && switchTo && switchTo !== attempted) {
+      return switchTo === 'google' ? signInWithGoogle(true) : signInWithFacebook(true);
+    }
+    throw new AuthApiError(hint.message, 'ACCOUNT_EXISTS_OTHER_PROVIDER');
+  }
+}
+
+async function settlePendingSocialLink(user: User, current: SocialProvider) {
+  const pending = pendingSocialLink;
+  pendingSocialLink = null;
+  if (!pending || pending.attempted === current) return;
+  if (Date.now() - pending.at > PENDING_LINK_TTL_MS) return;
+  try {
+    await linkWithCredential(user, pending.credential);
+  } catch {
+    // Best-effort: Firebase có thể từ chối nếu email khác hoặc credential đã liên kết.
+  }
+}
+
+export async function signInWithGoogle(autoSwitched = false): Promise<User> {
   if (Platform.OS === 'web') {
     throw new AuthApiError('Đăng nhập Google hiện chỉ hỗ trợ trên ứng dụng di động.', 'NATIVE_AUTH_REQUIRED');
   }
@@ -169,10 +273,10 @@ export async function signInWithGoogle(): Promise<User> {
     );
   }
   const credential = GoogleAuthProvider.credential(idToken);
-  return (await signInWithCredential(getAuth(), credential)).user;
+  return finishSocialSignIn(credential, 'google', autoSwitched);
 }
 
-export async function signInWithFacebook(): Promise<User> {
+export async function signInWithFacebook(autoSwitched = false): Promise<User> {
   if (Platform.OS === 'web') {
     throw new AuthApiError('Đăng nhập Facebook hiện chỉ hỗ trợ trên ứng dụng di động.', 'NATIVE_AUTH_REQUIRED');
   }
@@ -195,7 +299,7 @@ export async function signInWithFacebook(): Promise<User> {
     throw new AuthApiError('Không nhận được Facebook access token.', 'FACEBOOK_TOKEN_MISSING');
   }
   const credential = FacebookAuthProvider.credential(token.accessToken);
-  return (await signInWithCredential(getAuth(), credential)).user;
+  return finishSocialSignIn(credential, 'facebook', autoSwitched);
 }
 
 export async function authenticateWithBackend(
@@ -233,9 +337,17 @@ export async function registerWithBackend(
 export async function signOutFirebase(): Promise<void> {
   pendingPhoneConfirmation = null;
   pendingPhoneLink = null;
-  // Gỡ FCM token trước khi mất phiên đăng nhập, để thiết bị không nhận thông báo của tài khoản cũ.
-  await runPushSignOutCleanup();
-  await signOut(getAuth());
+  const auth = getAuth();
+  if (auth.currentUser) {
+    // Gỡ FCM token trước khi mất phiên đăng nhập, để thiết bị không nhận thông báo của tài khoản cũ.
+    await runPushSignOutCleanup();
+    try {
+      await signOut(auth);
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+      if (code !== 'auth/no-current-user') throw error;
+    }
+  }
   getAuthConfig().onSignedOut?.();
 }
 

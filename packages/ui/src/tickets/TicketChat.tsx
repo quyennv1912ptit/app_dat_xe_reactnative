@@ -1,7 +1,8 @@
-import { translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
+import { Image } from 'expo-image';
+import { createTicketMessageId, translate as t, type CustomerImageFile, type TicketMessage, type TicketStatus, type TicketSummary } from '@datxe/shared';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Appbar, Avatar, IconButton } from 'react-native-paper';
 import { ChatImageViewer } from '../chat/ChatImageViewer';
 import { Button } from '../components/Button';
@@ -10,6 +11,7 @@ import { ThemedTextInput } from '../components/ThemedTextInput';
 import { Typography as Text } from '../components/Typography';
 import { typography } from '../theme/colors';
 import { useThemedStyles, type ThemeColors } from '../theme/ThemeProvider';
+import { useReducedMotion } from '../motion';
 import { useLanguage } from '../useLanguage';
 
 const categoryLabels: Record<string, string> = {
@@ -29,28 +31,65 @@ type Props = {
   error?: string | null;
   onBack: () => void;
   onRefresh?: () => void;
+  hasOlderMessages?: boolean;
+  onLoadOlder?: (beforeId: number) => Promise<TicketMessage[]>;
   onPickImage?: () => Promise<CustomerImageFile | null>;
-  onSend: (input: { body: string; image?: CustomerImageFile | null }) => Promise<unknown> | void;
+  onSend: (input: { body: string; image?: CustomerImageFile | null; clientMessageId: string }) => Promise<unknown> | void;
 };
 
-export function TicketChat({ ticket, messages, currentRole, loading, sending, error, onBack, onRefresh, onPickImage, onSend }: Props) {
+export function TicketChat({
+  ticket, messages, currentRole, loading, sending, error, onBack, onRefresh,
+  hasOlderMessages, onLoadOlder, onPickImage, onSend,
+}: Props) {
   useLanguage();
+  const reducedMotion = useReducedMotion();
   const s = useThemedStyles(makeStyles);
   const [draft, setDraft] = useState('');
   const [image, setImage] = useState<CustomerImageFile | null>(null);
   const [picking, setPicking] = useState(false);
+  const [pickError, setPickError] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
+  const [history, setHistory] = useState<{ ticketId: number; messages: TicketMessage[]; hasMore: boolean }>();
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const sendInFlight = useRef(false);
+  const olderInFlight = useRef(false);
+  const pending = useRef<{ ticketId?: number; body: string; image: CustomerImageFile | null; key: string } | null>(null);
   const list = useRef<FlatList<TicketMessage>>(null);
-  const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
+  const older = history?.ticketId === ticket?.id ? history : undefined;
+  const timeline = useMemo(() => {
+    if (!older) return messages;
+    return Array.from(new Map([...older.messages, ...messages].map(message => [message.id, message])).values());
+  }, [messages, older]);
+  const newestFirst = useMemo(() => [...timeline].reverse(), [timeline]);
+  const loadOlder = async () => {
+    const first = timeline[0];
+    if (!ticket || !first || !onLoadOlder || olderInFlight.current) return;
+    olderInFlight.current = true;
+    setLoadingOlder(true);
+    setHistoryError('');
+    try {
+      const page = await onLoadOlder(first.id);
+      const visibleIds = new Set(timeline.map(message => message.id));
+      const previous = page.filter(message => !visibleIds.has(message.id));
+      setHistory({ ticketId: ticket.id, messages: [...previous, ...timeline], hasMore: previous.length === 100 });
+    } catch {
+      setHistoryError(t('Không tải được tin nhắn cũ. Vui lòng thử lại.'));
+    } finally {
+      olderInFlight.current = false;
+      setLoadingOlder(false);
+    }
+  };
   const canSend = Boolean(draft.trim() || image) && !sending && !picking;
   const attach = async () => {
     if (!onPickImage || sending || picking) return;
     setPicking(true);
+    setPickError('');
     try {
       const picked = await onPickImage();
       if (picked) setImage(picked);
     } catch {
-      // Người dùng có thể từ chối quyền ảnh; giữ nguyên trạng thái hiện tại.
+      setPickError(t('Không thể chọn ảnh. Vui lòng thử lại.'));
     } finally {
       setPicking(false);
     }
@@ -59,15 +98,25 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
     const body = draft.trim();
     const picked = image;
     if ((!body && !picked) || sending || picking) return;
-    setDraft('');
-    setImage(null);
+    if (sendInFlight.current) return;
+    sendInFlight.current = true;
+    const previous = pending.current;
+    const key = previous && previous.ticketId === ticket?.id && previous.body === body && previous.image === picked
+      ? previous.key
+      : createTicketMessageId();
+    pending.current = { ticketId: ticket?.id, body, image: picked, key };
     try {
-      await onSend({ body, image: picked });
-      list.current?.scrollToOffset({ offset: 0, animated: true });
+      await onSend({ body, image: picked, clientMessageId: key });
+      pending.current = null;
+      setDraft('');
+      setImage(null);
+      list.current?.scrollToOffset({ offset: 0, animated: !reducedMotion });
     } catch {
       // Giữ lại nội dung/ảnh để người dùng gửi lại; lỗi hiển thị ở trên.
       setDraft(body);
       setImage(picked);
+    } finally {
+      sendInFlight.current = false;
     }
   };
   return (
@@ -75,7 +124,7 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
       <Appbar.Header statusBarHeight={0} style={s.header}>
         <Appbar.BackAction style={s.action} accessibilityLabel={t('Quay lại')} onPress={onBack} />
         <View style={s.identity}>
-          <Text accessibilityRole="header" numberOfLines={1} style={s.title}>
+          <Text accessibilityRole="header" style={s.title}>
             {ticket ? `${ticket.code} · ${t(categoryLabels[ticket.category] ?? ticket.category)}` : t('Hỗ trợ')}
           </Text>
           <Text numberOfLines={1} style={s.subtitle}>
@@ -87,15 +136,15 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
         ) : null}
       </Appbar.Header>
       <KeyboardAvoidingView style={s.fill} behavior="padding">
-        {error ? (
+        {error || pickError ? (
           <View style={s.notice}>
-            <Text accessibilityRole="alert" style={s.error}>{error}</Text>
+            <Text accessibilityRole="alert" style={s.error}>{error || pickError}</Text>
             {onRefresh ? <Button variant="secondary" label={t('Thử lại')} onPress={onRefresh} /> : null}
           </View>
         ) : null}
         {loading && !messages.length ? (
           <View style={s.empty}><ActivityIndicator accessibilityLabel={t('Đang tải hội thoại')} /></View>
-        ) : !messages.length ? (
+        ) : !messages.length && error ? null : !messages.length ? (
           <View style={s.empty}>
             <MaterialIcons name="support-agent" size={48} color={s.emptyIcon.color} />
             <Text style={s.emptyTitle}>{t('Chưa có tin nhắn')}</Text>
@@ -111,6 +160,17 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
             contentContainerStyle={s.list}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            ListFooterComponent={onLoadOlder && (older?.hasMore ?? hasOlderMessages) ? (
+              <View style={s.notice}>
+                {historyError ? <Text accessibilityRole="alert" style={s.error}>{historyError}</Text> : null}
+                <Button
+                  variant="secondary"
+                  label={t('Tải tin nhắn cũ hơn')}
+                  loading={loadingOlder}
+                  onPress={() => void loadOlder()}
+                />
+              </View>
+            ) : undefined}
             renderItem={({ item }) => (
               <MessageRow message={item} mine={item.senderRole === currentRole} onImage={setPreview} />
             )}
@@ -118,7 +178,7 @@ export function TicketChat({ ticket, messages, currentRole, loading, sending, er
         )}
         {image ? (
           <View style={s.previewRow}>
-            <Image source={{ uri: image.uri }} style={s.preview} />
+            <Image cachePolicy="memory" source={{ uri: image.uri }} style={s.preview} />
             <IconButton icon="close" size={18} style={s.action} accessibilityLabel={t('Bỏ ảnh đã chọn')} onPress={() => setImage(null)} />
           </View>
         ) : null}
@@ -196,9 +256,9 @@ function MessageRow({ message, mine, onImage }: { message: TicketMessage; mine: 
               } else if (message.imageUrl) onImage(message.imageUrl);
             }}
           >
-            {imageState !== 'error' ? <Image key={imageAttempt} source={{ uri: message.imageUrl }}
+            {imageState !== 'error' ? <Image cachePolicy="memory" key={imageAttempt} source={{ uri: message.imageUrl }}
               style={imageState === 'ready' ? s.image : s.pendingImage}
-              resizeMode="cover" onLoad={() => setImageState('ready')} onError={() => setImageState('error')} /> : null}
+              contentFit="cover" onLoad={() => setImageState('ready')} onError={() => setImageState('error')} /> : null}
             {imageState === 'loading' ? <Text style={[s.message, mine && s.mineText]}>{t('Đang tải ảnh…')}</Text> : null}
             {imageState === 'error' ? <Text style={[s.message, mine && s.mineText]}>{t('Không tải được ảnh. Nhấn để thử lại.')}</Text> : null}
           </Pressable>

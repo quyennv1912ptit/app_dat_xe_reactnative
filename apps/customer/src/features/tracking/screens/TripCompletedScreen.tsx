@@ -3,6 +3,7 @@ import { CustomerNotice, customerType, RideEndpoints } from "@/components/Custom
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { translate as i18nT } from "@datxe/shared";
 import {
+  Button,
   Card,
   MotionPressable as Pressable,
   ScreenWrapper as SafeAreaView,
@@ -12,6 +13,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "@datxe/ui";
+import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRef, type ComponentRef } from "react";
 import { KeyboardAvoidingView, ScrollView, View } from "react-native";
@@ -22,6 +24,7 @@ import { useTripCompleted } from "../hooks/useTripCompleted";
 
 export default function TripCompletedScreen() {
   useLanguage();
+  const router = useRouter();
   const colors = useThemeColors();
   const styles = useThemedStyles(base_styles);
 
@@ -158,6 +161,11 @@ export default function TripCompletedScreen() {
               )}
             </Card>
           ) : null}
+
+          {ride ? <Button variant="ghost" label="Cần hỗ trợ chuyến này" onPress={() => {
+            const route = { pathname: "/support" as const, params: { rideId: String(ride.id), topic: "payment" } };
+            router.push(route);
+          }} /> : null}
 
           {ride && ride.status !== "COMPLETED" ? (
             <Text style={styles.error}>

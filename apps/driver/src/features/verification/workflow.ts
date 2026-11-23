@@ -4,10 +4,10 @@ export const slots = [
 ] as const;
 export const fields = [
   ['cccd_name', 'Họ tên CCCD'], ['cccd_id', 'Số định danh (12 chữ số)'],
-  ['cccd_expiry_date', 'Hạn CCCD (YYYY-MM-DD, nếu có)'],
-  ['cccd_dob', 'Ngày sinh CCCD (YYYY-MM-DD)'], ['cccd_gender', 'Giới tính CCCD (tùy chọn)'], ['gplx_number', 'Số GPLX'],
-  ['gplx_name', 'Họ tên GPLX'], ['gplx_dob', 'Ngày sinh GPLX (YYYY-MM-DD)'],
-  ['gplx_classes', 'Hạng GPLX (cách nhau bằng dấu phẩy)'], ['expiry_date', 'Hạn GPLX (YYYY-MM-DD)'],
+  ['cccd_expiry_date', 'Hạn CCCD (nếu có)'],
+  ['cccd_dob', 'Ngày sinh CCCD'], ['cccd_gender', 'Giới tính CCCD (tùy chọn)'], ['gplx_number', 'Số GPLX'],
+  ['gplx_name', 'Họ tên GPLX'], ['gplx_dob', 'Ngày sinh GPLX'],
+  ['gplx_classes', 'Hạng GPLX (cách nhau bằng dấu phẩy)'], ['expiry_date', 'Hạn GPLX'],
 ] as const;
 export type Fields = Partial<Record<(typeof fields)[number][0], string>>;
 
@@ -210,7 +210,7 @@ export function collectChoices(
 const originLabels: Record<ProposalOrigin, string> = {
   QR_IMAGE: 'Đọc từ QR trên ảnh',
   QR_LIVE_SCAN: 'Đọc từ quét QR trực tiếp',
-  OCR: 'OCR',
+  OCR: 'Đọc từ ảnh',
 };
 
 export function formatOriginLabel(

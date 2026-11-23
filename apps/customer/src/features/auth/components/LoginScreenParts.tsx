@@ -126,8 +126,8 @@ export const styles = (colors: ThemeColors) =>
       letterSpacing: spacing.letterSpacingWide,
     },
     socialButton: {
+      width: "100%",
       minHeight: spacing.buttonPillHeight,
-
       borderRadius: 999,
       backgroundColor: colors.surfaceContainerHigh,
       flexDirection: "row",
@@ -135,13 +135,20 @@ export const styles = (colors: ThemeColors) =>
       justifyContent: "center",
       gap: spacing.spaceSm,
       paddingHorizontal: spacing.spaceMd,
+      paddingVertical: spacing.spaceSm,
     },
     socialButtonPressed: {
       backgroundColor: colors.surfaceContainerLow,
     },
     disabledButton: { opacity: spacing.disabledOpacity },
-    socialIcon: { width: 20, height: 20, resizeMode: "contain" },
-    socialLabel: { ...typography.titleMd, color: colors.onSurface },
+    socialIcon: { width: 20, height: 20, resizeMode: "contain", flexShrink: 0 },
+    socialLabel: {
+      ...typography.titleMd,
+      color: colors.onSurface,
+      flexShrink: 1,
+      textAlign: "center",
+      paddingHorizontal: 2,
+    },
     footer: {
       marginTop: "auto",
       paddingTop: spacing.spaceXl,

@@ -11,49 +11,99 @@ function load(file, mocks) {
   }).outputText, { exports, setInterval, clearInterval, require: name => { if (name in mocks) return mocks[name]; throw Error(name); } });
   return exports;
 }
+
+function fixture({ ride = null, mode = 'ok' } = {}) {
+  const effects = [], published = [], updates = [];
+  const sample = { timestamp: Date.now(), coords: { latitude: 21.03, longitude: 105.84, accuracy: 10 } };
+  let callback, heartbeats = 0, removed = 0, backgroundStarts = 0, stops = 0;
+  const user = { id: 4, status: 'ONLINE' };
+  const store = selector => selector({ user });
+  store.getState = () => ({ setActiveRide() {} });
+  const health = selector => selector({ retryVersion: 0 });
+  health.getState = () => ({ update: value => updates.push(value), retry() {} });
+  const api = load('apps/driver/src/components/DriverRealtimeBridge.tsx', {
+    '@/config/env': { env: { locationIntervalMs: 4000 } }, '@/lib/api': {},
+    '@/lib/backgroundLocation': {
+      publishDriverLocation: point => published.push(point), restoreLastLocation: async () => {},
+      startDriverBackgroundLocation: () => {
+        backgroundStarts++;
+        if (mode === 'pending') return new Promise(() => {});
+        if (mode === 'denied') return Promise.resolve(false);
+        if (mode === 'unsupported') return Promise.reject(Error('unsupported'));
+        return Promise.resolve(true);
+      },
+      startDriverLocationHeartbeat: () => { heartbeats++; },
+      stopDriverBackgroundLocation: async () => { stops++; },
+    },
+    '@/lib/realtime': { driverRealtime: {} }, '@/lib/store': { useSessionStore: store },
+    '@/lib/driverHealth': { useDriverHealth: health },
+    '@tanstack/react-query': {
+      useQuery: ({ queryKey }) => ({ data: queryKey[1] === 'activeRide' ? ride : null }),
+      useQueryClient: () => ({}),
+    },
+    '@datxe/ui': { ensureForegroundLocationPermission: location => location.getForegroundPermissionsAsync() },
+    'expo-location': {
+      Accuracy: { High: 4 }, hasServicesEnabledAsync: async () => true,
+      requestForegroundPermissionsAsync: async () => ({ granted: true, canAskAgain: true }),
+      getForegroundPermissionsAsync: async () => ({ granted: true, canAskAgain: true }),
+      getCurrentPositionAsync: async () => sample,
+      watchPositionAsync: async (_options, handler) => { callback = handler; return { remove: () => { removed++; } }; },
+      getBackgroundPermissionsAsync: async () => { throw Error('unsupported'); },
+    },
+    react: { useEffect: fn => effects.push(fn), useRef: initial => ({ current: initial }) },
+    'react-native': { AppState: {} },
+  });
+  api.DriverRealtimeBridge();
+  return {
+    effects, published, sample,
+    heartbeats: () => heartbeats,
+    removed: () => removed,
+    backgroundStarts: () => backgroundStarts,
+    stops: () => stops,
+    emit: value => callback(value),
+  };
+}
+
 for (const mode of ['pending', 'denied', 'unsupported']) {
   test(`foreground GPS starts while background permission is ${mode}`, async () => {
-    const effects = [], published = [], updates = [];
-    const sample = { timestamp: Date.now(), coords: { latitude: 21.03, longitude: 105.84, accuracy: 10 } };
-    let callback, heartbeats = 0, removed = 0;
-    const user = { id: 4, status: 'ONLINE' };
-    const store = selector => selector({ user });
-    store.getState = () => ({ setActiveRide() {} });
-    const health = selector => selector({ retryVersion: 0 });
-    health.getState = () => ({ update: value => updates.push(value), retry() {} });
-    const api = load('apps/driver/src/components/DriverRealtimeBridge.tsx', {
-      '@/config/env': { env: { locationIntervalMs: 4000 } }, '@/lib/api': {},
-      '@/lib/backgroundLocation': {
-        publishDriverLocation: point => published.push(point), restoreLastLocation: async () => {},
-        startDriverBackgroundLocation: () => mode === 'pending' ? new Promise(() => {}) : mode === 'denied' ? Promise.resolve(false) : Promise.reject(Error('unsupported')),
-        startDriverLocationHeartbeat: () => heartbeats++, stopDriverBackgroundLocation: async () => {},
-      },
-      '@/lib/realtime': { driverRealtime: {} }, '@/lib/store': { useSessionStore: store },
-      '@/lib/driverHealth': { useDriverHealth: health },
-      '@tanstack/react-query': { useQuery: () => ({ data: null }), useQueryClient: () => ({}) },
-      '@datxe/ui': { ensureForegroundLocationPermission: location => location.getForegroundPermissionsAsync() },
-      'expo-location': {
-        Accuracy: { High: 4 }, hasServicesEnabledAsync: async () => true,
-        requestForegroundPermissionsAsync: async () => ({ granted: true, canAskAgain: true }),
-        getForegroundPermissionsAsync: async () => ({ granted: true, canAskAgain: true }),
-        getCurrentPositionAsync: async () => sample,
-        watchPositionAsync: async (_options, handler) => { callback = handler; return { remove: () => removed++ }; },
-        getBackgroundPermissionsAsync: async () => { throw Error('unsupported'); },
-      },
-      react: { useEffect: fn => effects.push(fn), useRef: initial => ({ current: initial }) },
-      'react-native': { AppState: {} },
-    });
-    api.DriverRealtimeBridge();
-    const cleanup = effects[3]();
+    const f = fixture({ mode });
+    const cleanup = f.effects[3]();
     await tick();
-    assert.equal(heartbeats, 1);
-    assert.equal(published[0], sample);
-    callback(sample);
-    assert.equal(published.length, 2);
-    assert.equal(removed, 0, 'foreground subscription stays alive without background service');
+    assert.equal(f.heartbeats(), 1);
+    assert.equal(f.published[0], f.sample);
+    f.emit(f.sample);
+    assert.equal(f.published.length, 2);
+    assert.equal(f.removed(), 0, 'foreground subscription stays alive without background service');
+    assert.equal(f.backgroundStarts(), 0, 'ONLINE without a ride must not start the background location service');
+    f.effects[4]();
+    assert.equal(f.stops(), 1, 'no active ride: stop background GPS without waiting for status change');
     cleanup();
-    assert.equal(removed, 1);
-    callback(sample);
-    assert.equal(published.length, 2, 'old watcher cannot publish after cleanup');
+    assert.equal(f.removed(), 1);
+    f.emit(f.sample);
+    assert.equal(f.published.length, 2, 'old watcher cannot publish after cleanup');
   });
 }
+
+test('background location is scoped to the active ride and stops as soon as the ride is gone', async () => {
+  const riding = fixture({ ride: { id: 12 } });
+  const cleanup = riding.effects[3]();
+  await tick();
+  assert.equal(riding.backgroundStarts(), 1, 'an active ride still needs background GPS');
+  riding.effects[4]();
+  assert.equal(riding.stops(), 0, 'an active ride must keep background GPS');
+  cleanup();
+
+  const finished = fixture({ ride: null });
+  finished.effects[4]();
+  assert.equal(finished.stops(), 1, 'completed ride stops GPS immediately even while driver is ONLINE');
+});
+
+test('completing a ride stops background GPS at the button press and the task verifies only the ride', () => {
+  const inProgress = fs.readFileSync('apps/driver/src/features/ride/hooks/useInProgress.ts', 'utf8');
+  assert.match(inProgress, /stopDriverBackgroundLocation\(\)/);
+  assert.match(inProgress, /endpoint === 'complete'[\s\S]*stopDriverBackgroundLocation/);
+
+  const background = fs.readFileSync('apps/driver/src/lib/backgroundLocation.ts', 'utf8');
+  assert.match(background, /active = Boolean\(ride\)/);
+  assert.doesNotMatch(background, /profile\?\.status === 'ONLINE'/);
+});

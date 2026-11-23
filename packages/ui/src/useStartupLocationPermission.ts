@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AppState, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 
 type Permission = { granted: boolean; canAskAgain: boolean; status: string };
 type LocationPermissions = {
@@ -21,19 +21,31 @@ export function ensureForegroundLocationPermission(location: LocationPermissions
   return pending;
 }
 
-export function useStartupLocationPermission(ready: boolean, location: LocationPermissions) {
+export function useStartupLocationPermission(ready: boolean, location: LocationPermissions, rationale?: string) {
   useEffect(() => {
     if (!ready || (Platform.OS !== 'android' && Platform.OS !== 'ios')) return;
     let started = false;
+    let active = true;
     const request = () => {
       if (started) return;
       started = true;
-      void ensureForegroundLocationPermission(location).catch(() => {});
+      void (async () => {
+        const permission = await location.getForegroundPermissionsAsync();
+        if (!active || permission.granted || !permission.canAskAgain || permission.status !== 'undetermined') return;
+        if (rationale) {
+          const accepted = await new Promise<boolean>(resolve => Alert.alert('Cho phép sử dụng vị trí?', rationale, [
+            { text: 'Để sau', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Tiếp tục', onPress: () => resolve(true) },
+          ], { cancelable: true, onDismiss: () => resolve(false) }));
+          if (!accepted || !active) return;
+        }
+        await ensureForegroundLocationPermission(location);
+      })().catch(() => {});
     };
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') request();
     });
     if (AppState.currentState === 'active') request();
-    return () => subscription.remove();
-  }, [ready, location]);
+    return () => { active = false; subscription.remove(); };
+  }, [ready, location, rationale]);
 }

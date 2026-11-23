@@ -9,9 +9,12 @@ export default function TicketListScreen() {
   const tickets = useTickets();
   return (
     <ScreenWrapper>
-      <ScreenHeader title="Hỗ trợ" onBack={() => router.back()} />
+      <ScreenHeader title="Hỗ trợ" onBack={() => router.canGoBack() ? router.back() : router.replace("/(tabs)/profile")} />
       <TicketList
         tickets={tickets.items}
+        hasNext={tickets.hasNext}
+        loadingMore={tickets.loadingMore}
+        onLoadMore={tickets.loadMore}
         loading={tickets.loading}
         refreshing={tickets.refreshing}
         error={tickets.error}

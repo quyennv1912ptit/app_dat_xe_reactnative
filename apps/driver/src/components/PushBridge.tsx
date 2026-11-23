@@ -1,3 +1,5 @@
+import { localizedAlert } from '@datxe/ui';
+import { getPermissionsAsync } from 'expo-notifications';
 import { useDriverCredit } from '@/lib/useDriverCredit';
 import { pendingOfferKey, usePendingOffer } from '@/lib/driverOffer';
 import { offerRemainingMs } from '@/lib/offerTiming';
@@ -65,7 +67,12 @@ export function PushBridge() {
       },
     });
     controller.current = coordinator;
-    const opened = (event: PushEnvelope) => { if (!stopped) void rememberPushOpen(event, coordinator.enqueue).catch(logError); };
+    const opened = (event: PushEnvelope) => {
+      if (stopped) return;
+      // App tài xế bỏ qua thông báo đánh giá: chỉ tiêu thụ để không mở chuyến cũ.
+      if (event.type === 'RATING_RECEIVED') void acknowledgePushOpen(event).catch(logError);
+      else void rememberPushOpen(event, coordinator.enqueue).catch(logError);
+    };
     const stopRemote = subscribeToRemotePushOpens(opened);
     let stopLocal = () => {};
     void subscribeToLocalPushOpens(opened).then(stop => { if (stopped) stop(); else stopLocal = stop; }).catch(logError);
@@ -82,7 +89,8 @@ export function PushBridge() {
       } else {
         void client.invalidateQueries({ queryKey: ['driver'] });
       }
-      void presentPushNotification(event).catch(logError);
+      // Vẫn invalidate queries ở trên để cập nhật điểm đánh giá, nhưng không hiện banner.
+      if (event.type !== 'RATING_RECEIVED') void presentPushNotification(event).catch(logError);
     };
     const stopMessages = subscribeToPushMessages(receive);
     const stopStomp = driverRealtime.subscribe('/user/queue/trip', message => {
@@ -105,8 +113,23 @@ export function PushBridge() {
   }, [client]);
   useEffect(() => { void controller.current?.drain(); }, [userId, pathname, nav?.key, navigationReady]);
   useEffect(() => {
-    if (!userId) return;
-    void initializePushPresentation().then(requestPushPermission).then(() => syncPushToken(pushRegistration)).catch(logError);
-  }, [userId]);
+    if (!userId || !navigationReady) return;
+    let active = true;
+    void (async () => {
+      await initializePushPresentation();
+      const permission = await getPermissionsAsync();
+      if (!active) return;
+      if (permission.status === 'undetermined') {
+        const accepted = await new Promise<boolean>(resolve => localizedAlert('Bật thông báo?', 'Thông báo giúp bạn nhận yêu cầu chuyến, thay đổi hành trình và phản hồi hỗ trợ khi không nhìn màn hình. Bạn có thể bật lại trong Kết nối, GPS & thông báo.', [
+          { text: 'Để sau', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Tiếp tục', onPress: () => resolve(true) },
+        ], { cancelable: true, onDismiss: () => resolve(false) }));
+        if (!accepted || !active) return;
+      }
+      await requestPushPermission();
+      if (active) await syncPushToken(pushRegistration);
+    })().catch(logError);
+    return () => { active = false; };
+  }, [userId, navigationReady]);
   return null;
 }

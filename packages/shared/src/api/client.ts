@@ -4,7 +4,12 @@ import type { Role } from '../types';
 type Envelope<T> = { success: boolean; data?: T | null; error?: { code?: string; message?: string } };
 type RetryConfig = InternalAxiosRequestConfig & { refreshed?: boolean };
 export type RequestOptions = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; allowNull?: boolean; headers?: Record<string,string>; signal?: AbortSignal; timeoutMs?: number };
-export function createApiClient(baseURL: string, role: Role, onUnauthorized: () => void = () => {}) {
+export function createApiClient(
+  baseURL: string,
+  role: Role,
+  onUnauthorized: () => void = () => {},
+  onAccountLocked?: (message: string) => void,
+) {
   const client = axios.create({ baseURL, timeout: 20000 });
   client.interceptors.request.use(async config => {
     const user = getFirebaseUser();
@@ -15,6 +20,13 @@ export function createApiClient(baseURL: string, role: Role, onUnauthorized: () 
   });
   client.interceptors.response.use(response => response, async (error: AxiosError) => {
     const config = error.config as RetryConfig | undefined;
+    if (error.response?.status === 403) {
+      const envelope = error.response.data as Envelope<unknown> | undefined;
+      if (envelope?.error?.code === 'ACCOUNT_LOCKED') {
+        onAccountLocked?.(envelope.error.message ?? 'Tài khoản đã bị khóa.');
+        throw error;
+      }
+    }
     if (error.response?.status === 401 && config && !config.refreshed) {
       config.refreshed = true;
       const user = getFirebaseUser();

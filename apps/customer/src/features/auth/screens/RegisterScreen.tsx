@@ -46,10 +46,12 @@ function toDateValue(iso: string): Date | null {
 export default function RegisterScreen() {
   useLanguage();
 
-  // Trang đăng ký có thể được mở bằng replace từ OTP nên không phải lúc nào cũng có lịch sử back.
+  // Trang này là bước cuối của luồng xác thực và có thể được mở bằng `replace`
+  // từ OTP nên không có lịch sử back ổn định. Thoát khỏi đây luôn quay về màn
+  // Đăng nhập, tránh việc `router.back()` rơi vào một màn khác (Trang chủ) rồi
+  // bị API đá ngược về Login.
   const leave = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/(auth)/login" as never);
+    router.replace("/(auth)/login" as never);
   };
 
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -61,6 +63,7 @@ export default function RegisterScreen() {
 
   const {
     user,
+    signInMethod,
     router,
     phoneParam,
     initialName,
@@ -77,6 +80,19 @@ export default function RegisterScreen() {
     submit,
   } = useRegister();
   if (!user) return null;
+  // Tài khoản Google/Facebook hiển thị đúng phương thức đăng nhập (kèm email).
+  // Số điện thoại chỉ là phương thức đăng nhập của tài khoản OTP.
+  const signInProviderLabel =
+    signInMethod === "phone"
+      ? null
+      : i18nT(signInMethod === "google" ? "Google" : "Facebook");
+  const signInValue =
+    signInProviderLabel === null
+      ? user.phoneNumber ??
+        (phoneParam ? String(phoneParam) : i18nT("Tài khoản đã xác thực"))
+      : user.email
+        ? `${signInProviderLabel} · ${user.email}`
+        : signInProviderLabel;
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <View style={styles.topBar}>
@@ -91,10 +107,11 @@ export default function RegisterScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Input
+            editable={!loading}
             autoCapitalize="words"
             autoComplete="name"
             label={i18nT("Họ và tên")}
@@ -108,6 +125,7 @@ export default function RegisterScreen() {
             defaultValue={initialName}
           />
           <Input
+            editable={!loading}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -124,6 +142,8 @@ export default function RegisterScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>{i18nT("Ngày sinh")}</Text>
             <Pressable
+              disabled={loading}
+              accessibilityState={{ disabled: loading }}
               accessibilityLabel={i18nT("Ngày sinh")}
               accessibilityRole="button"
               onPress={() => setDatePickerVisible(true)}
@@ -151,7 +171,8 @@ export default function RegisterScreen() {
                 <Pressable
                   key={option.value}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: gender === option.value }}
+                  disabled={loading}
+                  accessibilityState={{ selected: gender === option.value, disabled: loading }}
                   onPress={() =>
                     setGender(gender === option.value ? "" : option.value)
                   }
@@ -182,13 +203,7 @@ export default function RegisterScreen() {
               <Text style={styles.infoLabel}>
                 {i18nT("Phương thức đăng nhập")}
               </Text>
-              <Text style={styles.infoValue}>
-                {i18nT(
-                  user.phoneNumber ??
-                    (phoneParam ? String(phoneParam) : user.email) ??
-                    "Tài khoản đã xác thực",
-                )}
-              </Text>
+              <Text style={styles.infoValue}>{signInValue}</Text>
             </View>
           </View>
           {phoneParam && !user.phoneNumber ? (
@@ -244,7 +259,7 @@ export default function RegisterScreen() {
         }}
         title={i18nT("Chọn ngày sinh")}
         value={toDateValue(dateOfBirth)}
-        visible={datePickerVisible}
+        visible={datePickerVisible && !loading}
       />
     </SafeAreaView>
   );

@@ -31,10 +31,10 @@ export default function CreateTicketScreen() {
             error={create.error?.message}
             onSubmit={draft =>
               create.mutateAsync(draft, {
-                onSuccess: () => {
+                onSuccess: (ticket) => {
                   setToast(true);
                   if (timerRef.current) clearTimeout(timerRef.current);
-                  timerRef.current = setTimeout(leave, 900);
+                  timerRef.current = setTimeout(() => router.replace({ pathname: '/tickets/[id]', params: { id: String(ticket.id) } }), 900);
                 },
               })
             }

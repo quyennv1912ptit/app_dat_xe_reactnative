@@ -30,15 +30,19 @@ function fixture(overrides = {}) {
 
 test('chat photo pinch caps zoom, drag stays within the image and double tap resets', () => {
   const element = (type, props) => ({ type, props });
-  const states = [{ width: 300, height: 400 }, { width: 600, height: 400 }, false, 0];
+  // viewport, image, failed, attempt, rotation, flipped
+  const states = [{ width: 300, height: 400 }, { width: 600, height: 400 }, false, 0, 0, false];
   const gestures = {};
   let transform;
-  const { ChatImageViewer } = load('packages/ui/src/chat/ChatImageViewer.tsx', {
+  const { ImageViewer } = load('packages/ui/src/components/ImageViewer.tsx', {
     'react/jsx-runtime': { jsx: element, jsxs: element },
     '@datxe/shared': { translate: (text) => text },
     react: { useState: () => [states.shift(), () => {}] },
-    'react-native': { StyleSheet: { create: (styles) => styles } },
+    'react-native': { StyleSheet: { create: (styles) => styles }, Modal: 'Modal', View: 'View' },
+    'expo-image': { Image: 'Image' },
     'react-native-gesture-handler': {
+      GestureDetector: 'GestureDetector',
+      GestureHandlerRootView: 'GestureHandlerRootView',
       usePinchGesture: (config) => { gestures.pinch = config; },
       usePanGesture: (config) => { gestures.pan = config; },
       useTapGesture: (config) => { gestures.tap = config; },
@@ -53,27 +57,36 @@ test('chat photo pinch caps zoom, drag stays within the image and double tap res
       },
       withTiming: (target) => target,
     },
-    'react-native-paper': {},
-    '../components/Button': {},
-    '../components/ScreenWrapper': {},
-    '../components/Typography': {},
+    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', IconButton: 'IconButton' },
+    './Button': {},
+    './ScreenWrapper': {},
+    './Typography': {},
     '../theme/colors': { typography: new Proxy({}, { get: () => ({}) }) },
     '../theme/ThemeProvider': { useThemeColors: () => ({}) },
     '../useLanguage': { useLanguage() {} },
   });
-  const canvas = ChatImageViewer({ uri: 'file://photo.jpg', onClose() {} }).props.children.props.children;
-  canvas.type(canvas.props);
+  const canvas = ImageViewer({ uri: 'file://photo.jpg', onClose() {} }).props.children.props.children;
+  const rendered = canvas.type(canvas.props);
+  const labels = [];
+  (function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node.props && node.props.accessibilityLabel) labels.push(node.props.accessibilityLabel);
+    walk(node.props && node.props.children);
+  })(rendered);
   const center = { focalX: 150, focalY: 200 };
   gestures.pinch.onActivate(center);
   gestures.pinch.onUpdate({ ...center, scale: 8 });
   gestures.pinch.onFinalize();
   gestures.pan.onActivate({ translationX: 0, translationY: 0 });
   gestures.pan.onUpdate({ translationX: 3000, translationY: -3000, numberOfPointers: 1 });
-  assert.equal(JSON.stringify(transform()), '[{"translateX":600},{"translateY":-300},{"scale":5}]');
+  assert.equal(JSON.stringify(transform()), '[{"translateX":600},{"translateY":-300},{"rotate":"0deg"},{"scale":5},{"scaleX":1}]');
   gestures.tap.onActivate({ x: 150, y: 200 });
-  assert.equal(JSON.stringify(transform()), '[{"translateX":0},{"translateY":0},{"scale":1}]');
+  assert.equal(JSON.stringify(transform()), '[{"translateX":0},{"translateY":0},{"rotate":"0deg"},{"scale":1},{"scaleX":1}]');
+  for (const label of ['Phóng to', 'Thu nhỏ', 'Vừa màn hình', 'Xoay ảnh 90 độ', 'Lật ảnh', 'Đặt lại ảnh']) {
+    assert.ok(labels.includes(label), `missing viewer control: ${label}`);
+  }
 });
-
 test('chat API uses driver ride, chat cursors/read/send and signed CHAT image scope', async () => {
   const calls = [];
   const api = load('apps/driver/src/features/chat/api.ts', {

@@ -1,8 +1,8 @@
-import { driverApi } from "@/lib/driverApi";
 import { DriverPage } from "@/components/DriverPage";
 import { resolveDriverNotification } from "@/lib/notificationDestination";
+import { isVisibleDriverNotification, unreadDriverNotifications } from "@/lib/notificationVisibility";
 import { useSessionStore } from "@/lib/store";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import { getLocale, getNotificationText, type CustomerNotification } from "@datxe/shared";
 import { rideStyles as s } from "@/components/rideStyles";
@@ -65,13 +65,15 @@ export default function NotificationsScreen() {
   const themed_s = useThemedStyles(s);
   const { query: q, mark } = useNotifications();
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const allItems = useMemo(() => q.data ?? [], [q.data]);
+  const allItems = useMemo(
+    () => (q.data ?? []).filter(isVisibleDriverNotification),
+    [q.data],
+  );
   const items = useMemo(
     () => (unreadOnly ? allItems.filter((item) => !item.readAt) : allItems),
     [allItems, unreadOnly],
   );
-  const { data: count } = useQuery({ queryKey: ["driver", "notifications", "count"], queryFn: driverApi.notificationCount });
-  const unread = count?.unread_count ?? allItems.filter((item) => !item.readAt).length;
+  const unread = unreadDriverNotifications(q.data);
   const rows = useMemo<NotificationRow[]>(() => {
     const groups = new Map<string, CustomerNotification[]>();
     for (const item of items) {
@@ -142,6 +144,7 @@ export default function NotificationsScreen() {
           />
         ) : null}
       </View>
+      <Button variant="ghost" label="Kiểm tra quyền thông báo" onPress={() => router.push("/settings/reception")} />
       {notice ? <Card style={themed_s.card}><Text accessibilityRole="alert" style={typography.bodySecondary}>{notice}</Text></Card> : null}
     </View>
   );

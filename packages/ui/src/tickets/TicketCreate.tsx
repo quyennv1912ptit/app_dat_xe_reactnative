@@ -1,6 +1,6 @@
 import { translate as t } from '@datxe/shared';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Menu } from 'react-native-paper';
 import { Button } from '../components/Button';
@@ -34,7 +34,9 @@ export function TicketCreate({ pending, error, onSubmit }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [localError, setLocalError] = useState('');
 
+  const inFlight = useRef(false);
   const submit = async () => {
+    if (pending || inFlight.current) return;
     setLocalError('');
     const parsedRide = rideId.trim() === '' ? null : Number(rideId);
     if (parsedRide !== null && (!Number.isSafeInteger(parsedRide) || parsedRide <= 0)) {
@@ -45,12 +47,15 @@ export function TicketCreate({ pending, error, onSubmit }: Props) {
       setLocalError(t('Hãy mô tả vấn đề ít nhất 10 ký tự.'));
       return;
     }
+    inFlight.current = true;
     try {
       await onSubmit({ category, rideId: parsedRide, description: description.trim() });
       setDescription('');
       setRideId('');
     } catch {
       // Lỗi được hiển thị từ mutation ở trên; giữ nội dung để người dùng thử lại.
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -62,7 +67,7 @@ export function TicketCreate({ pending, error, onSubmit }: Props) {
           visible={menuOpen}
           onDismiss={() => setMenuOpen(false)}
           anchor={
-            <Pressable accessibilityRole="button" accessibilityLabel={t('Chọn chủ đề hỗ trợ')} onPress={() => setMenuOpen(true)} style={s.select}>
+            <Pressable accessibilityRole="button" disabled={pending} accessibilityState={{ disabled: Boolean(pending), expanded: menuOpen }} accessibilityLabel={t('Chọn chủ đề hỗ trợ')} onPress={() => setMenuOpen(true)} style={s.select}>
               <Text style={s.selectText}>{t(categories[category])}</Text>
               <MaterialIcons name="expand-more" size={22} color={s.icon.color} />
             </Pressable>

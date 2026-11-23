@@ -97,16 +97,36 @@ export function VerificationCaptureStep({
             isSelfie={slotKey === 'selfie'}
             large
             busy={locked}
+            interactive={allowed && !locked}
           />
         </MotionPressable>
       )}
 
       <WarningBannerList items={slotWarnings} />
 
+      {!allowed ? (
+        <AlertBanner
+          tone="info"
+          icon="check-circle-outline"
+          message="Ảnh này đã đạt yêu cầu, không cần chụp lại — hãy chuyển sang ảnh cần bổ sung."
+        />
+      ) : hasAnyPhoto && !slotWarnings.length && !(photo && isSmall(photo)) ? (
+        <AlertBanner
+          tone="success"
+          icon="check-circle-outline"
+          message="Ảnh đã sẵn sàng. Kiểm tra rõ chữ, đủ 4 góc rồi bấm tiếp tục ở bên dưới."
+        />
+      ) : null}
+
       {photo && isSmall(photo) ? (
-        <View style={[styles.consentBox, { backgroundColor: colors.warningContainer }]}>
+        <MotionPressable
+          accessible={false}
+          disabled={locked}
+          onPress={() => onToggleSmallAck(!smallAck)}
+          style={[styles.consentBox, { backgroundColor: colors.warningContainer }]}
+        >
           <Switch
-            accessibilityLabel="Xác nhận ảnh nhỏ"
+            accessibilityLabel="Xác nhận ảnh nhỏ vẫn rõ chữ hoặc khuôn mặt"
             value={smallAck}
             disabled={locked}
             onValueChange={onToggleSmallAck}
@@ -114,7 +134,7 @@ export function VerificationCaptureStep({
           <Text style={[styles.flexText, { color: colors.onWarningContainer }]}>
             Ảnh có độ phân giải nhỏ. Tôi đã kiểm tra chữ hoặc khuôn mặt vẫn rõ.
           </Text>
-        </View>
+        </MotionPressable>
       ) : null}
 
       {!allowed ? (
@@ -161,6 +181,7 @@ export function VerificationCaptureStep({
           </Text>
           <View style={styles.qrActions}>
             <Button
+              variant="secondary"
               label="Quét mã QR trực tiếp"
               icon="qr-code-scanner"
               iconPosition="leading"
