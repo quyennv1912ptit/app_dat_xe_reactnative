@@ -32,6 +32,9 @@ export type AuthProfile = {
   status: string;
   verificationStatus?: string | null;
   onlineVehicleType?: 'CAR' | 'MOTORCYCLE' | null;
+  accountStatus?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | string | null;
+  accountStatusReason?: string | null;
+  withdrawalFrozen?: boolean;
 };
 
 type ApiResponse<T> = {

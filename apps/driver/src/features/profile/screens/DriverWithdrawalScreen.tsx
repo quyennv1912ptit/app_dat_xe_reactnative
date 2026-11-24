@@ -44,6 +44,8 @@ export default function DriverWithdrawalScreen() {
   useRefreshOnFocus(refreshSelected);
   const bank = useQuery({ queryKey: ['driver', 'profile'], queryFn: driverApi.profile, enabled: Boolean(userId), refetchOnMount: 'always' });
   useRefreshOnFocus(bank.refetch);
+  const sessionWithdrawalFrozen = useSessionStore(state => Boolean(state.user?.withdrawalFrozen));
+  const withdrawalFrozen = Boolean(bank.data?.withdrawal_frozen ?? sessionWithdrawalFrozen);
   const hasBank = Boolean(bank.data?.bank_name?.trim() && bank.data?.bank_account_number?.trim());
   const overview = useWalletOverview();
   const cash = walletBalance(overview.data, 'CASH');
@@ -93,7 +95,18 @@ export default function DriverWithdrawalScreen() {
         {hasBank ? <><Text>{bank.data?.bank_name}</Text><Text selectable>Số tài khoản: {bank.data?.bank_account_number}</Text></> : !bank.isLoading && !bank.isError ? <Text>Bổ sung tên ngân hàng và số tài khoản chính chủ trước khi gửi yêu cầu rút tiền.</Text> : null}
         <Button variant="secondary" label={hasBank ? 'Cập nhật tài khoản ngân hàng' : 'Bổ sung tài khoản ngân hàng'} onPress={() => router.push('/profile/edit')} />
       </Card>
-      {cash !== undefined && !overview.isError && hasBank && !bank.isError && !reviewing ? <WalletMoneyForm mode="withdraw" maxAmount={Number.MAX_SAFE_INTEGER} available={cash} onSubmit={submit} onDone={() => router.dismissTo('/profile/wallet')} /> : null}
+      {withdrawalFrozen ? (
+        <Card style={styles.card}>
+          <Text accessibilityRole="alert" style={typography.cardTitle}>
+            Tính năng rút tiền đang bị tạm khóa
+          </Text>
+          <Text>
+            Số dư ví của bạn đang được tạm giữ để đối soát. Bạn vẫn có thể theo dõi lịch sử giao dịch và liên hệ bộ phận hỗ trợ để được giải quyết.
+          </Text>
+          <Button variant="secondary" label="Liên hệ hỗ trợ" onPress={() => router.push('/support')} />
+        </Card>
+      ) : null}
+      {!withdrawalFrozen && cash !== undefined && !overview.isError && hasBank && !bank.isError && !reviewing ? <WalletMoneyForm mode="withdraw" maxAmount={Number.MAX_SAFE_INTEGER} available={cash} onSubmit={submit} onDone={() => router.dismissTo('/profile/wallet')} /> : null}
       {reviewing ? <Button variant="secondary" label="Tạo yêu cầu rút tiền mới" onPress={() => router.setParams({ requestId: '' })} /> : null}
       <Button variant="ghost" label="Cập nhật yêu cầu rút" onPress={() => void Promise.all([overview.refetch(), requests.refetch()])} />
       <Text accessibilityRole="header" style={typography.sectionTitle}>Yêu cầu rút tiền của tôi</Text>

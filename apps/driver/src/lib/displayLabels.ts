@@ -56,7 +56,9 @@ const notificationTypes: Record<string, string> = {
   RIDE_CANCELLED: 'Chuyến đi đã bị hủy', RIDE_COMPLETED: 'Chuyến đi đã hoàn tất',
   RIDE_NO_DRIVER: 'Chưa tìm được tài xế', RIDE_ASSIGNED: 'Chuyến đi đã có tài xế',
   DRIVER_VERIFICATION_UPDATED: 'Cập nhật xét duyệt hồ sơ',
-  DRIVER_FORCE_OFFLINE: 'Tạm ngừng nhận chuyến', CHAT_MESSAGE: 'Tin nhắn mới', CHAT_READ: 'Tin nhắn đã được đọc',
+  DRIVER_FORCE_OFFLINE: 'Tạm ngừng nhận chuyến',
+  DRIVER_ACCOUNT_STATUS_UPDATED: 'Cập nhật trạng thái tài khoản',
+  CHAT_MESSAGE: 'Tin nhắn mới', CHAT_READ: 'Tin nhắn đã được đọc',
   RATING_RECEIVED: 'Đánh giá mới', VOUCHER_GRANTED: 'Ưu đãi mới', VOUCHER_CAMPAIGN: 'Chương trình ưu đãi',
 };
 export const notificationTypeLabel = (value: string | null | undefined) => lookup(notificationTypes, value) ?? 'Thông báo từ hệ thống';

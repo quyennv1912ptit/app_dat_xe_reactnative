@@ -13,7 +13,7 @@ import {
   parsePushData, presentPushNotification, rememberPushOpen, requestPushPermission,
   setPushSignOutCleanup, subscribeToLocalPushOpens,
   subscribeToPushMessages, subscribeToRemotePushOpens, syncPushToken, unregisterPushToken,
-  watchPushTokenRefresh, dismissOfferNotifications, positiveId, record, type PushEnvelope,
+  watchPushTokenRefresh, dismissOfferNotifications, positiveId, record, signOutFirebase, type PushEnvelope,
 } from '@datxe/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -79,7 +79,51 @@ export function PushBridge() {
     const receive = (event: PushEnvelope) => {
       const user = useSessionStore.getState().user;
       if (!user || !isPushForAccount(event, 'DRIVER', user.id) || AppState.currentState !== 'active') return;
-      if (event.type === 'RIDE_OFFER' || event.type === 'OFFER_EXPIRED' || event.type === 'OFFER_CANCELLED') {
+      if (event.type === 'DRIVER_FORCE_OFFLINE' || event.type === 'DRIVER_ACCOUNT_STATUS_UPDATED') {
+        const payload = record(event.payload);
+        const accountStatus = typeof payload.account_status === 'string' ? payload.account_status : undefined;
+        const reason = typeof payload.reason === 'string' && payload.reason.trim().length > 0 ? payload.reason.trim() : undefined;
+        const nextOperationalStatus = typeof payload.status === 'string' ? payload.status : undefined;
+        const withdrawalFrozen = typeof payload.withdrawal_frozen === 'boolean' ? payload.withdrawal_frozen : user.withdrawalFrozen;
+
+        if (accountStatus === 'BANNED') {
+          client.clear();
+          useSessionStore.getState().reset();
+          void signOutFirebase().catch(() => undefined);
+          latest.current.router.replace({
+            pathname: '/(auth)/account-locked',
+            params: { reason: reason ?? 'Tài khoản tài xế của bạn đã bị khóa.' },
+          } as never);
+          return;
+        }
+
+        if (event.type === 'DRIVER_FORCE_OFFLINE' || accountStatus === 'SUSPENDED') {
+          useSessionStore.getState().setUser({
+            ...user,
+            status: nextOperationalStatus ?? 'OFFLINE',
+            onlineVehicleType: null,
+            accountStatus: accountStatus ?? user.accountStatus,
+            accountStatusReason: reason ?? user.accountStatusReason,
+            withdrawalFrozen,
+          });
+          Alert.alert(
+            accountStatus === 'SUSPENDED'
+              ? 'Tài khoản đã tạm ngưng nhận chuyến'
+              : 'Tài khoản đã chuyển về ngoại tuyến',
+            reason
+              ? `Lý do: ${reason}`
+              : 'Quản trị viên đã đưa tài khoản của bạn về trạng thái ngoại tuyến.',
+          );
+        } else if (accountStatus === 'ACTIVE') {
+          useSessionStore.getState().setUser({
+            ...user,
+            accountStatus: 'ACTIVE',
+            accountStatusReason: null,
+            withdrawalFrozen,
+          });
+        }
+        void client.invalidateQueries({ queryKey: ['driver'] });
+      } else if (event.type === 'RIDE_OFFER' || event.type === 'OFFER_EXPIRED' || event.type === 'OFFER_CANCELLED') {
         // WS and FCM can deliver the same event. Both wake the same authoritative query.
         void client.invalidateQueries({ queryKey: pendingOfferKey }, { cancelRefetch: false });
         if (event.type !== 'RIDE_OFFER') {

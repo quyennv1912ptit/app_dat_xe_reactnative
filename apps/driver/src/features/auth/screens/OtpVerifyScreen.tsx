@@ -1,3 +1,4 @@
+import { signOutFirebase } from "@datxe/shared";
 import { Button, Card, OtpVerificationScreen, ScreenWrapper, spacing, typography, Typography as Text } from "@datxe/ui";
 import { StyleSheet, View } from "react-native";
 import { useOtpVerify } from "../hooks/useOtpVerify";
@@ -23,6 +24,13 @@ export default function DriverOtpVerifyScreen() {
       onHelp={() => router.push("/(auth)/login-help")}
       onHome={() => router.replace("/(tabs)/home" as never)}
       onLogin={() => router.replace("/(auth)/login" as never)}
+      onAccountLocked={(reason) => {
+        void signOutFirebase().catch(() => undefined);
+        router.replace({
+          pathname: "/(auth)/account-locked",
+          params: { reason },
+        } as never);
+      }}
       onRegister={(verifiedPhone) =>
         router.replace({
           pathname: "/(auth)/register",

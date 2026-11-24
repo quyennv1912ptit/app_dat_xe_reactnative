@@ -1,9 +1,11 @@
 import { useSessionStore } from "@/lib/store";
-import { AuthApiError, authenticateWithBackend } from "@datxe/shared";
+import { AuthApiError, authenticateWithBackend, signOutFirebase } from "@datxe/shared";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 export function useSessionGate() {
+  const router = useRouter();
   const [destination, setDestination] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -27,7 +29,14 @@ export function useSessionGate() {
       }).catch((cause: unknown) => {
         if (!active || version !== generation) return;
         const code = cause && typeof cause === "object" && "code" in cause ? String(cause.code) : "";
-        if (cause instanceof AuthApiError && code === "ACCOUNT_NOT_FOUND") {
+        if (cause instanceof AuthApiError && code === "ACCOUNT_LOCKED") {
+          useSessionStore.getState().reset();
+          void signOutFirebase().catch(() => undefined);
+          router.replace({
+            pathname: "/(auth)/account-locked",
+            params: { reason: cause.message },
+          } as never);
+        } else if (cause instanceof AuthApiError && code === "ACCOUNT_NOT_FOUND") {
           setDestination("/(auth)/register");
         } else if (["NETWORK_ERROR", "auth/network-request-failed"].includes(code)) {
           setError("Không kết nối được với máy chủ. Kiểm tra mạng rồi thử lại.");
@@ -40,7 +49,7 @@ export function useSessionGate() {
       });
     });
     return () => { active = false; clearTimeout(timer); unsubscribe(); };
-  }, [attempt]);
+  }, [attempt, router]);
 
   const retry = () => {
     setError("");

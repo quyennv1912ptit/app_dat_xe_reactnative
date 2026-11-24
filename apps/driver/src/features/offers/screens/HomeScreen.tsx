@@ -23,6 +23,9 @@ export default function DriverHomeScreen() {
   const storedOnlineVehicle = useSessionStore((state) => state.onlineVehicleType);
   const h = useHome();
   const status = h.session.data?.status;
+  const accountStatus = h.session.data?.accountStatus;
+  const accountStatusReason = h.session.data?.accountStatusReason;
+  const isSuspended = accountStatus === "SUSPENDED";
   const online = status === "ONLINE";
   const syncingRide = status === "BUSY" && !h.active.data;
   const approved = h.verification.data?.verification_status === "APPROVED";
@@ -45,8 +48,10 @@ export default function DriverHomeScreen() {
     ]);
   const blocker = syncingRide
     ? { title: "Đang đồng bộ trạng thái chuyến", action: "Kiểm tra lại", onPress: () => void retryConditions() }
+    : isSuspended
+    ? { title: "Tài khoản đang tạm ngưng nhận chuyến", action: "Liên hệ hỗ trợ", onPress: () => h.router.push("/support") }
     : status === "BLOCKED"
-    ? { title: "Tài khoản đang bị khóa nhận chuyến" }
+    ? { title: "Tài khoản đang bị khóa nhận chuyến do nợ chiết khấu", action: "Nạp tiền ngay", onPress: () => h.router.push("/profile/top-up") }
     : !h.credit.data || h.credit.isError
     ? { title: "Chưa kiểm tra được số dư ví tín dụng", action: "Kiểm tra lại số dư", onPress: () => void h.credit.refetch() }
     : !h.credit.data.canReceive
@@ -141,6 +146,28 @@ export default function DriverHomeScreen() {
         blocker={blocker}
         onDiagnostics={() => h.router.push("/settings/reception")}
       >
+        {!h.active.data && isSuspended ? (
+          <>
+            <Text accessibilityRole="alert" style={themed_s.text}>
+              {accountStatusReason?.trim()
+                ? `Lý do: ${accountStatusReason.trim()}`
+                : "Tài khoản tạm thời chưa thể bật trực tuyến hoặc nhận cuốc mới."}
+            </Text>
+            <Text style={themed_s.label}>
+              Bạn vẫn có thể xem doanh thu, lịch sử chuyến, nạp tiền vào ví, cập nhật giấy tờ hoặc gửi yêu cầu hỗ trợ.
+            </Text>
+            <Button
+              variant="secondary"
+              label="Mở ví tài xế"
+              onPress={() => h.router.push("/profile/wallet")}
+            />
+            <Button
+              variant="ghost"
+              label="Cập nhật giấy tờ xác minh"
+              onPress={() => h.router.push("/profile/verification" as never)}
+            />
+          </>
+        ) : null}
         {!h.active.data && h.credit.data && !h.credit.data.canReceive ? (
           <Text style={themed_s.text}>Ví tín dụng: {formatMoney(h.credit.data.creditBalance)} · Hạn mức: {formatMoney(h.credit.data.minimumCredit)}. Cần nạp thêm {formatMoney(h.credit.data.shortfall)} để nhận chuyến.</Text>
         ) : null}
