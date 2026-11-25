@@ -8,6 +8,11 @@ export type GoongMapMarker = {
   kind: 'nearby' | 'driver' | 'pickup' | 'dropoff';
   vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
 };
+export type GoongMapSearchRadius = {
+  center: RideCoordinates;
+  radiusMeters: number;
+  animate?: boolean;
+};
 export type GoongMapProps = {
   mapKey?: string;
   center: RideCoordinates;
@@ -18,6 +23,7 @@ export type GoongMapProps = {
   currentLocation?: RideCoordinates | null;
   currentHeading?: number | null;
   route?: RideCoordinates[];
+  searchRadius?: GoongMapSearchRadius | null;
   interactive?: boolean;
   editablePin?: boolean;
   onCenterChange?: (point: RideCoordinates) => void;

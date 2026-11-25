@@ -12,11 +12,11 @@ function load(file, mocks) {
   return exports;
 }
 
-function fixture({ ride = null, mode = 'ok' } = {}) {
+function fixture({ ride = null, mode = 'ok', status = 'ONLINE' } = {}) {
   const effects = [], published = [], updates = [];
   const sample = { timestamp: Date.now(), coords: { latitude: 21.03, longitude: 105.84, accuracy: 10 } };
   let callback, heartbeats = 0, removed = 0, backgroundStarts = 0, stops = 0;
-  const user = { id: 4, status: 'ONLINE' };
+  const user = { id: 4, status };
   const store = selector => selector({ user });
   store.getState = () => ({ setActiveRide() {} });
   const health = selector => selector({ retryVersion: 0 });
@@ -74,9 +74,9 @@ for (const mode of ['pending', 'denied', 'unsupported']) {
     f.emit(f.sample);
     assert.equal(f.published.length, 2);
     assert.equal(f.removed(), 0, 'foreground subscription stays alive without background service');
-    assert.equal(f.backgroundStarts(), 0, 'ONLINE without a ride must not start the background location service');
+    assert.equal(f.backgroundStarts(), 1, 'ONLINE driver attempts to start background location service');
     f.effects[4]();
-    assert.equal(f.stops(), 1, 'no active ride: stop background GPS without waiting for status change');
+    assert.equal(f.stops(), 0, 'ONLINE driver keeps background GPS alive');
     cleanup();
     assert.equal(f.removed(), 1);
     f.emit(f.sample);
@@ -84,26 +84,26 @@ for (const mode of ['pending', 'denied', 'unsupported']) {
   });
 }
 
-test('background location is scoped to the active ride and stops as soon as the ride is gone', async () => {
+test('background location runs while ONLINE or on an active ride and stops when OFFLINE without a ride', async () => {
   const riding = fixture({ ride: { id: 12 } });
   const cleanup = riding.effects[3]();
   await tick();
-  assert.equal(riding.backgroundStarts(), 1, 'an active ride still needs background GPS');
+  assert.equal(riding.backgroundStarts(), 1, 'an active ride needs background GPS');
   riding.effects[4]();
   assert.equal(riding.stops(), 0, 'an active ride must keep background GPS');
   cleanup();
 
-  const finished = fixture({ ride: null });
-  finished.effects[4]();
-  assert.equal(finished.stops(), 1, 'completed ride stops GPS immediately even while driver is ONLINE');
+  const offline = fixture({ ride: null, status: 'OFFLINE' });
+  offline.effects[4]();
+  assert.equal(offline.stops(), 1, 'OFFLINE driver without active ride stops background GPS immediately');
 });
 
-test('completing a ride stops background GPS at the button press and the task verifies only the ride', () => {
+test('completing a ride triggers stop hook and background task verifies ride or ONLINE/BUSY status', () => {
   const inProgress = fs.readFileSync('apps/driver/src/features/ride/hooks/useInProgress.ts', 'utf8');
   assert.match(inProgress, /stopDriverBackgroundLocation\(\)/);
   assert.match(inProgress, /endpoint === 'complete'[\s\S]*stopDriverBackgroundLocation/);
 
   const background = fs.readFileSync('apps/driver/src/lib/backgroundLocation.ts', 'utf8');
-  assert.match(background, /active = Boolean\(ride\)/);
-  assert.doesNotMatch(background, /profile\?\.status === 'ONLINE'/);
+  assert.match(background, /ride \|\| profile\?\.status === 'ONLINE'/);
+  assert.match(background, /Promise\.allSettled/);
 });

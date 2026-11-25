@@ -1,6 +1,7 @@
 import { env } from '@/config/env';
 import { useReducedMotion } from '@datxe/ui';
 import {
+  circleBounds,
   GoongMap,
   mapBounds,
   routeCumulativeMeters,
@@ -14,7 +15,7 @@ import type { BookingMapProps } from './types';
 // Cùng nhịp với luồng vị trí tài xế: chấm đi men theo cung đường giữa 2 lần cập nhật.
 const SMOOTHING_MS = 1000;
 
-export function BookingMap({ pickup, dropoff, driver, vehicleType, route, ...props }: BookingMapProps) {
+export function BookingMap({ pickup, dropoff, driver, vehicleType, route, searchRadius, ...props }: BookingMapProps) {
   const reducedMotion = useReducedMotion();
   const coordinates = useMemo(() => route ?? [], [route]);
   const cumulative = useMemo(() => routeCumulativeMeters(coordinates), [coordinates]);
@@ -37,15 +38,28 @@ export function BookingMap({ pickup, dropoff, driver, vehicleType, route, ...pro
     return trimRouteAtDistance(coordinates, cumulative, alongMeters);
   }, [coordinates, cumulative, alongMeters, route]);
 
-  // Bounds chỉ lấy điểm đón/trả + tuyến gốc. Vị trí tài xế đổi mỗi frame không được
-  // đưa vào bounds, nếu không camera sẽ fitBounds lại liên tục.
+  // Bounds chỉ lấy điểm đón/trả + tuyến gốc (hoặc vòng tròn bán kính quét khi đang tìm tài xế).
+  // Vị trí tài xế đổi mỗi frame không được đưa vào bounds, nếu không camera sẽ fitBounds lại liên tục.
   const bounds = useMemo(() => {
     const anchors = [pickup?.coordinate, dropoff?.coordinate].filter(
       (point): point is NonNullable<typeof point> => Boolean(point),
     );
     const points = [...anchors, ...(route ?? [])];
-    return points.length > 1 ? mapBounds(points) : undefined;
-  }, [pickup?.coordinate, dropoff?.coordinate, route]);
+    if (points.length > 1) return mapBounds(points);
+    if (searchRadius && searchRadius.radiusMeters > 0) {
+      return circleBounds(searchRadius.center, searchRadius.radiusMeters);
+    }
+    return undefined;
+  }, [pickup?.coordinate, dropoff?.coordinate, route, searchRadius]);
 
-  return <GoongMap {...props} bounds={bounds} markers={markers} route={remainingRoute} mapKey={env.goongMapKey} />;
+  return (
+    <GoongMap
+      {...props}
+      bounds={bounds}
+      markers={markers}
+      route={remainingRoute}
+      searchRadius={searchRadius}
+      mapKey={env.goongMapKey}
+    />
+  );
 }

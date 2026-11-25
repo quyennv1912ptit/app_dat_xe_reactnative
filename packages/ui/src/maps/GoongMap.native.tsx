@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { Typography as Text } from '../components/Typography';
+import { useReducedMotion } from '../motion';
 import { useThemeColors } from '../theme/ThemeProvider';
 import { CURRENT_LOCATION_BLUE, CURRENT_LOCATION_RING, TRIP_ROUTE_CASING, TRIP_ROUTE_COLOR } from '../theme/mapColors';
-import { DEFAULT_MAP_ZOOM, goongStyleUrl, lngLat, mapPadding } from './geometry';
+import { circlePolygon, DEFAULT_MAP_ZOOM, goongStyleUrl, lngLat, mapPadding, radarSweepGeoJSON } from './geometry';
 import type { GoongMapProps } from './types';
 import { MapCameraSelection } from './MapCameraSelection';
 
@@ -17,12 +18,82 @@ const stopImages = {
 };
 
 const locationImages = { heading: require('./assets/location-heading.png') };
+const RADAR_TICK_MS = 66;
+const RADAR_STEP_DEG = 8;
+
+function SearchRadiusLayers({
+  lat,
+  lng,
+  radiusMeters,
+  animate,
+  color,
+}: {
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  animate: boolean;
+  color: string;
+}) {
+  const [sweepAngle, setSweepAngle] = useState(0);
+
+  useEffect(() => {
+    if (!animate) return;
+    const timer = setInterval(() => setSweepAngle((prev) => (prev + RADAR_STEP_DEG) % 360), RADAR_TICK_MS);
+    return () => clearInterval(timer);
+  }, [animate]);
+
+  const radiusCircle = useMemo(
+    () => circlePolygon({ lat, lng }, radiusMeters),
+    [lat, lng, radiusMeters],
+  );
+  const radarSweep = useMemo(
+    () => (animate ? radarSweepGeoJSON({ lat, lng }, radiusMeters, sweepAngle) : null),
+    [animate, lat, lng, radiusMeters, sweepAngle],
+  );
+
+  return (
+    <>
+      <GeoJSONSource id="search-radius-circle" data={radiusCircle}>
+        <Layer
+          id="search-radius-fill"
+          type="fill"
+          paint={{ 'fill-color': color, 'fill-opacity': 0.14 }}
+        />
+        <Layer
+          id="search-radius-outline"
+          type="line"
+          paint={{ 'line-color': color, 'line-width': 2, 'line-opacity': 0.55 }}
+        />
+      </GeoJSONSource>
+      {radarSweep ? (
+        <>
+          <GeoJSONSource id="search-radius-sweep-sector-src" data={radarSweep.sector}>
+            <Layer
+              id="search-radius-sweep-sector"
+              type="fill"
+              paint={{ 'fill-color': color, 'fill-opacity': 0.16 }}
+            />
+          </GeoJSONSource>
+          <GeoJSONSource id="search-radius-sweep-arm-src" data={radarSweep.arm}>
+            <Layer
+              id="search-radius-sweep-arm"
+              type="line"
+              paint={{ 'line-color': color, 'line-width': 2, 'line-opacity': 0.85 }}
+              layout={{ 'line-cap': 'round' }}
+            />
+          </GeoJSONSource>
+        </>
+      ) : null}
+    </>
+  );
+}
 
 export function GoongMap({
-  mapKey, center, viewport, bounds, cameraVersion, markers = [], route, currentLocation, currentHeading, interactive = true, editablePin,
+  mapKey, center, viewport, bounds, cameraVersion, markers = [], route, searchRadius, currentLocation, currentHeading, interactive = true, editablePin,
   onCenterChange, onReadyChange, onMovingChange,
 }: GoongMapProps) {
   const colors = useThemeColors();
+  const reducedMotion = useReducedMotion();
   const camera = useRef<CameraRef>(null);
   const [selectionEvents] = useState(() => new MapCameraSelection());
   const cameraConfigured = useRef(false);
@@ -37,6 +108,17 @@ export function GoongMap({
   const [west, south, east, north] = bounds ?? [];
   const top = viewport?.top ?? 0;
   const bottom = viewport?.bottom ?? 0;
+  const radiusLat = searchRadius?.center.lat;
+  const radiusLng = searchRadius?.center.lng;
+  const radiusMeters = searchRadius?.radiusMeters ?? 0;
+  const hasSearchRadius =
+    typeof radiusLat === 'number' &&
+    typeof radiusLng === 'number' &&
+    Number.isFinite(radiusLat) &&
+    Number.isFinite(radiusLng) &&
+    Number.isFinite(radiusMeters) &&
+    radiusMeters > 0;
+  const animateRadar = status === 'ready' && hasSearchRadius && Boolean(searchRadius?.animate) && !reducedMotion;
 
   const stops = useMemo(() => markers.flatMap(({ kind, coordinate }) => kind === 'pickup' || kind === 'dropoff' ? [{
     type: 'Feature' as const,
@@ -90,6 +172,15 @@ export function GoongMap({
         >
           <Camera ref={camera} maxZoom={19}
             initialViewState={initialCamera.current} />
+          {hasSearchRadius ? (
+            <SearchRadiusLayers
+              lat={radiusLat}
+              lng={radiusLng}
+              radiusMeters={radiusMeters}
+              animate={animateRadar}
+              color={colors.primary}
+            />
+          ) : null}
           {routeLine ? (
             <GeoJSONSource id="trip-route" data={routeLine}>
               <Layer id="trip-route-casing" type="line"

@@ -146,7 +146,7 @@ export function Button({
   );
 }
 const styles = StyleSheet.create({
-  button: { width: "100%" },
+  button: { width: "100%", justifyContent: "center" },
   // Insets belong to the inner content; caller padding must not inflate the frame.
   shape: {
     ...borderlessFrame,
@@ -157,6 +157,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   content: {
+    flexGrow: 1,
     minHeight: 48,
     paddingVertical: 8,
     paddingHorizontal: 24,

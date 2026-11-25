@@ -1,5 +1,5 @@
 import type { RideCoordinates } from '@datxe/shared';
-import type { MapViewportInsets } from "@datxe/ui/goong-map";
+import type { GoongMapSearchRadius, MapViewportInsets } from "@datxe/ui/goong-map";
 export type BookingMapProps = {
   center: RideCoordinates;
   cameraVersion?: number;
@@ -9,6 +9,7 @@ export type BookingMapProps = {
   driver?: RideCoordinates | null;
   vehicleType?: 'CAR' | 'MOTORCYCLE' | null;
   route?: RideCoordinates[];
+  searchRadius?: GoongMapSearchRadius | null;
   interactive?: boolean;
   editablePin?: boolean;
   onCenterChange?: (point: RideCoordinates) => void;

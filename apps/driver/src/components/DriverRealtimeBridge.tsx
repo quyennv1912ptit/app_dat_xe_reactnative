@@ -119,21 +119,20 @@ export function DriverRealtimeBridge() {
           );
           if (cancelled) { watcher.remove(); return; }
         }
-        // Background location chỉ chạy khi có chuyến; lúc ONLINE chỉ giữ GPS foreground
-        // để còn nhận offer, không dựng service nền báo "Đang chia sẻ vị trí" hoài.
-        if (!rideId) {
-          useDriverHealth.getState().update({ backgroundRunning: false });
-        } else {
-          // Android can open a settings activity for this permission. Do not await it here.
-          void startDriverBackgroundLocation().then(async backgroundRunning => {
-            const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
-            if (!cancelled) useDriverHealth.getState().update({
-              backgroundRunning, ...(permission ? { backgroundGranted: permission.granted } : {}),
-            });
-          }).catch(() => {
-            if (!cancelled) useDriverHealth.getState().update({ backgroundRunning: false });
+        // Bật chia sẻ vị trí nền liên tục cả khi đang ONLINE nhận chuyến lẫn khi đang có chuyến
+        // để khách hàng không bị mất vị trí tài xế khi tài xế thoát ra màn hình chính hoặc mở Google Maps.
+        // Android can open a settings activity for this permission. Do not await it here.
+        void startDriverBackgroundLocation().then(async backgroundRunning => {
+          const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
+          if (!cancelled) useDriverHealth.getState().update({
+            backgroundRunning, ...(permission ? { backgroundGranted: permission.granted } : {}),
           });
-        }
+        }).catch(async () => {
+          const permission = await Location.getBackgroundPermissionsAsync().catch(() => null);
+          if (!cancelled) useDriverHealth.getState().update({
+            backgroundRunning: false, ...(permission ? { backgroundGranted: permission.granted } : {}),
+          });
+        });
       } catch (error) {
         if (!cancelled) useDriverHealth.getState().update({ error: error instanceof Error ? error.message : 'Hãy kiểm tra quyền vị trí.' });
       } finally {
@@ -151,15 +150,15 @@ export function DriverRealtimeBridge() {
       watcher?.remove();
       void stopDriverBackgroundLocation().catch(() => {});
     };
-  }, [userId, rideId, tracking, retryVersion]);
+  }, [userId, tracking, retryVersion]);
   useEffect(() => {
-    if (!userId || rideId) return;
-    // Dừng ngay khi hết chuyến, không đợi backend xóa chuyến hay status ONLINE/BUSY đổi.
+    if (!userId || tracking) return;
+    // Dừng chia sẻ vị trí nền ngay khi tài xế tắt nhận chuyến (OFFLINE) và không còn chuyến hoạt động.
     void stopDriverBackgroundLocation().catch(() => {});
-    if (!tracking && ride.isSuccess) {
+    if (ride.isSuccess) {
       useDriverHealth.getState().update({ foregroundGranted: null, servicesEnabled: null, backgroundGranted: null, error: '' });
     }
-  }, [userId, rideId, tracking, ride.isSuccess]);
+  }, [userId, tracking, ride.isSuccess]);
   useEffect(() => {
     if (session.data?.id === userId && session.data) useSessionStore.getState().setUser(session.data);
   }, [session.data, userId]);

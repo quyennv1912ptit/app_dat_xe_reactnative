@@ -34,6 +34,7 @@ test("BookingMap passes driver vehicleType and GoongMap renders geometric naviga
     "@/config/env": { env: { goongMapKey: "test-key" } },
     "@datxe/ui": { useReducedMotion: () => false },
     "@datxe/ui/goong-map": {
+      circleBounds: () => [0, 0, 1, 1],
       GoongMap: MockGoongMap,
       mapBounds: () => [0, 0, 1, 1],
       routeCumulativeMeters: () => [0, 100],
@@ -70,11 +71,19 @@ test("BookingMap passes driver vehicleType and GoongMap renders geometric naviga
     "react-native": { StyleSheet: { create: (v) => v, absoluteFill: {} }, View: "View" },
     "react-native-paper": { ActivityIndicator: "ActivityIndicator" },
     "../components/Typography": { Typography: "Text" },
+    "../motion": { useReducedMotion: () => false },
     "../theme/ThemeProvider": {
       useThemeColors: () => ({ background: "#121212", cardSurface: "#1E1E1E", error: "#F2B8B5", primary: "#FFB2BF" }),
     },
     "../theme/mapColors": { CURRENT_LOCATION_BLUE: "#00F", CURRENT_LOCATION_RING: "#FFF", TRIP_ROUTE_CASING: "#000", TRIP_ROUTE_COLOR: "#F00" },
-    "./geometry": { DEFAULT_MAP_ZOOM: 15, goongStyleUrl: () => "https://example.test/style.json", lngLat: (c) => [c.lng, c.lat], mapPadding: () => ({}) },
+    "./geometry": {
+      circlePolygon: () => ({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[]] } }),
+      DEFAULT_MAP_ZOOM: 15,
+      goongStyleUrl: () => "https://example.test/style.json",
+      lngLat: (c) => [c.lng, c.lat],
+      mapPadding: () => ({}),
+      radarSweepGeoJSON: () => ({ type: "FeatureCollection", features: [] }),
+    },
     "./MapCameraSelection": { MapCameraSelection: class {} },
     "./assets/pickup-pin.png": 1,
     "./assets/dropoff-pin.png": 2,

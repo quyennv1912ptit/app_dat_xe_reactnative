@@ -1,5 +1,5 @@
 export { GoongMap } from './GoongMap';
-export { mapBounds } from './geometry';
+export { circleBounds, circlePolygon, mapBounds } from './geometry';
 export {
   approximateDistanceMeters,
   distanceMeters,
@@ -11,7 +11,7 @@ export {
 export type { RouteProjection } from './routeGeometry';
 export { useSmoothedRoutePosition } from './useSmoothedRoutePosition';
 export type { SmoothedRoutePosition } from './useSmoothedRoutePosition';
-export type { GoongMapMarker, GoongMapProps, MapBounds, MapViewportInsets } from './types';
+export type { GoongMapMarker, GoongMapProps, GoongMapSearchRadius, MapBounds, MapViewportInsets } from './types';
 export { MapSheetLayout } from './MapSheetLayout';
 export { useDeviceHeading } from './useDeviceHeading';
 export {

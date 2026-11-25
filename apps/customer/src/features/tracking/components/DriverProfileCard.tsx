@@ -228,6 +228,7 @@ export function DriverProfileCard({
                 <Button
                   label={i18nT("Gọi điện")}
                   icon="call"
+                  iconPosition="leading"
                   loading={calling}
                   disabled={!contactEnabled || !phoneUrl}
                   onPress={() => void call()}
@@ -239,6 +240,7 @@ export function DriverProfileCard({
                       : i18nT("Nhắn tin")
                   }
                   icon="chat-bubble-outline"
+                  iconPosition="leading"
                   variant="secondary"
                   disabled={!contactEnabled}
                   onPress={() => {

@@ -223,8 +223,18 @@ test("driver online session alone never becomes a ready reception indicator", ()
         useSessionStore: (selector) =>
           selector({ user: { status: "ONLINE" }, activeRide: null }),
       },
-      "@datxe/ui": { Card: "Card", Button: "Button", Typography: "Text" },
-      "react-native": { Linking: {}, StyleSheet: { create: (value) => value } },
+      "@expo/vector-icons": { MaterialIcons: "Icon" },
+      "@datxe/ui": {
+        Card: "Card",
+        Button: "Button",
+        KeyValueRow: "KeyValueRow",
+        SharedStatusBadge: "SharedStatusBadge",
+        Typography: "Text",
+        typography: { sectionTitle: {}, bodySecondary: {} },
+        useThemeColors: () => ({}),
+        useThemedStyles: (fn) => fn({}),
+      },
+      "react-native": { Linking: {}, StyleSheet: { create: (value) => value }, View: "View" },
     },
   );
   const render = () => {

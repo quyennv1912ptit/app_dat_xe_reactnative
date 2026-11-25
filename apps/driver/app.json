@@ -61,7 +61,10 @@
         {
           "locationWhenInUsePermission": "Cho phép PtitGo Tài Xế dùng vị trí để nhận cuốc gần bạn.",
           "locationAlwaysAndWhenInUsePermission": "Cho phép PtitGo Tài Xế theo dõi vị trí trong suốt chuyến đi.",
-          "isAndroidBackgroundLocationEnabled": true
+          "locationAlwaysPermission": "Cho phép PtitGo Tài Xế theo dõi vị trí trong suốt chuyến đi ngay cả khi bạn chuyển sang ứng dụng khác.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],

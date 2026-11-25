@@ -7,7 +7,7 @@ import {
   typography,
   useThemedStyles,
 } from "@datxe/ui";
-import { Image, StyleSheet } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 export const googleLogo = require("../../../../assets/1._ng_nh_p/google.png");
 
@@ -33,6 +33,7 @@ export function SocialButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -41,10 +42,12 @@ export function SocialButton({
         disabled && themed_styles.disabledButton,
       ]}
     >
-      <Image source={icon} style={themed_styles.socialIcon} />
-      <Text style={themed_styles.socialLabel}>
-        {loading ? "Đang kết nối..." : label}
-      </Text>
+      <View style={themed_styles.socialContent}>
+        <Image source={icon} style={themed_styles.socialIcon} />
+        <Text textBreakStrategy="simple" style={themed_styles.socialLabel}>
+          {loading ? "Đang kết nối..." : label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -123,6 +126,11 @@ export const styles = (colors: ThemeColors) =>
       minHeight: spacing.buttonPillHeight,
       borderRadius: 999,
       backgroundColor: colors.surfaceContainerHigh,
+      justifyContent: "center",
+    },
+    socialContent: {
+      flexGrow: 1,
+      minHeight: spacing.buttonPillHeight,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -140,7 +148,7 @@ export const styles = (colors: ThemeColors) =>
       color: colors.onSurface,
       flexShrink: 1,
       textAlign: "center",
-      paddingHorizontal: 2,
+      includeFontPadding: false,
     },
     footer: {
       marginTop: "auto",

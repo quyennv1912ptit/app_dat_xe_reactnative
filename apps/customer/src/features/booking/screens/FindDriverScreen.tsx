@@ -5,12 +5,14 @@ import { BookingMap } from "@/components/map/BookingMap";
 import { getCustomerRideStatusLabel } from "@/lib/customerRidePresentation";
 import { navigateHomeClean } from "@/lib/rideNavigation";
 import { MapSheetLayout } from "@datxe/ui/goong-map";
-import { SearchRadar } from "../components/SearchRadar";
 import { getLocale, translate as t } from "@datxe/shared";
 import { Button, Card, Typography as Text, useLanguage, useThemeColors } from "@datxe/ui";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { useFindDriver } from "../hooks/useFindDriver";
+
+const DEFAULT_SEARCH_RADIUS_KM = 5;
 
 export default function FindDriverScreen() {
   useLanguage();
@@ -22,22 +24,31 @@ export default function FindDriverScreen() {
   const failedRetryable = Boolean(ride && ["NO_DRIVER_FOUND", "EXPIRED", "FAILED_SYSTEM"].includes(ride.status));
   const cancelled = ride?.status === "CANCELLED";
   const ended = failedRetryable || cancelled;
-  const pickup = ride?.pickup.lat != null && ride.pickup.lng != null
-    ? { coordinate: { lat: ride.pickup.lat, lng: ride.pickup.lng } } : null;
+  const pickupLat = ride?.pickup.lat;
+  const pickupLng = ride?.pickup.lng;
+  const pickup = useMemo(
+    () => (pickupLat != null && pickupLng != null ? { coordinate: { lat: pickupLat, lng: pickupLng } } : null),
+    [pickupLat, pickupLng],
+  );
   const dropoff = ride?.dropoff.lat != null && ride.dropoff.lng != null
     ? { coordinate: { lat: ride.dropoff.lat, lng: ride.dropoff.lng } } : null;
+  const radiusKm = progress?.radiusKm ?? DEFAULT_SEARCH_RADIUS_KM;
+  const searchRadius = useMemo(
+    () => (searching && pickup ? { center: pickup.coordinate, radiusMeters: radiusKm * 1000, animate: true } : null),
+    [pickup, radiusKm, searching],
+  );
   const canCancel = ride && ["PENDING", "SEARCHING"].includes(ride.status);
   return (
     <>
       <MapSheetLayout title={t("Tìm tài xế")} onBack={goHome} backAccessibilityLabel={t("Về trang chủ")}
         initialSnap={0}
         renderMap={viewport => (
-          <>
-            <BookingMap center={pickup?.coordinate ?? dropoff?.coordinate ?? { lat: 21.0285, lng: 105.8542 }}
-              pickup={pickup} viewport={viewport} interactive={!searching} />
-            {searching && pickup ? <SearchRadar top={viewport.top} bottom={viewport.bottom}
-              fraction={progress ? progress.radiusKm / progress.maxRadiusKm : 0.6} /> : null}
-          </>
+          <BookingMap
+            center={pickup?.coordinate ?? dropoff?.coordinate ?? { lat: 21.0285, lng: 105.8542 }}
+            pickup={pickup}
+            searchRadius={searchRadius}
+            viewport={viewport}
+          />
         )}
         footer={(
           <>

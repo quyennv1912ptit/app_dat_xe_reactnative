@@ -144,12 +144,12 @@ export default function DriverTrackingScreen() {
                 {ride.driverId ? <Button variant="secondary" label="Tải lại hồ sơ tài xế" onPress={() => void refresh()} /> : null}
               </Card>
             )}
-            {ride.driverId && !driver && canChat ? <Button variant="secondary" icon="chat"
+            {ride.driverId && !driver && canChat ? <Button variant="secondary" icon="chat" iconPosition="leading"
               label="Nhắn tin với tài xế" onPress={message} /> : null}
             <View style={styles.actions}>
-              <Button style={styles.action} variant="secondary" icon="receipt-long" label="Chi tiết chuyến"
+              <Button style={styles.action} variant="secondary" icon="receipt-long" iconPosition="leading" label="Chi tiết chuyến"
                 onPress={() => router.push({ pathname: "/ride/[id]", params: { id: String(ride.id) } })} />
-              {!ended ? <Button style={styles.action} variant="secondary" icon="share" label="Chia sẻ chuyến"
+              {!ended ? <Button style={styles.action} variant="secondary" icon="share" iconPosition="leading" label="Chia sẻ chuyến"
                 onPress={() => {
                   setShareError(false);
                   void Share.share({ message: [t("PtitGo"), t(presentation?.headline ?? "Đang cập nhật trạng thái")].join("\n") })

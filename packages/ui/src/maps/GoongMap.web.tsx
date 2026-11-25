@@ -6,17 +6,19 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { Typography as Text } from '../components/Typography';
+import { useReducedMotion } from '../motion';
 import { useThemeColors } from '../theme/ThemeProvider';
 import { CURRENT_LOCATION_BLUE, CURRENT_LOCATION_RING, TRIP_ROUTE_CASING, TRIP_ROUTE_COLOR, TRIP_STOP_COLORS } from '../theme/mapColors';
-import { DEFAULT_MAP_ZOOM, MAX_ROUTE_ZOOM, goongStyleUrl, lngLat, mapPadding } from './geometry';
+import { circlePolygon, DEFAULT_MAP_ZOOM, MAX_ROUTE_ZOOM, goongStyleUrl, lngLat, mapPadding, radarSweepGeoJSON } from './geometry';
 import type { GoongMapProps } from './types';
 import { MapCameraSelection } from './MapCameraSelection';
 
 export function GoongMap({
-  mapKey, center, viewport, bounds, cameraVersion, markers, route, currentLocation, interactive = true, editablePin,
+  mapKey, center, viewport, bounds, cameraVersion, markers, route, searchRadius, currentLocation, interactive = true, editablePin,
   onCenterChange, onReadyChange, onMovingChange,
 }: GoongMapProps) {
   const colors = useThemeColors();
+  const reducedMotion = useReducedMotion();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const initial = useRef(center);
@@ -174,6 +176,83 @@ export function GoongMap({
       });
     }
   }, [route, status]);
+
+  const radiusLat = searchRadius?.center.lat;
+  const radiusLng = searchRadius?.center.lng;
+  const radiusMeters = searchRadius?.radiusMeters ?? 0;
+  const animateRadar = Boolean(searchRadius?.animate) && !reducedMotion && radiusMeters > 0;
+
+  useEffect(() => {
+    const instance = map.current;
+    if (status !== 'ready' || !instance) return;
+    const removeCircle = () => {
+      if (instance.getLayer('search-radius-outline')) instance.removeLayer('search-radius-outline');
+      if (instance.getLayer('search-radius-fill')) instance.removeLayer('search-radius-fill');
+      if (instance.getSource('search-radius-circle')) instance.removeSource('search-radius-circle');
+    };
+    if (radiusLat == null || radiusLng == null || radiusMeters <= 0) {
+      removeCircle();
+      return;
+    }
+    const data = circlePolygon({ lat: radiusLat, lng: radiusLng }, radiusMeters);
+    const source = instance.getSource<GeoJSONSource>('search-radius-circle');
+    if (source) {
+      source.setData(data);
+    } else {
+      instance.addSource('search-radius-circle', { type: 'geojson', data });
+      instance.addLayer({
+        id: 'search-radius-fill', type: 'fill', source: 'search-radius-circle',
+        paint: { 'fill-color': colors.primary, 'fill-opacity': 0.14 },
+      });
+      instance.addLayer({
+        id: 'search-radius-outline', type: 'line', source: 'search-radius-circle',
+        paint: { 'line-color': colors.primary, 'line-width': 2, 'line-opacity': 0.55 },
+      });
+    }
+  }, [colors.primary, radiusLat, radiusLng, radiusMeters, status]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (status !== 'ready' || !instance) return;
+    const removeSweep = () => {
+      if (instance.getLayer('search-radius-sweep-arm')) instance.removeLayer('search-radius-sweep-arm');
+      if (instance.getLayer('search-radius-sweep-sector')) instance.removeLayer('search-radius-sweep-sector');
+      if (instance.getSource('search-radius-sweep')) instance.removeSource('search-radius-sweep');
+    };
+    if (!animateRadar || radiusLat == null || radiusLng == null) {
+      removeSweep();
+      return;
+    }
+    let angle = 0;
+    const initialData = radarSweepGeoJSON({ lat: radiusLat, lng: radiusLng }, radiusMeters, angle);
+    const existing = instance.getSource<GeoJSONSource>('search-radius-sweep');
+    if (existing) {
+      existing.setData(initialData);
+    } else {
+      instance.addSource('search-radius-sweep', { type: 'geojson', data: initialData });
+      instance.addLayer({
+        id: 'search-radius-sweep-sector', type: 'fill', source: 'search-radius-sweep',
+        filter: ['==', ['get', 'part'], 'sector'],
+        paint: { 'fill-color': colors.primary, 'fill-opacity': 0.16 },
+      });
+      instance.addLayer({
+        id: 'search-radius-sweep-arm', type: 'line', source: 'search-radius-sweep',
+        filter: ['==', ['get', 'part'], 'arm'],
+        paint: { 'line-color': colors.primary, 'line-width': 2, 'line-opacity': 0.85 },
+        layout: { 'line-cap': 'round' },
+      });
+    }
+    const timer = setInterval(() => {
+      angle = (angle + 6) % 360;
+      instance.getSource<GeoJSONSource>('search-radius-sweep')?.setData(
+        radarSweepGeoJSON({ lat: radiusLat, lng: radiusLng }, radiusMeters, angle),
+      );
+    }, 50);
+    return () => {
+      clearInterval(timer);
+      removeSweep();
+    };
+  }, [animateRadar, colors.primary, radiusLat, radiusLng, radiusMeters, status]);
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.background }]}>

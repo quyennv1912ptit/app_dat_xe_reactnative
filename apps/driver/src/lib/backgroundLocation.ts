@@ -1,4 +1,4 @@
-import type { CustomerRideDetail, DriverLocationUpdate } from '@datxe/shared';
+import type { AuthProfile, CustomerRideDetail, DriverLocationUpdate } from '@datxe/shared';
 import { shouldPublishLocation, validLocationUpdate } from '@datxe/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -165,14 +165,25 @@ export function startDriverBackgroundLocation(): Promise<boolean> {
     if (!permission.granted || epoch !== locationEpoch) return false;
     // Serialize native operations only. A permission screen must never block foreground GPS or stop().
     const operation = nativeTask.then(async () => {
-      if (epoch !== locationEpoch || AppState.currentState !== 'active') return false;
-      if (!(await Location.hasStartedLocationUpdatesAsync(DRIVER_LOCATION_TASK))) {
-        await Location.startLocationUpdatesAsync(DRIVER_LOCATION_TASK, {
-          accuracy: Location.Accuracy.High, timeInterval: env.locationIntervalMs, distanceInterval: 0,
-          pausesUpdatesAutomatically: false, showsBackgroundLocationIndicator: true,
-          foregroundService: { notificationTitle: 'Đang chia sẻ vị trí tài xế', notificationBody: 'Vị trí dùng để tìm chuyến phù hợp hoặc theo dõi chuyến đang thực hiện.', killServiceOnDestroy: true },
-        });
-      }
+      if (epoch !== locationEpoch) return false;
+      const alreadyStarted = await Location.hasStartedLocationUpdatesAsync(DRIVER_LOCATION_TASK);
+      if (alreadyStarted) return epoch === locationEpoch;
+      if (AppState.currentState && AppState.currentState !== 'active') return false;
+      await Location.startLocationUpdatesAsync(DRIVER_LOCATION_TASK, {
+        accuracy: Location.Accuracy.High,
+        activityType: Location.ActivityType.AutomotiveNavigation,
+        timeInterval: env.locationIntervalMs,
+        distanceInterval: 0,
+        deferredUpdatesInterval: 0,
+        deferredUpdatesDistance: 0,
+        pausesUpdatesAutomatically: false,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Đang chia sẻ vị trí tài xế',
+          notificationBody: 'Vị trí dùng để theo dõi chuyến đang thực hiện.',
+          killServiceOnDestroy: false,
+        },
+      });
       return epoch === locationEpoch;
     });
     nativeTask = operation.then(() => {}, () => {});
@@ -181,20 +192,47 @@ export function startDriverBackgroundLocation(): Promise<boolean> {
   backgroundStart = starting;
   return starting;
 }
-if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(DRIVER_LOCATION_TASK)) TaskManager.defineTask<{ locations: Location.LocationObject[] }>(DRIVER_LOCATION_TASK, async ({ data, error }) => {
+if (Platform.OS !== 'web') TaskManager.defineTask<{ locations: Location.LocationObject[] }>(DRIVER_LOCATION_TASK, async ({ data, error }) => {
   if (error) { useDriverHealth.getState().update({ error: 'Chia sẻ vị trí nền gặp lỗi. Hãy mở app và kiểm tra lại GPS.' }); return; }
   if (!data?.locations?.length || active === false) return;
   const epoch = locationEpoch;
   try {
-    // A cold background launch verifies that a ride is still assigned; never sends cached trip samples indefinitely.
+    // Verify periodically that the driver still has an active ride or remains ONLINE/BUSY before publishing in background.
+    // Never turn off background tracking on a transient network error; only stop when server confirms OFFLINE with no ride.
     if (active === null || Date.now() - lastRideCheck > 30000) {
-      const ride = await request<CustomerRideDetail>('/driver/rides/active', { allowNull: true });
+      const [rideRes, profileRes] = await Promise.allSettled([
+        request<CustomerRideDetail>('/driver/rides/active', { allowNull: true }),
+        request<AuthProfile>('/auth/me'),
+      ]);
       if (epoch !== locationEpoch) return;
-      // Chỉ giữ task nền khi vẫn có chuyến; ONLINE/BUSY không còn là lý do phát GPS nền.
-      active = Boolean(ride); lastRideCheck = Date.now();
-      if (!active) { void stopDriverBackgroundLocation().catch(() => {}); return; }
+      const ride = rideRes.status === 'fulfilled' ? rideRes.value : undefined;
+      const profile = profileRes.status === 'fulfilled' ? profileRes.value : undefined;
+      if (ride || profile?.status === 'ONLINE' || profile?.status === 'BUSY') {
+        active = true;
+        lastRideCheck = Date.now();
+      } else if (rideRes.status === 'fulfilled' && profileRes.status === 'fulfilled') {
+        active = false;
+        lastRideCheck = Date.now();
+        void stopDriverBackgroundLocation().catch(() => {});
+        return;
+      }
     }
     if (epoch !== locationEpoch) return;
-    await publishDriverLocation(data.locations.reduce((latest, point) => point.timestamp > latest.timestamp ? point : latest));
+    let candidate = data.locations.reduce((latest, point) => point.timestamp > latest.timestamp ? point : latest);
+    const lastKnownMs = lastKnown ? Date.parse(lastKnown.timestamp) : 0;
+    const staleOrRepeated =
+      Date.now() - candidate.timestamp >= MAX_SAMPLE_AGE_MS ||
+      (lastKnownMs > 0 && candidate.timestamp <= lastKnownMs);
+    if (staleOrRepeated && Date.now() - lastKnownMs >= HEARTBEAT_INTERVAL_MS) {
+      const fresh = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        mayShowUserSettingsDialog: false,
+      }).catch(() => null);
+      if (fresh && fresh.timestamp > candidate.timestamp) {
+        candidate = fresh;
+      }
+    }
+    if (epoch !== locationEpoch) return;
+    await publishDriverLocation(candidate);
   } catch { /* Never publish after an auth/active-ride verification failure. */ }
 });
